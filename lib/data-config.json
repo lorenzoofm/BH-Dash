@@ -1,0 +1,2403 @@
+{
+  "kind": "bh",
+  "baseId": "app0OseEBbAAAU6xt",
+  "sources": {
+    "staff": {
+      "tableId": "tblbHePRmAbfWwXBU",
+      "table": "Staff",
+      "primaryField": "Full Name",
+      "fields": [
+        {
+          "id": "fldNW0FMkgfPjIgn0",
+          "name": "Full Name",
+          "type": "SINGLE_LINE_TEXT",
+          "options": {
+            "minLength": null,
+            "maxLength": null
+          },
+          "rawType": "singleLineText",
+          "rawOptions": {}
+        },
+        {
+          "id": "fldcipz0WRxuJryCH",
+          "name": "Staff ID",
+          "type": "SINGLE_LINE_TEXT",
+          "options": {
+            "minLength": null,
+            "maxLength": null
+          },
+          "rawType": "singleLineText",
+          "rawOptions": {}
+        },
+        {
+          "id": "fldRBqxgPyy4A1HAJ",
+          "name": "Status",
+          "type": "SELECT",
+          "options": {
+            "choices": [
+              {
+                "id": "seleu8W5yVNPDgzIi",
+                "label": "Active",
+                "color": "grayLight2"
+              },
+              {
+                "id": "selOyetdIy1EvXUx8",
+                "label": "Setup",
+                "color": "grayLight2"
+              },
+              {
+                "id": "sel29TEK9wNd36DbM",
+                "label": "Inactive",
+                "color": "grayLight2"
+              }
+            ],
+            "allowToAddNewChoice": true
+          },
+          "rawType": "singleSelect",
+          "rawOptions": {
+            "choices": [
+              {
+                "id": "seleu8W5yVNPDgzIi",
+                "name": "Active",
+                "color": "grayLight2"
+              },
+              {
+                "id": "selOyetdIy1EvXUx8",
+                "name": "Setup",
+                "color": "grayLight2"
+              },
+              {
+                "id": "sel29TEK9wNd36DbM",
+                "name": "Inactive",
+                "color": "grayLight2"
+              }
+            ]
+          }
+        },
+        {
+          "id": "fldMnd4vjTwFJH0wR",
+          "name": "Model",
+          "type": "LINKED_RECORD",
+          "options": {
+            "linkedTableId": "Models"
+          },
+          "rawType": "multipleRecordLinks",
+          "rawOptions": {
+            "linkedTableId": "tblG5Yw4dgl59nCEY",
+            "isReversed": false,
+            "prefersSingleRecordLink": false,
+            "inverseLinkFieldId": "fldqKul2y4fCsJ7mx"
+          }
+        },
+        {
+          "id": "fldd6WZ8ycSOdn12T",
+          "name": "Platform",
+          "type": "SELECT",
+          "options": {
+            "choices": [
+              {
+                "id": "seliMn9Frfl9pf7vD",
+                "label": "X",
+                "color": "grayLight2"
+              },
+              {
+                "id": "selp0bs3ZzdVEF1V0",
+                "label": "OnlyFans",
+                "color": "grayLight2"
+              },
+              {
+                "id": "selTHNsUGJYOq81Iw",
+                "label": "Fanvue",
+                "color": "grayLight2"
+              },
+              {
+                "id": "selwviNeivQ9o5old",
+                "label": "Instagram",
+                "color": "grayLight2"
+              },
+              {
+                "id": "selk5sBS9uu6CoNim",
+                "label": "Discord",
+                "color": "grayLight2"
+              },
+              {
+                "id": "sel6bHdUS76stpGE9",
+                "label": "Threads",
+                "color": "grayLight2"
+              },
+              {
+                "id": "selIX0N5GpGAVPJxq",
+                "label": "Reddit",
+                "color": "grayLight2"
+              },
+              {
+                "id": "sel9MnGzARdiCbpjj",
+                "label": "VPS",
+                "color": "grayLight2"
+              }
+            ],
+            "allowToAddNewChoice": true
+          },
+          "rawType": "singleSelect",
+          "rawOptions": {
+            "choices": [
+              {
+                "id": "seliMn9Frfl9pf7vD",
+                "name": "X",
+                "color": "grayLight2"
+              },
+              {
+                "id": "selp0bs3ZzdVEF1V0",
+                "name": "OnlyFans",
+                "color": "grayLight2"
+              },
+              {
+                "id": "selTHNsUGJYOq81Iw",
+                "name": "Fanvue",
+                "color": "grayLight2"
+              },
+              {
+                "id": "selwviNeivQ9o5old",
+                "name": "Instagram",
+                "color": "grayLight2"
+              },
+              {
+                "id": "selk5sBS9uu6CoNim",
+                "name": "Discord",
+                "color": "grayLight2"
+              },
+              {
+                "id": "sel6bHdUS76stpGE9",
+                "name": "Threads",
+                "color": "grayLight2"
+              },
+              {
+                "id": "selIX0N5GpGAVPJxq",
+                "name": "Reddit",
+                "color": "grayLight2"
+              },
+              {
+                "id": "sel9MnGzARdiCbpjj",
+                "name": "VPS",
+                "color": "grayLight2"
+              }
+            ]
+          }
+        },
+        {
+          "id": "fldzzj8MJFJ8kPYa8",
+          "name": "Pay Type",
+          "type": "SELECT",
+          "options": {
+            "choices": [
+              {
+                "id": "selIIcvR4pvB1pIeR",
+                "label": "Hourly",
+                "color": "grayLight2"
+              },
+              {
+                "id": "sel3JmUI3qj3331p8",
+                "label": "Salary",
+                "color": "grayLight2"
+              },
+              {
+                "id": "sel0WuRt7cKMMSirf",
+                "label": "Commission",
+                "color": "grayLight2"
+              }
+            ],
+            "allowToAddNewChoice": true
+          },
+          "rawType": "singleSelect",
+          "rawOptions": {
+            "choices": [
+              {
+                "id": "selIIcvR4pvB1pIeR",
+                "name": "Hourly",
+                "color": "grayLight2"
+              },
+              {
+                "id": "sel3JmUI3qj3331p8",
+                "name": "Salary",
+                "color": "grayLight2"
+              },
+              {
+                "id": "sel0WuRt7cKMMSirf",
+                "name": "Commission",
+                "color": "grayLight2"
+              }
+            ]
+          }
+        },
+        {
+          "id": "fldXTghkIrV1gQY08",
+          "name": "Current Hourly Rate",
+          "type": "CURRENCY",
+          "options": {
+            "precision": 2,
+            "min": null,
+            "max": null,
+            "isoCode": null,
+            "customSymbol": "$"
+          },
+          "rawType": "currency",
+          "rawOptions": {
+            "precision": 2,
+            "symbol": "$"
+          }
+        },
+        {
+          "id": "fldBwpscM9jNRqHc5",
+          "name": "Currency",
+          "type": "SELECT",
+          "options": {
+            "choices": [
+              {
+                "id": "selSQNetedSt2OPlk",
+                "label": "USD",
+                "color": "grayLight2"
+              },
+              {
+                "id": "seloGTX5iocrKYXea",
+                "label": "GBP",
+                "color": "grayLight2"
+              },
+              {
+                "id": "sel86fzYnuJ0z9fOP",
+                "label": "EUR",
+                "color": "grayLight2"
+              },
+              {
+                "id": "selEWD9Jdz3ozqald",
+                "label": "AUD",
+                "color": "grayLight2"
+              }
+            ],
+            "allowToAddNewChoice": true
+          },
+          "rawType": "singleSelect",
+          "rawOptions": {
+            "choices": [
+              {
+                "id": "selSQNetedSt2OPlk",
+                "name": "USD",
+                "color": "grayLight2"
+              },
+              {
+                "id": "seloGTX5iocrKYXea",
+                "name": "GBP",
+                "color": "grayLight2"
+              },
+              {
+                "id": "sel86fzYnuJ0z9fOP",
+                "name": "EUR",
+                "color": "grayLight2"
+              },
+              {
+                "id": "selEWD9Jdz3ozqald",
+                "name": "AUD",
+                "color": "grayLight2"
+              }
+            ]
+          }
+        },
+        {
+          "id": "fldVV5yL6cGNCYBFb",
+          "name": "Start Date",
+          "type": "DATETIME",
+          "options": {
+            "precision": "DATE",
+            "useRelativeDatetimeFormat": false,
+            "timezoneType": "FIXED",
+            "timezone": "DEFAULT",
+            "format": null
+          },
+          "rawType": "date",
+          "rawOptions": {
+            "dateFormat": {
+              "name": "iso",
+              "format": "YYYY-MM-DD"
+            }
+          }
+        },
+        {
+          "id": "fldYJyj61Q6OvFoNs",
+          "name": "End Date",
+          "type": "DATETIME",
+          "options": {
+            "precision": "DATE",
+            "useRelativeDatetimeFormat": false,
+            "timezoneType": "FIXED",
+            "timezone": "DEFAULT",
+            "format": null
+          },
+          "rawType": "date",
+          "rawOptions": {
+            "dateFormat": {
+              "name": "iso",
+              "format": "YYYY-MM-DD"
+            }
+          }
+        },
+        {
+          "id": "fldU2U96aR1jP5Vyd",
+          "name": "Email",
+          "type": "EMAIL",
+          "options": {},
+          "rawType": "email",
+          "rawOptions": {}
+        },
+        {
+          "id": "fldT9MtoIoybnoVEY",
+          "name": "Notes",
+          "type": "LONG_TEXT",
+          "options": {
+            "type": "TEXT"
+          },
+          "rawType": "multilineText",
+          "rawOptions": {}
+        },
+        {
+          "id": "fld8OOpWrfv8mFr1f",
+          "name": "Pay Log",
+          "type": "LINKED_RECORD",
+          "options": {
+            "linkedTableId": "Pay Log"
+          },
+          "rawType": "multipleRecordLinks",
+          "rawOptions": {
+            "linkedTableId": "tblIvDJcsFEOJCRrr",
+            "isReversed": false,
+            "prefersSingleRecordLink": false,
+            "inverseLinkFieldId": "fldNDlMMLTKh4viBq"
+          }
+        },
+        {
+          "id": "fldrelzt6ZBSZ7IqG",
+          "name": "Conversion Log",
+          "type": "LINKED_RECORD",
+          "options": {
+            "linkedTableId": "Conversion Log"
+          },
+          "rawType": "multipleRecordLinks",
+          "rawOptions": {
+            "linkedTableId": "tbln8DawusKZwIzOo",
+            "isReversed": false,
+            "prefersSingleRecordLink": false,
+            "inverseLinkFieldId": "fldZMn0qYG9wr6Gm7"
+          }
+        },
+        {
+          "id": "fld1MlWmW3Joi2j8F",
+          "name": "Conversions This Week",
+          "type": "ROLLUP",
+          "options": {
+            "linkedRecordFieldId": "fldrelzt6ZBSZ7IqG",
+            "rollupFieldId": "fldw0q685GLmJmUbY",
+            "function": "SUM",
+            "returnedField": {
+              "type": "NUMBER",
+              "vendorSideFieldType": "number",
+              "options": {
+                "precision": 0,
+                "min": null,
+                "max": null
+              }
+            }
+          },
+          "rawType": "rollup",
+          "rawOptions": {
+            "isValid": true,
+            "recordLinkFieldId": "fldrelzt6ZBSZ7IqG",
+            "fieldIdInLinkedTable": "fldw0q685GLmJmUbY",
+            "referencedFieldIds": [],
+            "result": {
+              "type": "number",
+              "options": {
+                "precision": 0
+              }
+            }
+          }
+        },
+        {
+          "id": "fldPRAUJNVFXwUX9F",
+          "name": "Conversions Last Week",
+          "type": "ROLLUP",
+          "options": {
+            "linkedRecordFieldId": "fldrelzt6ZBSZ7IqG",
+            "rollupFieldId": "fldFdC4BFBAWAKwI4",
+            "function": "SUM",
+            "returnedField": {
+              "type": "NUMBER",
+              "vendorSideFieldType": "number",
+              "options": {
+                "precision": 0,
+                "min": null,
+                "max": null
+              }
+            }
+          },
+          "rawType": "rollup",
+          "rawOptions": {
+            "isValid": true,
+            "recordLinkFieldId": "fldrelzt6ZBSZ7IqG",
+            "fieldIdInLinkedTable": "fldFdC4BFBAWAKwI4",
+            "referencedFieldIds": [],
+            "result": {
+              "type": "number",
+              "options": {
+                "precision": 0
+              }
+            }
+          }
+        },
+        {
+          "id": "fldLP5QRda8oSkdgv",
+          "name": "Conversions Last 4 Weeks",
+          "type": "ROLLUP",
+          "options": {
+            "linkedRecordFieldId": "fldrelzt6ZBSZ7IqG",
+            "rollupFieldId": "fldzgreDT4CT5HgUU",
+            "function": "SUM",
+            "returnedField": {
+              "type": "NUMBER",
+              "vendorSideFieldType": "number",
+              "options": {
+                "precision": 0,
+                "min": null,
+                "max": null
+              }
+            }
+          },
+          "rawType": "rollup",
+          "rawOptions": {
+            "isValid": true,
+            "recordLinkFieldId": "fldrelzt6ZBSZ7IqG",
+            "fieldIdInLinkedTable": "fldzgreDT4CT5HgUU",
+            "referencedFieldIds": [],
+            "result": {
+              "type": "number",
+              "options": {
+                "precision": 0
+              }
+            }
+          }
+        },
+        {
+          "id": "fldsmAmFJPeIqkXfi",
+          "name": "Hours Last 30d",
+          "type": "ROLLUP",
+          "options": {
+            "linkedRecordFieldId": "fld8OOpWrfv8mFr1f",
+            "rollupFieldId": "fldkU22J2A7vEqCrE",
+            "function": "SUM",
+            "returnedField": {
+              "type": "NUMBER",
+              "vendorSideFieldType": "number",
+              "options": {
+                "precision": 0,
+                "min": null,
+                "max": null
+              }
+            }
+          },
+          "rawType": "rollup",
+          "rawOptions": {
+            "isValid": true,
+            "recordLinkFieldId": "fld8OOpWrfv8mFr1f",
+            "fieldIdInLinkedTable": "fldkU22J2A7vEqCrE",
+            "referencedFieldIds": [],
+            "result": {
+              "type": "number",
+              "options": {
+                "precision": 0
+              }
+            }
+          }
+        },
+        {
+          "id": "fldoTXphtcXamv7cP",
+          "name": "7-Day Average",
+          "type": "FORMULA",
+          "options": {
+            "returnedField": {
+              "type": "NUMBER",
+              "vendorSideFieldType": "number",
+              "options": {
+                "precision": 0,
+                "min": null,
+                "max": null
+              }
+            }
+          },
+          "rawType": "formula",
+          "rawOptions": {
+            "isValid": true,
+            "formula": "{fldPRAUJNVFXwUX9F} / 7",
+            "referencedFieldIds": [
+              "fldPRAUJNVFXwUX9F"
+            ],
+            "result": {
+              "type": "number",
+              "options": {
+                "precision": 0
+              }
+            }
+          }
+        },
+        {
+          "id": "fld24QQeOGkGSdu9D",
+          "name": "30-Day Daily Average",
+          "type": "FORMULA",
+          "options": {
+            "returnedField": {
+              "type": "NUMBER",
+              "vendorSideFieldType": "number",
+              "options": {
+                "precision": 0,
+                "min": null,
+                "max": null
+              }
+            }
+          },
+          "rawType": "formula",
+          "rawOptions": {
+            "isValid": true,
+            "formula": "{fldLP5QRda8oSkdgv} / 30",
+            "referencedFieldIds": [
+              "fldLP5QRda8oSkdgv"
+            ],
+            "result": {
+              "type": "number",
+              "options": {
+                "precision": 0
+              }
+            }
+          }
+        },
+        {
+          "id": "fld7sem4Etjc9JN43",
+          "name": "Conversions per Hour",
+          "type": "FORMULA",
+          "options": {
+            "returnedField": {
+              "type": "NUMBER",
+              "vendorSideFieldType": "number",
+              "options": {
+                "precision": 0,
+                "min": null,
+                "max": null
+              }
+            }
+          },
+          "rawType": "formula",
+          "rawOptions": {
+            "isValid": true,
+            "formula": "IF({fldsmAmFJPeIqkXfi} > 0, {fldLP5QRda8oSkdgv} / {fldsmAmFJPeIqkXfi}, BLANK())",
+            "referencedFieldIds": [
+              "fldsmAmFJPeIqkXfi",
+              "fldLP5QRda8oSkdgv"
+            ],
+            "result": {
+              "type": "number",
+              "options": {
+                "precision": 0
+              }
+            }
+          }
+        },
+        {
+          "id": "fldmTse0jPPDjmbXR",
+          "name": "Standard Daily Hours",
+          "type": "NUMBER",
+          "options": {
+            "precision": 2,
+            "min": null,
+            "max": null
+          },
+          "rawType": "number",
+          "rawOptions": {
+            "precision": 2
+          }
+        },
+        {
+          "id": "fldzQXBsVocqZuAaX",
+          "name": "Staff Expectations",
+          "type": "LINKED_RECORD",
+          "options": {
+            "linkedTableId": "Staff Expectations"
+          },
+          "rawType": "multipleRecordLinks",
+          "rawOptions": {
+            "linkedTableId": "tbli0deZgWsANOdbT",
+            "isReversed": false,
+            "prefersSingleRecordLink": false,
+            "inverseLinkFieldId": "fldqUMUju3IGfq3bg"
+          }
+        }
+      ],
+      "actions": {
+        "PATCH": [
+          "Full Name",
+          "Status",
+          "Model",
+          "Platform",
+          "Pay Type",
+          "Current Hourly Rate",
+          "Standard Daily Hours",
+          "Currency",
+          "Start Date",
+          "End Date",
+          "Email"
+        ],
+        "POST": [
+          "Staff ID",
+          "Full Name",
+          "Status",
+          "Model",
+          "Platform",
+          "Pay Type",
+          "Current Hourly Rate",
+          "Standard Daily Hours",
+          "Currency",
+          "Start Date",
+          "End Date",
+          "Email"
+        ]
+      }
+    },
+    "paylog": {
+      "tableId": "tblIvDJcsFEOJCRrr",
+      "table": "Pay Log",
+      "primaryField": "Work Date",
+      "fields": [
+        {
+          "id": "fld6vknPA2XdEnyOl",
+          "name": "Work Date",
+          "type": "DATETIME",
+          "options": {
+            "precision": "DATE",
+            "useRelativeDatetimeFormat": false,
+            "timezoneType": "FIXED",
+            "timezone": "DEFAULT",
+            "format": null
+          },
+          "rawType": "date",
+          "rawOptions": {
+            "dateFormat": {
+              "name": "iso",
+              "format": "YYYY-MM-DD"
+            }
+          }
+        },
+        {
+          "id": "fldNDlMMLTKh4viBq",
+          "name": "Staff",
+          "type": "LINKED_RECORD",
+          "options": {
+            "linkedTableId": "Staff"
+          },
+          "rawType": "multipleRecordLinks",
+          "rawOptions": {
+            "linkedTableId": "tblbHePRmAbfWwXBU",
+            "isReversed": false,
+            "prefersSingleRecordLink": false,
+            "inverseLinkFieldId": "fld8OOpWrfv8mFr1f"
+          }
+        },
+        {
+          "id": "fldalGvvUH4LaqW6F",
+          "name": "Hours Worked",
+          "type": "NUMBER",
+          "options": {
+            "precision": 2,
+            "min": null,
+            "max": null
+          },
+          "rawType": "number",
+          "rawOptions": {
+            "precision": 2
+          }
+        },
+        {
+          "id": "fldNbg5zKEsYs9xfZ",
+          "name": "Hourly Rate Snapshot",
+          "type": "CURRENCY",
+          "options": {
+            "precision": 2,
+            "min": null,
+            "max": null,
+            "isoCode": null,
+            "customSymbol": "$"
+          },
+          "rawType": "currency",
+          "rawOptions": {
+            "precision": 2,
+            "symbol": "$"
+          }
+        },
+        {
+          "id": "fldwkTDXLQsRXjpqO",
+          "name": "Bonus",
+          "type": "CURRENCY",
+          "options": {
+            "precision": 2,
+            "min": null,
+            "max": null,
+            "isoCode": null,
+            "customSymbol": "$"
+          },
+          "rawType": "currency",
+          "rawOptions": {
+            "precision": 2,
+            "symbol": "$"
+          }
+        },
+        {
+          "id": "fldSEcRlgkOzS7eYo",
+          "name": "Deductions",
+          "type": "CURRENCY",
+          "options": {
+            "precision": 2,
+            "min": null,
+            "max": null,
+            "isoCode": null,
+            "customSymbol": "$"
+          },
+          "rawType": "currency",
+          "rawOptions": {
+            "precision": 2,
+            "symbol": "$"
+          }
+        },
+        {
+          "id": "fldBNMzKhcDLZUlAm",
+          "name": "Payment Status",
+          "type": "SELECT",
+          "options": {
+            "choices": [
+              {
+                "id": "sel4XuvvZGVrGlk8T",
+                "label": "Unpaid",
+                "color": "grayLight2"
+              },
+              {
+                "id": "sel6nAP8Fw6WPawS3",
+                "label": "Scheduled",
+                "color": "grayLight2"
+              },
+              {
+                "id": "selK6rGaFLDQnse60",
+                "label": "Paid",
+                "color": "grayLight2"
+              }
+            ],
+            "allowToAddNewChoice": true
+          },
+          "rawType": "singleSelect",
+          "rawOptions": {
+            "choices": [
+              {
+                "id": "sel4XuvvZGVrGlk8T",
+                "name": "Unpaid",
+                "color": "grayLight2"
+              },
+              {
+                "id": "sel6nAP8Fw6WPawS3",
+                "name": "Scheduled",
+                "color": "grayLight2"
+              },
+              {
+                "id": "selK6rGaFLDQnse60",
+                "name": "Paid",
+                "color": "grayLight2"
+              }
+            ]
+          }
+        },
+        {
+          "id": "fldCR8QwxTSKGLWmu",
+          "name": "Payment Date",
+          "type": "DATETIME",
+          "options": {
+            "precision": "DATE",
+            "useRelativeDatetimeFormat": false,
+            "timezoneType": "FIXED",
+            "timezone": "DEFAULT",
+            "format": null
+          },
+          "rawType": "date",
+          "rawOptions": {
+            "dateFormat": {
+              "name": "iso",
+              "format": "YYYY-MM-DD"
+            }
+          }
+        },
+        {
+          "id": "fldr0rQgfW7BWmNpQ",
+          "name": "Notes",
+          "type": "LONG_TEXT",
+          "options": {
+            "type": "TEXT"
+          },
+          "rawType": "multilineText",
+          "rawOptions": {}
+        },
+        {
+          "id": "fld5JNmWJgyGCoi99",
+          "name": "Submitted By",
+          "type": "SINGLE_LINE_TEXT",
+          "options": {
+            "minLength": null,
+            "maxLength": null
+          },
+          "rawType": "singleLineText",
+          "rawOptions": {}
+        },
+        {
+          "id": "fld4uaidJYWkd32IV",
+          "name": "Base Pay",
+          "type": "FORMULA",
+          "options": {
+            "returnedField": {
+              "type": "NUMBER",
+              "vendorSideFieldType": "number",
+              "options": {
+                "precision": 0,
+                "min": null,
+                "max": null
+              }
+            }
+          },
+          "rawType": "formula",
+          "rawOptions": {
+            "isValid": true,
+            "formula": "{fldalGvvUH4LaqW6F} * {fldNbg5zKEsYs9xfZ}",
+            "referencedFieldIds": [
+              "fldalGvvUH4LaqW6F",
+              "fldNbg5zKEsYs9xfZ"
+            ],
+            "result": {
+              "type": "number",
+              "options": {
+                "precision": 0
+              }
+            }
+          }
+        },
+        {
+          "id": "fld5mrBpcr9z4zivD",
+          "name": "Total Pay",
+          "type": "FORMULA",
+          "options": {
+            "returnedField": {
+              "type": "NUMBER",
+              "vendorSideFieldType": "number",
+              "options": {
+                "precision": 0,
+                "min": null,
+                "max": null
+              }
+            }
+          },
+          "rawType": "formula",
+          "rawOptions": {
+            "isValid": true,
+            "formula": "{fldalGvvUH4LaqW6F} * {fldNbg5zKEsYs9xfZ} + {fldwkTDXLQsRXjpqO} - {fldSEcRlgkOzS7eYo}",
+            "referencedFieldIds": [
+              "fldalGvvUH4LaqW6F",
+              "fldNbg5zKEsYs9xfZ",
+              "fldwkTDXLQsRXjpqO",
+              "fldSEcRlgkOzS7eYo"
+            ],
+            "result": {
+              "type": "number",
+              "options": {
+                "precision": 0
+              }
+            }
+          }
+        },
+        {
+          "id": "fldCjW4RM29yg5SY4",
+          "name": "Pay Period",
+          "type": "FORMULA",
+          "options": {
+            "returnedField": {
+              "type": "SINGLE_LINE_TEXT",
+              "vendorSideFieldType": "singleLineText",
+              "options": {
+                "minLength": null,
+                "maxLength": null
+              }
+            }
+          },
+          "rawType": "formula",
+          "rawOptions": {
+            "isValid": true,
+            "formula": "DATETIME_FORMAT({fld6vknPA2XdEnyOl}, 'YYYY-MM')",
+            "referencedFieldIds": [
+              "fld6vknPA2XdEnyOl"
+            ],
+            "result": {
+              "type": "singleLineText"
+            }
+          }
+        },
+        {
+          "id": "fldkU22J2A7vEqCrE",
+          "name": "Hours 30d",
+          "type": "FORMULA",
+          "options": {
+            "returnedField": {
+              "type": "NUMBER",
+              "vendorSideFieldType": "number",
+              "options": {
+                "precision": 0,
+                "min": null,
+                "max": null
+              }
+            }
+          },
+          "rawType": "formula",
+          "rawOptions": {
+            "isValid": true,
+            "formula": "IF(AND({fld6vknPA2XdEnyOl}, NOT(IS_BEFORE({fld6vknPA2XdEnyOl}, DATEADD(TODAY(), -29, 'days'))), NOT(IS_AFTER({fld6vknPA2XdEnyOl}, TODAY()))), {fldalGvvUH4LaqW6F}, 0)",
+            "referencedFieldIds": [
+              "fld6vknPA2XdEnyOl",
+              "fldalGvvUH4LaqW6F"
+            ],
+            "result": {
+              "type": "number",
+              "options": {
+                "precision": 0
+              }
+            }
+          }
+        }
+      ],
+      "actions": {
+        "POST": [
+          "Work Date",
+          "Staff",
+          "Hours Worked",
+          "Hourly Rate Snapshot",
+          "Bonus",
+          "Deductions",
+          "Payment Status",
+          "Payment Date",
+          "Submitted By",
+          "Notes"
+        ],
+        "PATCH": [
+          "Hours Worked",
+          "Hourly Rate Snapshot",
+          "Bonus",
+          "Deductions",
+          "Payment Status",
+          "Payment Date",
+          "Notes"
+        ],
+        "DELETE": []
+      }
+    },
+    "expenses": {
+      "tableId": "tblMuC3WKlGWD1Gw7",
+      "table": "Expense Log",
+      "primaryField": "Expense ID",
+      "fields": [
+        {
+          "id": "flddVTDVHTQpYZYnH",
+          "name": "Expense ID",
+          "type": "SINGLE_LINE_TEXT",
+          "options": {
+            "minLength": null,
+            "maxLength": null
+          },
+          "rawType": "singleLineText",
+          "rawOptions": {}
+        },
+        {
+          "id": "fldjBCA8Ad3ERTtah",
+          "name": "Expense Date",
+          "type": "DATETIME",
+          "options": {
+            "precision": "DATE",
+            "useRelativeDatetimeFormat": false,
+            "timezoneType": "FIXED",
+            "timezone": "DEFAULT",
+            "format": null
+          },
+          "rawType": "date",
+          "rawOptions": {
+            "dateFormat": {
+              "name": "iso",
+              "format": "YYYY-MM-DD"
+            }
+          }
+        },
+        {
+          "id": "fldmaYoTvQ8mWPUxT",
+          "name": "Description",
+          "type": "SINGLE_LINE_TEXT",
+          "options": {
+            "minLength": null,
+            "maxLength": null
+          },
+          "rawType": "singleLineText",
+          "rawOptions": {}
+        },
+        {
+          "id": "fldF2yDPLX5kVUpJG",
+          "name": "Currency",
+          "type": "SELECT",
+          "options": {
+            "choices": [
+              {
+                "id": "selKqKB5ekYGdxXMO",
+                "label": "USD",
+                "color": "grayLight2"
+              },
+              {
+                "id": "selSSmyBYY5fk0DyX",
+                "label": "GBP",
+                "color": "grayLight2"
+              },
+              {
+                "id": "sel0FwlWrnEOWKqZC",
+                "label": "EUR",
+                "color": "grayLight2"
+              },
+              {
+                "id": "selMLftUNMEqVJBAw",
+                "label": "AUD",
+                "color": "grayLight2"
+              },
+              {
+                "id": "sel2AqSLoSMsaOoF6",
+                "label": "Other",
+                "color": "grayLight2"
+              }
+            ],
+            "allowToAddNewChoice": true
+          },
+          "rawType": "singleSelect",
+          "rawOptions": {
+            "choices": [
+              {
+                "id": "selKqKB5ekYGdxXMO",
+                "name": "USD",
+                "color": "grayLight2"
+              },
+              {
+                "id": "selSSmyBYY5fk0DyX",
+                "name": "GBP",
+                "color": "grayLight2"
+              },
+              {
+                "id": "sel0FwlWrnEOWKqZC",
+                "name": "EUR",
+                "color": "grayLight2"
+              },
+              {
+                "id": "selMLftUNMEqVJBAw",
+                "name": "AUD",
+                "color": "grayLight2"
+              },
+              {
+                "id": "sel2AqSLoSMsaOoF6",
+                "name": "Other",
+                "color": "grayLight2"
+              }
+            ]
+          }
+        },
+        {
+          "id": "fldcIlkLyksQtpdhP",
+          "name": "Category",
+          "type": "SELECT",
+          "options": {
+            "choices": [
+              {
+                "id": "selMpgT7F56H2uT2k",
+                "label": "Paid traffic",
+                "color": "grayLight2"
+              },
+              {
+                "id": "selx7LcAEvmHaVNnS",
+                "label": "Payroll",
+                "color": "grayLight2"
+              },
+              {
+                "id": "selrlkfOTNzla8qdA",
+                "label": "Infrastructure",
+                "color": "grayLight2"
+              },
+              {
+                "id": "selZuiOD0ayGWXOUw",
+                "label": "Software",
+                "color": "grayLight2"
+              },
+              {
+                "id": "selw0blezzr2TR0hN",
+                "label": "Creative",
+                "color": "grayLight2"
+              },
+              {
+                "id": "selE49ZdvVMQL5Kcf",
+                "label": "Influencer",
+                "color": "grayLight2"
+              },
+              {
+                "id": "selKyjqx6VulKNt4G",
+                "label": "Organic growth",
+                "color": "grayLight2"
+              },
+              {
+                "id": "selNCcBeRuHx7NmD4",
+                "label": "Legal",
+                "color": "grayLight2"
+              },
+              {
+                "id": "sel7VyXRSvT0cmhMh",
+                "label": "Other",
+                "color": "grayLight2"
+              },
+              {
+                "id": "selx9Cm37tgZ5PYxV",
+                "label": "Paid ads",
+                "color": "blueLight2"
+              },
+              {
+                "id": "sel0lrmfsuW6XKPEK",
+                "label": "Accounts",
+                "color": "blueLight2"
+              },
+              {
+                "id": "sel0CMmtrKScW6oK2",
+                "label": "VPS",
+                "color": "blueLight2"
+              },
+              {
+                "id": "selBU3BLWzgWAWexl",
+                "label": "cupid",
+                "color": "blueLight2"
+              },
+              {
+                "id": "sel4FDXhBuNU1jHnu",
+                "label": "Convos",
+                "color": "blueLight2"
+              }
+            ],
+            "allowToAddNewChoice": true
+          },
+          "rawType": "singleSelect",
+          "rawOptions": {
+            "choices": [
+              {
+                "id": "selMpgT7F56H2uT2k",
+                "name": "Paid traffic",
+                "color": "grayLight2"
+              },
+              {
+                "id": "selx7LcAEvmHaVNnS",
+                "name": "Payroll",
+                "color": "grayLight2"
+              },
+              {
+                "id": "selrlkfOTNzla8qdA",
+                "name": "Infrastructure",
+                "color": "grayLight2"
+              },
+              {
+                "id": "selZuiOD0ayGWXOUw",
+                "name": "Software",
+                "color": "grayLight2"
+              },
+              {
+                "id": "selw0blezzr2TR0hN",
+                "name": "Creative",
+                "color": "grayLight2"
+              },
+              {
+                "id": "selE49ZdvVMQL5Kcf",
+                "name": "Influencer",
+                "color": "grayLight2"
+              },
+              {
+                "id": "selKyjqx6VulKNt4G",
+                "name": "Organic growth",
+                "color": "grayLight2"
+              },
+              {
+                "id": "selNCcBeRuHx7NmD4",
+                "name": "Legal",
+                "color": "grayLight2"
+              },
+              {
+                "id": "sel7VyXRSvT0cmhMh",
+                "name": "Other",
+                "color": "grayLight2"
+              },
+              {
+                "id": "selx9Cm37tgZ5PYxV",
+                "name": "Paid ads",
+                "color": "blueLight2"
+              },
+              {
+                "id": "sel0lrmfsuW6XKPEK",
+                "name": "Accounts",
+                "color": "blueLight2"
+              },
+              {
+                "id": "sel0CMmtrKScW6oK2",
+                "name": "VPS",
+                "color": "blueLight2"
+              },
+              {
+                "id": "selBU3BLWzgWAWexl",
+                "name": "cupid",
+                "color": "blueLight2"
+              },
+              {
+                "id": "sel4FDXhBuNU1jHnu",
+                "name": "Convos",
+                "color": "blueLight2"
+              }
+            ]
+          }
+        },
+        {
+          "id": "fldrco7xu3QTcczYL",
+          "name": "Channel",
+          "type": "SINGLE_LINE_TEXT",
+          "options": {
+            "minLength": null,
+            "maxLength": null
+          },
+          "rawType": "singleLineText",
+          "rawOptions": {}
+        },
+        {
+          "id": "fldHHIJNV17hHdTtI",
+          "name": "Model",
+          "type": "LINKED_RECORD",
+          "options": {
+            "linkedTableId": "Models"
+          },
+          "rawType": "multipleRecordLinks",
+          "rawOptions": {
+            "linkedTableId": "tblG5Yw4dgl59nCEY",
+            "isReversed": false,
+            "prefersSingleRecordLink": false,
+            "inverseLinkFieldId": "fldYtiHVFHkhlcZhJ"
+          }
+        },
+        {
+          "id": "fldoVqd9EahZJwhU8",
+          "name": "Vendor",
+          "type": "SINGLE_LINE_TEXT",
+          "options": {
+            "minLength": null,
+            "maxLength": null
+          },
+          "rawType": "singleLineText",
+          "rawOptions": {}
+        },
+        {
+          "id": "flddn91Od6O4i5sx7",
+          "name": "Billing Type",
+          "type": "SELECT",
+          "options": {
+            "choices": [
+              {
+                "id": "sel6unnDQHecvLy95",
+                "label": "One-off",
+                "color": "grayLight2"
+              },
+              {
+                "id": "selufbJlNYBXMmxxZ",
+                "label": "Daily",
+                "color": "grayLight2"
+              },
+              {
+                "id": "selSirzD2bJAKFWiV",
+                "label": "Weekly",
+                "color": "grayLight2"
+              },
+              {
+                "id": "sel2YlXzbLepB9ovz",
+                "label": "Monthly",
+                "color": "grayLight2"
+              },
+              {
+                "id": "selZvS60BNqIcCNgp",
+                "label": "Annual",
+                "color": "grayLight2"
+              }
+            ],
+            "allowToAddNewChoice": true
+          },
+          "rawType": "singleSelect",
+          "rawOptions": {
+            "choices": [
+              {
+                "id": "sel6unnDQHecvLy95",
+                "name": "One-off",
+                "color": "grayLight2"
+              },
+              {
+                "id": "selufbJlNYBXMmxxZ",
+                "name": "Daily",
+                "color": "grayLight2"
+              },
+              {
+                "id": "selSirzD2bJAKFWiV",
+                "name": "Weekly",
+                "color": "grayLight2"
+              },
+              {
+                "id": "sel2YlXzbLepB9ovz",
+                "name": "Monthly",
+                "color": "grayLight2"
+              },
+              {
+                "id": "selZvS60BNqIcCNgp",
+                "name": "Annual",
+                "color": "grayLight2"
+              }
+            ]
+          }
+        },
+        {
+          "id": "fldjm1gUQ0XUBedU4",
+          "name": "Status",
+          "type": "SELECT",
+          "options": {
+            "choices": [
+              {
+                "id": "sel7tki91ddI05LAt",
+                "label": "Planned",
+                "color": "grayLight2"
+              },
+              {
+                "id": "selZEUZeop10U78Fp",
+                "label": "Unpaid",
+                "color": "grayLight2"
+              },
+              {
+                "id": "selvJIoUiOFg4388A",
+                "label": "Paid",
+                "color": "grayLight2"
+              }
+            ],
+            "allowToAddNewChoice": true
+          },
+          "rawType": "singleSelect",
+          "rawOptions": {
+            "choices": [
+              {
+                "id": "sel7tki91ddI05LAt",
+                "name": "Planned",
+                "color": "grayLight2"
+              },
+              {
+                "id": "selZEUZeop10U78Fp",
+                "name": "Unpaid",
+                "color": "grayLight2"
+              },
+              {
+                "id": "selvJIoUiOFg4388A",
+                "name": "Paid",
+                "color": "grayLight2"
+              }
+            ]
+          }
+        },
+        {
+          "id": "fldt0gTEVSQgLiUrH",
+          "name": "Paid Date",
+          "type": "DATETIME",
+          "options": {
+            "precision": "DATE",
+            "useRelativeDatetimeFormat": false,
+            "timezoneType": "FIXED",
+            "timezone": "DEFAULT",
+            "format": null
+          },
+          "rawType": "date",
+          "rawOptions": {
+            "dateFormat": {
+              "name": "iso",
+              "format": "YYYY-MM-DD"
+            }
+          }
+        },
+        {
+          "id": "fld4SIugTtm387HBC",
+          "name": "Notes",
+          "type": "LONG_TEXT",
+          "options": {
+            "type": "TEXT"
+          },
+          "rawType": "multilineText",
+          "rawOptions": {}
+        },
+        {
+          "id": "fldJ6cb3Wu96BO8Fl",
+          "name": "Created By",
+          "type": "SINGLE_LINE_TEXT",
+          "options": {
+            "minLength": null,
+            "maxLength": null
+          },
+          "rawType": "singleLineText",
+          "rawOptions": {}
+        },
+        {
+          "id": "fldKunpliIw5UJ7Zk",
+          "name": "Source Ref",
+          "type": "SINGLE_LINE_TEXT",
+          "options": {
+            "minLength": null,
+            "maxLength": null
+          },
+          "rawType": "singleLineText",
+          "rawOptions": {}
+        },
+        {
+          "id": "fldiAKRUvz4HU7QUw",
+          "name": "Amount",
+          "type": "CURRENCY",
+          "options": {
+            "precision": 2,
+            "min": null,
+            "max": null,
+            "isoCode": null,
+            "customSymbol": "$"
+          },
+          "rawType": "currency",
+          "rawOptions": {
+            "precision": 2,
+            "symbol": "$"
+          }
+        }
+      ],
+      "actions": {
+        "POST": [
+          "Expense ID",
+          "Expense Date",
+          "Description",
+          "Amount",
+          "Currency",
+          "Category",
+          "Channel",
+          "Model",
+          "Vendor",
+          "Billing Type",
+          "Status",
+          "Notes",
+          "Created By",
+          "Source Ref"
+        ],
+        "PATCH": [
+          "Expense ID",
+          "Expense Date",
+          "Description",
+          "Amount",
+          "Currency",
+          "Category",
+          "Channel",
+          "Model",
+          "Vendor",
+          "Billing Type",
+          "Status",
+          "Notes",
+          "Created By",
+          "Source Ref"
+        ],
+        "DELETE": []
+      }
+    },
+    "models": {
+      "tableId": "tblG5Yw4dgl59nCEY",
+      "table": "Models",
+      "primaryField": "Model",
+      "fields": [
+        {
+          "id": "fld5ko6e8Izzc89QA",
+          "name": "Model",
+          "type": "SINGLE_LINE_TEXT",
+          "options": {
+            "minLength": null,
+            "maxLength": null
+          },
+          "rawType": "singleLineText",
+          "rawOptions": {}
+        },
+        {
+          "id": "fldhs8b44NO8FbUIm",
+          "name": "Status",
+          "type": "SELECT",
+          "options": {
+            "choices": [
+              {
+                "id": "selvJsbBWTmmFjYce",
+                "label": "Active",
+                "color": "grayLight2"
+              },
+              {
+                "id": "selHjfUEe2OqgzcWH",
+                "label": "Paused",
+                "color": "grayLight2"
+              },
+              {
+                "id": "sel4Ca9lHnzOD6hjD",
+                "label": "Ended",
+                "color": "grayLight2"
+              }
+            ],
+            "allowToAddNewChoice": true
+          },
+          "rawType": "singleSelect",
+          "rawOptions": {
+            "choices": [
+              {
+                "id": "selvJsbBWTmmFjYce",
+                "name": "Active",
+                "color": "grayLight2"
+              },
+              {
+                "id": "selHjfUEe2OqgzcWH",
+                "name": "Paused",
+                "color": "grayLight2"
+              },
+              {
+                "id": "sel4Ca9lHnzOD6hjD",
+                "name": "Ended",
+                "color": "grayLight2"
+              }
+            ]
+          }
+        },
+        {
+          "id": "fldxBJoRC9dkgtLY8",
+          "name": "Payout Basis",
+          "type": "SELECT",
+          "options": {
+            "choices": [
+              {
+                "id": "sellzaN1RSYUPR1Ha",
+                "label": "Net revenue (after OnlyFans 20%)",
+                "color": "grayLight2"
+              },
+              {
+                "id": "selqelkzrYImQ56Xe",
+                "label": "Gross revenue",
+                "color": "grayLight2"
+              },
+              {
+                "id": "sel842D99Nt0oJhLU",
+                "label": "Flat fee",
+                "color": "grayLight2"
+              }
+            ],
+            "allowToAddNewChoice": true
+          },
+          "rawType": "singleSelect",
+          "rawOptions": {
+            "choices": [
+              {
+                "id": "sellzaN1RSYUPR1Ha",
+                "name": "Net revenue (after OnlyFans 20%)",
+                "color": "grayLight2"
+              },
+              {
+                "id": "selqelkzrYImQ56Xe",
+                "name": "Gross revenue",
+                "color": "grayLight2"
+              },
+              {
+                "id": "sel842D99Nt0oJhLU",
+                "name": "Flat fee",
+                "color": "grayLight2"
+              }
+            ]
+          }
+        },
+        {
+          "id": "fldJ7U0twShz7JSWV",
+          "name": "Start Date",
+          "type": "DATETIME",
+          "options": {
+            "precision": "DATE",
+            "useRelativeDatetimeFormat": false,
+            "timezoneType": "FIXED",
+            "timezone": "DEFAULT",
+            "format": null
+          },
+          "rawType": "date",
+          "rawOptions": {
+            "dateFormat": {
+              "name": "iso",
+              "format": "YYYY-MM-DD"
+            }
+          }
+        },
+        {
+          "id": "fld9WQ4TmjVkfzAcd",
+          "name": "Notes",
+          "type": "LONG_TEXT",
+          "options": {
+            "type": "TEXT"
+          },
+          "rawType": "multilineText",
+          "rawOptions": {}
+        },
+        {
+          "id": "fldqKul2y4fCsJ7mx",
+          "name": "Staff",
+          "type": "LINKED_RECORD",
+          "options": {
+            "linkedTableId": "Staff"
+          },
+          "rawType": "multipleRecordLinks",
+          "rawOptions": {
+            "linkedTableId": "tblbHePRmAbfWwXBU",
+            "isReversed": false,
+            "prefersSingleRecordLink": false,
+            "inverseLinkFieldId": "fldMnd4vjTwFJH0wR"
+          }
+        },
+        {
+          "id": "fldgBOGwT5F9iselJ",
+          "name": "Conversion Log",
+          "type": "LINKED_RECORD",
+          "options": {
+            "linkedTableId": "Conversion Log"
+          },
+          "rawType": "multipleRecordLinks",
+          "rawOptions": {
+            "linkedTableId": "tbln8DawusKZwIzOo",
+            "isReversed": false,
+            "prefersSingleRecordLink": false,
+            "inverseLinkFieldId": "fldaVABXijww3xVHv"
+          }
+        },
+        {
+          "id": "fld21PIpFenY1xReo",
+          "name": "Expense Log",
+          "type": "SINGLE_LINE_TEXT",
+          "options": {
+            "minLength": null,
+            "maxLength": null
+          },
+          "rawType": "singleLineText",
+          "rawOptions": {}
+        },
+        {
+          "id": "fldLIJV4nKZlAU4yo",
+          "name": "Model Accounts",
+          "type": "LINKED_RECORD",
+          "options": {
+            "linkedTableId": "Model Accounts"
+          },
+          "rawType": "multipleRecordLinks",
+          "rawOptions": {
+            "linkedTableId": "tblzG0tkektnVTBsL",
+            "isReversed": false,
+            "prefersSingleRecordLink": false,
+            "inverseLinkFieldId": "fldAD68LQmflj2vb9"
+          }
+        },
+        {
+          "id": "fldYtiHVFHkhlcZhJ",
+          "name": "Expense Log 2",
+          "type": "LINKED_RECORD",
+          "options": {
+            "linkedTableId": "Expense Log"
+          },
+          "rawType": "multipleRecordLinks",
+          "rawOptions": {
+            "linkedTableId": "tblMuC3WKlGWD1Gw7",
+            "isReversed": false,
+            "prefersSingleRecordLink": false,
+            "inverseLinkFieldId": "fldHHIJNV17hHdTtI"
+          }
+        },
+        {
+          "id": "fldZmQtM6si7E1wGS",
+          "name": "Deal Type",
+          "type": "SELECT",
+          "options": {
+            "choices": [
+              {
+                "id": "selEhWOZYIf3kG0uL",
+                "label": "Managed",
+                "color": "grayLight2"
+              },
+              {
+                "id": "sel03Q1oQVWAmxuyC",
+                "label": "Chat-only",
+                "color": "grayLight2"
+              }
+            ],
+            "allowToAddNewChoice": true
+          },
+          "rawType": "singleSelect",
+          "rawOptions": {
+            "choices": [
+              {
+                "id": "selEhWOZYIf3kG0uL",
+                "name": "Managed",
+                "color": "grayLight2"
+              },
+              {
+                "id": "sel03Q1oQVWAmxuyC",
+                "name": "Chat-only",
+                "color": "grayLight2"
+              }
+            ]
+          }
+        },
+        {
+          "id": "fldARL8R5jPh4wLEu",
+          "name": "Weekly Paid Subscribers",
+          "type": "LINKED_RECORD",
+          "options": {
+            "linkedTableId": "Weekly Paid Subscribers"
+          },
+          "rawType": "multipleRecordLinks",
+          "rawOptions": {
+            "linkedTableId": "tblLZNzOf3LRZ6fLA",
+            "isReversed": false,
+            "prefersSingleRecordLink": false,
+            "inverseLinkFieldId": "fldIlY0smjFHjN4AI"
+          }
+        },
+        {
+          "id": "fld1mfCgavTppE6Cb",
+          "name": "Model's Cut %",
+          "type": "PERCENT",
+          "options": {
+            "precision": 2,
+            "min": null,
+            "max": null
+          },
+          "rawType": "percent",
+          "rawOptions": {
+            "precision": 2
+          }
+        },
+        {
+          "id": "fldwuVLdAdcgyObwI",
+          "name": "Our Cut %",
+          "type": "PERCENT",
+          "options": {
+            "precision": 2,
+            "min": null,
+            "max": null
+          },
+          "rawType": "percent",
+          "rawOptions": {
+            "precision": 2
+          }
+        }
+      ],
+      "actions": {
+        "POST": [
+          "Model"
+        ],
+        "PATCH": [
+          "Deal Type",
+          "Model's Cut %",
+          "Our Cut %",
+          "Payout Basis",
+          "Status",
+          "Start Date",
+          "Notes"
+        ]
+      }
+    },
+    "map": {
+      "tableId": "tblzG0tkektnVTBsL",
+      "table": "Model Accounts",
+      "primaryField": "Account Slug",
+      "fields": [
+        {
+          "id": "fldFWWviQcFcfaaLZ",
+          "name": "Account Slug",
+          "type": "SINGLE_LINE_TEXT",
+          "options": {
+            "minLength": null,
+            "maxLength": null
+          },
+          "rawType": "singleLineText",
+          "rawOptions": {}
+        },
+        {
+          "id": "fldWCaQP10xbcpOqe",
+          "name": "Account ID",
+          "type": "NUMBER",
+          "options": {
+            "precision": 0,
+            "min": null,
+            "max": null
+          },
+          "rawType": "number",
+          "rawOptions": {
+            "precision": 0
+          }
+        },
+        {
+          "id": "fld7DGkb08B9i0D6b",
+          "name": "OF Username",
+          "type": "SINGLE_LINE_TEXT",
+          "options": {
+            "minLength": null,
+            "maxLength": null
+          },
+          "rawType": "singleLineText",
+          "rawOptions": {}
+        },
+        {
+          "id": "fldAD68LQmflj2vb9",
+          "name": "Model",
+          "type": "LINKED_RECORD",
+          "options": {
+            "linkedTableId": "Models"
+          },
+          "rawType": "multipleRecordLinks",
+          "rawOptions": {
+            "linkedTableId": "tblG5Yw4dgl59nCEY",
+            "isReversed": false,
+            "prefersSingleRecordLink": false,
+            "inverseLinkFieldId": "fldLIJV4nKZlAU4yo"
+          }
+        },
+        {
+          "id": "fldhiTNWuA1VHDIhR",
+          "name": "Include in P&L",
+          "type": "CHECKBOX",
+          "options": {},
+          "rawType": "checkbox",
+          "rawOptions": {
+            "icon": "check",
+            "color": "greenBright"
+          }
+        },
+        {
+          "id": "fldRLAAa4ezAYBWYF",
+          "name": "Notes",
+          "type": "LONG_TEXT",
+          "options": {
+            "type": "TEXT"
+          },
+          "rawType": "multilineText",
+          "rawOptions": {}
+        }
+      ],
+      "actions": {
+        "POST": [
+          "Account Slug",
+          "Account ID",
+          "OF Username",
+          "Model",
+          "Include in P&L",
+          "Notes"
+        ],
+        "PATCH": [
+          "Model",
+          "Include in P&L"
+        ]
+      }
+    },
+    "conversions": {
+      "tableId": "tbln8DawusKZwIzOo",
+      "table": "Conversion Log",
+      "primaryField": "Week Starting",
+      "fields": [
+        {
+          "id": "fldKVmJCxDjhrqwAn",
+          "name": "Week Starting",
+          "type": "DATETIME",
+          "options": {
+            "precision": "DATE",
+            "useRelativeDatetimeFormat": false,
+            "timezoneType": "FIXED",
+            "timezone": "DEFAULT",
+            "format": null
+          },
+          "rawType": "date",
+          "rawOptions": {
+            "dateFormat": {
+              "name": "iso",
+              "format": "YYYY-MM-DD"
+            }
+          }
+        },
+        {
+          "id": "fldZMn0qYG9wr6Gm7",
+          "name": "Staff",
+          "type": "LINKED_RECORD",
+          "options": {
+            "linkedTableId": "Staff"
+          },
+          "rawType": "multipleRecordLinks",
+          "rawOptions": {
+            "linkedTableId": "tblbHePRmAbfWwXBU",
+            "isReversed": false,
+            "prefersSingleRecordLink": false,
+            "inverseLinkFieldId": "fldrelzt6ZBSZ7IqG"
+          }
+        },
+        {
+          "id": "fldaVABXijww3xVHv",
+          "name": "Model",
+          "type": "LINKED_RECORD",
+          "options": {
+            "linkedTableId": "Models"
+          },
+          "rawType": "multipleRecordLinks",
+          "rawOptions": {
+            "linkedTableId": "tblG5Yw4dgl59nCEY",
+            "isReversed": false,
+            "prefersSingleRecordLink": false,
+            "inverseLinkFieldId": "fldgBOGwT5F9iselJ"
+          }
+        },
+        {
+          "id": "fldqi6VUanGckXCNG",
+          "name": "Conversions",
+          "type": "NUMBER",
+          "options": {
+            "precision": 0,
+            "min": null,
+            "max": null
+          },
+          "rawType": "number",
+          "rawOptions": {
+            "precision": 0
+          }
+        },
+        {
+          "id": "fldkpR7QhN8gmPbow",
+          "name": "Shift",
+          "type": "SELECT",
+          "options": {
+            "choices": [
+              {
+                "id": "selu0DuXF0rFasryw",
+                "label": "Shift 1",
+                "color": "grayLight2"
+              },
+              {
+                "id": "selVpZklgBOJZGzVP",
+                "label": "Shift 2",
+                "color": "grayLight2"
+              },
+              {
+                "id": "selskQaJ8ZBSqsEKf",
+                "label": "Shift 3",
+                "color": "grayLight2"
+              }
+            ],
+            "allowToAddNewChoice": true
+          },
+          "rawType": "singleSelect",
+          "rawOptions": {
+            "choices": [
+              {
+                "id": "selu0DuXF0rFasryw",
+                "name": "Shift 1",
+                "color": "grayLight2"
+              },
+              {
+                "id": "selVpZklgBOJZGzVP",
+                "name": "Shift 2",
+                "color": "grayLight2"
+              },
+              {
+                "id": "selskQaJ8ZBSqsEKf",
+                "name": "Shift 3",
+                "color": "grayLight2"
+              }
+            ]
+          }
+        },
+        {
+          "id": "fld5AUolzBjFoEUrc",
+          "name": "Source",
+          "type": "SINGLE_LINE_TEXT",
+          "options": {
+            "minLength": null,
+            "maxLength": null
+          },
+          "rawType": "singleLineText",
+          "rawOptions": {}
+        },
+        {
+          "id": "fldtOjDQdr30JNrWK",
+          "name": "Notes",
+          "type": "LONG_TEXT",
+          "options": {
+            "type": "TEXT"
+          },
+          "rawType": "multilineText",
+          "rawOptions": {}
+        },
+        {
+          "id": "fld2zJgKfNXulNFTx",
+          "name": "Submitted By",
+          "type": "SINGLE_LINE_TEXT",
+          "options": {
+            "minLength": null,
+            "maxLength": null
+          },
+          "rawType": "singleLineText",
+          "rawOptions": {}
+        },
+        {
+          "id": "fldRJRS0rlc7Q9IBM",
+          "name": "Week Start",
+          "type": "FORMULA",
+          "options": {
+            "returnedField": {
+              "type": "SINGLE_LINE_TEXT",
+              "vendorSideFieldType": "singleLineText",
+              "options": {
+                "minLength": null,
+                "maxLength": null
+              }
+            }
+          },
+          "rawType": "formula",
+          "rawOptions": {
+            "isValid": true,
+            "formula": "IF({fldKVmJCxDjhrqwAn}, DATETIME_FORMAT(DATEADD({fldKVmJCxDjhrqwAn}, -1 * WEEKDAY({fldKVmJCxDjhrqwAn}, 'Monday'), 'days'), 'YYYY-MM-DD'), BLANK())",
+            "referencedFieldIds": [
+              "fldKVmJCxDjhrqwAn"
+            ],
+            "result": {
+              "type": "singleLineText"
+            }
+          }
+        },
+        {
+          "id": "fldw0q685GLmJmUbY",
+          "name": "Conversions This Week",
+          "type": "FORMULA",
+          "options": {
+            "returnedField": {
+              "type": "NUMBER",
+              "vendorSideFieldType": "number",
+              "options": {
+                "precision": 0,
+                "min": null,
+                "max": null
+              }
+            }
+          },
+          "rawType": "formula",
+          "rawOptions": {
+            "isValid": true,
+            "formula": "IF(AND({fldKVmJCxDjhrqwAn}, IS_SAME({fldKVmJCxDjhrqwAn}, DATEADD(TODAY(), -1 * WEEKDAY(TODAY(), 'Monday'), 'days'), 'day')), {fldqi6VUanGckXCNG}, 0)",
+            "referencedFieldIds": [
+              "fldKVmJCxDjhrqwAn",
+              "fldqi6VUanGckXCNG"
+            ],
+            "result": {
+              "type": "number",
+              "options": {
+                "precision": 0
+              }
+            }
+          }
+        },
+        {
+          "id": "fldFdC4BFBAWAKwI4",
+          "name": "Conversions Last Week",
+          "type": "FORMULA",
+          "options": {
+            "returnedField": {
+              "type": "NUMBER",
+              "vendorSideFieldType": "number",
+              "options": {
+                "precision": 0,
+                "min": null,
+                "max": null
+              }
+            }
+          },
+          "rawType": "formula",
+          "rawOptions": {
+            "isValid": true,
+            "formula": "IF(AND({fldKVmJCxDjhrqwAn}, IS_SAME({fldKVmJCxDjhrqwAn}, DATEADD(DATEADD(TODAY(), -1 * WEEKDAY(TODAY(), 'Monday'), 'days'), -7, 'days'), 'day')), {fldqi6VUanGckXCNG}, 0)",
+            "referencedFieldIds": [
+              "fldKVmJCxDjhrqwAn",
+              "fldqi6VUanGckXCNG"
+            ],
+            "result": {
+              "type": "number",
+              "options": {
+                "precision": 0
+              }
+            }
+          }
+        },
+        {
+          "id": "fldzgreDT4CT5HgUU",
+          "name": "Conversions Last 4 Weeks",
+          "type": "FORMULA",
+          "options": {
+            "returnedField": {
+              "type": "NUMBER",
+              "vendorSideFieldType": "number",
+              "options": {
+                "precision": 0,
+                "min": null,
+                "max": null
+              }
+            }
+          },
+          "rawType": "formula",
+          "rawOptions": {
+            "isValid": true,
+            "formula": "IF(AND({fldKVmJCxDjhrqwAn}, NOT(IS_BEFORE({fldKVmJCxDjhrqwAn}, DATEADD(DATEADD(TODAY(), -1 * WEEKDAY(TODAY(), 'Monday'), 'days'), -21, 'days'))), NOT(IS_AFTER({fldKVmJCxDjhrqwAn}, DATEADD(TODAY(), -1 * WEEKDAY(TODAY(), 'Monday'), 'days')))), {fldqi6VUanGckXCNG}, 0)",
+            "referencedFieldIds": [
+              "fldKVmJCxDjhrqwAn",
+              "fldqi6VUanGckXCNG"
+            ],
+            "result": {
+              "type": "number",
+              "options": {
+                "precision": 0
+              }
+            }
+          }
+        }
+      ],
+      "actions": {
+        "POST": [
+          "Week Starting",
+          "Staff",
+          "Model",
+          "Conversions",
+          "Notes",
+          "Source"
+        ],
+        "PATCH": [
+          "Model",
+          "Conversions",
+          "Notes"
+        ],
+        "DELETE": []
+      }
+    },
+    "expectations": {
+      "tableId": "tbli0deZgWsANOdbT",
+      "table": "Staff Expectations",
+      "primaryField": "Name",
+      "fields": [
+        {
+          "id": "fldpUjQ4CaaVtsfie",
+          "name": "Name",
+          "type": "SINGLE_LINE_TEXT",
+          "options": {
+            "minLength": null,
+            "maxLength": null
+          },
+          "rawType": "singleLineText",
+          "rawOptions": {}
+        },
+        {
+          "id": "fldCGoJgyTMatT7iU",
+          "name": "Effective Week",
+          "type": "DATETIME",
+          "options": {
+            "precision": "DATE",
+            "useRelativeDatetimeFormat": false,
+            "timezoneType": "FIXED",
+            "timezone": "DEFAULT",
+            "format": null
+          },
+          "rawType": "date",
+          "rawOptions": {
+            "dateFormat": {
+              "name": "iso",
+              "format": "YYYY-MM-DD"
+            }
+          }
+        },
+        {
+          "id": "fldqUMUju3IGfq3bg",
+          "name": "Staff",
+          "type": "LINKED_RECORD",
+          "options": {
+            "linkedTableId": "Staff"
+          },
+          "rawType": "multipleRecordLinks",
+          "rawOptions": {
+            "linkedTableId": "tblbHePRmAbfWwXBU",
+            "isReversed": false,
+            "prefersSingleRecordLink": false,
+            "inverseLinkFieldId": "fldzQXBsVocqZuAaX"
+          }
+        },
+        {
+          "id": "fldeWloPJ3W6dvSsi",
+          "name": "Daily Target",
+          "type": "NUMBER",
+          "options": {
+            "precision": 0,
+            "min": null,
+            "max": null
+          },
+          "rawType": "number",
+          "rawOptions": {
+            "precision": 0
+          }
+        },
+        {
+          "id": "fld0VXPfXiHdhcGKK",
+          "name": "Weekly Minimum",
+          "type": "NUMBER",
+          "options": {
+            "precision": 0,
+            "min": null,
+            "max": null
+          },
+          "rawType": "number",
+          "rawOptions": {
+            "precision": 0
+          }
+        },
+        {
+          "id": "fldebNXemNj5te5Eo",
+          "name": "Monthly Target",
+          "type": "NUMBER",
+          "options": {
+            "precision": 0,
+            "min": null,
+            "max": null
+          },
+          "rawType": "number",
+          "rawOptions": {
+            "precision": 0
+          }
+        }
+      ],
+      "actions": {
+        "POST": [
+          "Name",
+          "Staff",
+          "Effective Week",
+          "Daily Target",
+          "Weekly Minimum",
+          "Monthly Target"
+        ],
+        "PATCH": [
+          "Name",
+          "Staff",
+          "Effective Week",
+          "Daily Target",
+          "Weekly Minimum",
+          "Monthly Target"
+        ]
+      }
+    },
+    "paidSubs": {
+      "tableId": "tblLZNzOf3LRZ6fLA",
+      "table": "Weekly Paid Subscribers",
+      "primaryField": "Name",
+      "fields": [
+        {
+          "id": "fldk2TRi2ZDDzsgf1",
+          "name": "Name",
+          "type": "SINGLE_LINE_TEXT",
+          "options": {
+            "minLength": null,
+            "maxLength": null
+          },
+          "rawType": "singleLineText",
+          "rawOptions": {}
+        },
+        {
+          "id": "fld2GMNNJ0454Vj07",
+          "name": "Week Starting",
+          "type": "DATETIME",
+          "options": {
+            "precision": "DATE",
+            "useRelativeDatetimeFormat": false,
+            "timezoneType": "FIXED",
+            "timezone": "DEFAULT",
+            "format": null
+          },
+          "rawType": "date",
+          "rawOptions": {
+            "dateFormat": {
+              "name": "iso",
+              "format": "YYYY-MM-DD"
+            }
+          }
+        },
+        {
+          "id": "fldIlY0smjFHjN4AI",
+          "name": "Model",
+          "type": "LINKED_RECORD",
+          "options": {
+            "linkedTableId": "Models"
+          },
+          "rawType": "multipleRecordLinks",
+          "rawOptions": {
+            "linkedTableId": "tblG5Yw4dgl59nCEY",
+            "isReversed": false,
+            "prefersSingleRecordLink": false,
+            "inverseLinkFieldId": "fldARL8R5jPh4wLEu"
+          }
+        },
+        {
+          "id": "fldl8bnuyRyr11FVl",
+          "name": "Notes",
+          "type": "LONG_TEXT",
+          "options": {
+            "type": "TEXT"
+          },
+          "rawType": "multilineText",
+          "rawOptions": {}
+        },
+        {
+          "id": "fldeD6ARcuCi9mw00",
+          "name": "Paid Subscribers",
+          "type": "NUMBER",
+          "options": {
+            "precision": 0,
+            "min": null,
+            "max": null
+          },
+          "rawType": "number",
+          "rawOptions": {
+            "precision": 0
+          }
+        }
+      ],
+      "actions": {
+        "POST": [
+          "Name",
+          "Week Starting",
+          "Model",
+          "Paid Subscribers",
+          "Notes"
+        ],
+        "PATCH": [
+          "Name",
+          "Week Starting",
+          "Model",
+          "Paid Subscribers",
+          "Notes"
+        ]
+      }
+    }
+  }
+}

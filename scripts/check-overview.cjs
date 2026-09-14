@@ -1,0 +1,16 @@
+const fs=require('node:fs'),vm=require('node:vm'),assert=require('node:assert/strict'),{stripTypeScriptTypes}=require('node:module');
+const s=fs.readFileSync(__dirname+'/../app/blocks/0206c2bc-4299-4ab1-8587-b7b7bf449fc4.tsx','utf8'),c=vm.createContext({});
+vm.runInContext(stripTypeScriptTypes(s.slice(s.indexOf('function toDate'),s.indexOf('function money'))+'\n'+s.slice(s.indexOf('type Bucket'),s.indexOf('// Auto-paging'))),c);
+const today=c.toDate('2026-09-12');
+const keys=(p,a='',b='')=>Array.from(c.conversionWeeks(p,today,a,b),c.isoDay);
+assert.deepEqual(keys('this'),['2026-09-07']);assert.deepEqual(keys('last'),['2026-08-31']);assert.deepEqual(keys('month'),['2026-09-07','2026-09-14','2026-09-21','2026-09-28']);assert.equal(keys('lastmonth').length,5);
+assert.deepEqual(keys('custom','2026-09-10','2026-09-10'),['2026-09-07']);assert.deepEqual(keys('custom','2026-08-31','2026-09-13'),['2026-08-31','2026-09-07']);assert.deepEqual(keys('custom','2026-09-13','2026-09-01'),[]);assert.deepEqual(keys('custom','2026-02-30','2026-03-10'),[]);
+const m=new Map();c.bump(m,'2026-09-07',160);c.bump(m,'2026-09-14',0);assert.equal(c.sumWeeks(m,keys('this')),160);assert.equal(c.sumWeeks(m,keys('last')),null);assert.equal(c.bucketTotal(m,'2026-09-14'),0);
+const serge=new Map();c.bump(serge,'2026-09-07',60);
+assert.equal(c.avgPerDay(60),60/7);
+assert.equal(c.avgForWeeks(serge,['2026-08-31','2026-09-07']),60/7);
+assert.equal(c.avgForWeeks(serge,['2026-08-31']),null);
+c.bump(serge,'2026-08-31',0);assert.equal(c.avgForWeeks(serge,['2026-08-31','2026-09-07']),60/14);
+assert.equal(c.avgForWeeks(serge,[]),null);
+assert.doesNotMatch(s,/perHour|Conv\/hr|conversions.per.hour/i);
+console.log('PASS: weekly/date filters; daily = weekly / 7; reported-week averages; missing versus zero; no hourly metrics.');
