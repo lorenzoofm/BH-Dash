@@ -3,7 +3,7 @@ import {useEffect} from "react";
 import {usePathname} from 'next/navigation';
 import {Sidebar,SidebarProvider,SidebarContent,SidebarHeader,SidebarFooter,SidebarMenu,SidebarMenuItem,SidebarMenuButton,SidebarInset,SidebarTrigger} from '@/components/ui/sidebar';
 import {BarChart3,Users,Clock,Wallet,Receipt,TrendingUp,LayoutDashboard,ArrowUpRight} from 'lucide-react';
-const items=[['/','Overview',LayoutDashboard],['/conversions','Conversions',BarChart3],['/staff','Staff & expectations',Users],['/pay-hours','Pay & Hours',Clock],['/expenses','Expenses',Receipt],['/revenue','Revenue',TrendingUp],['/pnl','P&L',Wallet]] as const;
+const items=[['/','Overview',LayoutDashboard],['/conversions','Conversions',BarChart3],['/staff','Staff',Users],['/pay-hours','Pay & Hours',Clock],['/pnl','P&L',Wallet],['/expenses','Expenses',Receipt],['/revenue','Revenue',TrendingUp]] as const;
 export default function Shell({children,email,otherUrl}:{children:React.ReactNode,email:string,otherUrl:string}){
  const path=usePathname();
  useEffect(()=>{

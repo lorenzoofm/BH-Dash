@@ -7,7 +7,7 @@ import { sites } from "./build/sites-vite-plugin";
 const isCodexSeatbeltSandbox = process.env.CODEX_SANDBOX === "seatbelt";
 const managedLinux = readExecutionProfile() === "managed-linux";
 
-export default defineConfig(async () => {
+export default defineConfig(async ({command}) => {
   // Use Miniflare's local Request.cf placeholder unless fetching is requested.
   process.env.CLOUDFLARE_CF_FETCH_ENABLED ??= "false";
   process.env.WRANGLER_SEND_METRICS ??= "false";
@@ -35,6 +35,8 @@ export default defineConfig(async () => {
         viteEnvironment: { name: "rsc", childEnvironments: ["ssr"] },
         inspectorPort: false,
         configPath: "./wrangler.json",
+        // Vite serves source scripts/styles in development; production gates every asset.
+        config: command === "serve" ? { assets: { binding: "ASSETS", run_worker_first: false } } : undefined,
       }),
     ],
   };

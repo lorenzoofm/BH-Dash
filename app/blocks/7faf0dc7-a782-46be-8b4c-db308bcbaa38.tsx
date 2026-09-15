@@ -40,7 +40,7 @@ export default function Block() {
   const logo = useImageSetting({
     name: "logo",
     label: "Logo (square)",
-    initialValue: { src: "", alt: "20MG" },
+    initialValue: { src: "/20mg.png", alt: "20MG" },
   });
   const subtitle = useTextSetting({
     name: "subtitle",
