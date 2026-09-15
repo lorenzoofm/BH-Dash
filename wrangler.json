@@ -1,0 +1,23 @@
+{
+  "name": "20mg-bh",
+  "account_id": "33946261fcbfb4f4b406f95941a57f3d",
+  "main": "worker.ts",
+  "compatibility_date": "2026-05-15",
+  "compatibility_flags": [
+    "nodejs_compat"
+  ],
+  "workers_dev": false,
+  "preview_urls": false,
+  "assets": {
+    "run_worker_first": true,
+    "binding": "ASSETS"
+  },
+  "observability": {
+    "enabled": true
+  },
+  "vars": {
+    "DASHBOARD_KIND": "bh",
+    "MANAGER_EMAILS": "massi@20mg.co",
+    "OTHER_DASHBOARD_URL": "https://20mg-content-studio.twentymg-automation.workers.dev"
+  }
+}
