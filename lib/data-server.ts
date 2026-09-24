@@ -20,7 +20,7 @@ export async function airtable(path:string,init:RequestInit={},cached=true):Prom
    const slot=Math.max(Date.now(),nextRequest);nextRequest=slot+275;await pause(slot-Date.now());
    const r=await fetch('https://api.airtable.com/v0/'+config.baseId+'/'+path,{...init,headers:{Authorization:'Bearer '+process.env.AIRTABLE_TOKEN,'Content-Type':'application/json'},signal:AbortSignal.timeout(45000)});
    if(r.status===429&&attempt<3){await pause(30000);continue;}
-   if(!r.ok)throw new Error((r.status===403?'503:':'502:')+'Airtable request failed ('+r.status+'). Your changes have not been confirmed.');
+   if(!r.ok){console.error('Airtable request failed',r.status,path.split('?')[0]);throw new Error((r.status===403?'503:':'502:')+'Airtable request failed ('+r.status+'). Your changes have not been confirmed.');}
    return r.json();
   }
  };

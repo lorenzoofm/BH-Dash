@@ -90,7 +90,7 @@ export default function Overview() {
 
   const tables = [staff, conv, pay, expenses, targets, models, map];
   if (!d || tables.some(t => t.loading)) return <PageSkeleton/>;
-  if (tables.some(t => t.error)) return <Empty icon={AlertTriangle} title="Couldn’t load data from Airtable">Refresh the page to try again.</Empty>;
+  if (tables.some(t => t.error)) return <Empty icon={AlertTriangle} title="Couldn’t load data from Airtable">{tables.find(t => t.error)?.error?.message || "Refresh the page to try again."}</Empty>;
   const maxNow = Math.max(1, ...d.board.map(b => Math.max(b.now ?? 0, b.target ?? 0)));
 
   return <div className="space-y-6">
