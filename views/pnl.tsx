@@ -1,6 +1,5 @@
 "use client";
 import {useEffect, useMemo, useState} from "react";
-import {toast} from "sonner";
 import {AlertTriangle, Banknote, Link2, Receipt, RefreshCw, Store, TrendingUp, Users, Wallet} from "lucide-react";
 import {Bar, Btn, Empty, Field, Notice, PageHeader, PageSkeleton, Panel, Segmented, Stat, inputClass} from "@/components/bh/ui";
 import {addDays, label, linkIds, money, num, todayIso, validDay} from "@/lib/bh";
@@ -23,9 +22,6 @@ export default function PnL() {
   const [range, setRange] = useState<[string, string] | null>(null);
   useEffect(() => { const t = todayIso(); setToday(t); setRange(presetRange("month", t)); }, []);
   const [modelId, setModelId] = useState("");
-  const [picking, setPicking] = useState(false);
-  const [pick, setPick] = useState("");
-  const [linking, setLinking] = useState(false);
 
   const models = useTable("models"), map = useTable("map"), expenses = useTable("expenses"), pay = useTable("paylog"), staff = useTable("staff");
   const [start, end] = range ?? ["", ""];
@@ -39,18 +35,17 @@ export default function PnL() {
     const live = models.rows.filter(m => label(m.fields.status) !== "Ended");
     setModelId(models.rows.some(m => m.id === saved) ? saved : (live[0] ?? models.rows[0]).id);
   }, [models.rows]);
-  useEffect(() => { if (modelId) try { localStorage.setItem(MODEL_KEY, modelId); } catch {} setPicking(false); }, [modelId]);
+  useEffect(() => { if (modelId) try { localStorage.setItem(MODEL_KEY, modelId); } catch {} }, [modelId]);
 
   const model = models.rows.find(m => m.id === modelId);
-  const links = map.rows.filter(r => r.fields.include !== false && linkIds(r.fields.model).includes(modelId));
   const p = useMemo(() => model && valid ? modelPnL(model, {staff: staff.rows, paylog: pay.rows, expenses: expenses.rows, map: map.rows, creators: creators.data ?? [], start, end, revenueKnown: creators.isSuccess}) : null,
     [model, valid, staff.rows, pay.rows, expenses.rows, map.rows, creators.data, creators.isSuccess, start, end]);
   const company = useMemo(() => {
     if (!valid || !creators.isSuccess) return null;
     const active = models.rows.map(m => modelPnL(m, {staff: staff.rows, paylog: pay.rows, expenses: expenses.rows, map: map.rows, creators: creators.data ?? [], start, end, revenueKnown: true}))
       .filter(r => r.linked || r.wages || r.expenses);
-    const mapped = new Set(map.rows.filter(r => r.fields.include !== false).map(r => String(r.fields.accountId ?? "")));
-    const unmatched = (creators.data ?? []).filter(c => c.net !== 0 && !mapped.has(c.id));
+    const names = new Set(models.rows.map(r => label(r.fields.model).trim().toLowerCase()));
+    const unmatched = (creators.data ?? []).filter(c => c.net !== 0 && !names.has(c.name.trim().toLowerCase()));
     const unassigned = expenses.rows.filter(r => !linkIds(r.fields.model).length && label(r.fields.status) === "Paid" && String(r.fields.date ?? "").slice(0, 10) >= start && String(r.fields.date ?? "").slice(0, 10) <= end)
       .reduce((sum, r) => sum + num(r.fields.amount), 0);
     const unresolved = unmatched.length > 0 || active.some(r => r.dealType !== "Managed" && r.dealType !== "Chat-only");
@@ -63,21 +58,7 @@ export default function PnL() {
   }, [valid, creators.data, creators.isSuccess, models.rows, staff.rows, pay.rows, expenses.rows, map.rows, start, end]);
 
   if (!today || !range || [models, map, expenses, pay, staff].some(t => t.loading)) return <PageSkeleton/>;
-  const pageName = (r: typeof links[number]) => creators.data?.find(c => c.id === String(r.fields.accountId))?.name ?? label(r.fields.slug);
-
-  async function linkPage() {
-    const c = creators.data?.find(c => c.id === pick);
-    if (!c || !model) return;
-    setLinking(true);
-    try {
-      for (const old of links) if (String(old.fields.accountId) !== c.id) await map.update(old.id, {include: false});
-      const existing = map.rows.find(r => String(r.fields.accountId) === c.id);
-      if (existing) await map.update(existing.id, {model: [modelId], include: true});
-      else await map.create({slug: c.name, accountId: Number(c.id), model: [modelId], include: true});
-      toast.success(`${c.name} linked to ${label(model.fields.model)}`);
-      setPicking(false);
-    } catch (e: any) { toast.error(e.message); } finally { setLinking(false); }
-  }
+  const creator = creators.data?.find(c => c.name.trim().toLowerCase() === label(model?.fields.model).trim().toLowerCase());
 
   const syncing = creators.isFetching || [models, map, expenses, pay, staff].some(t => t.fetching);
   const showRevenue = p && p.income !== null;
@@ -92,18 +73,10 @@ export default function PnL() {
           {models.rows.map(m => <option key={m.id} value={m.id}>{label(m.fields.model)}{label(m.fields.status) === "Ended" ? " (ended)" : ""}</option>)}
         </select>
       </Field>
-      <Field label="Creator Staq page">
-        {picking || !links.length ? <div className="flex gap-2">
-          <select className={inputClass} value={pick} onChange={e => setPick(e.target.value)} disabled={!creators.isSuccess}>
-            <option value="">{creators.isError ? "Creator Staq unavailable" : creators.isPending ? "Loading pages…" : "Choose her page…"}</option>
-            {creators.data?.map(c => <option key={c.id} value={c.id}>{c.name} · {money(c.net)} this period</option>)}
-          </select>
-          <Btn variant="primary" onClick={linkPage} disabled={!pick} loading={linking}><Link2/>Link</Btn>
-          {links.length > 0 && <Btn variant="ghost" onClick={() => setPicking(false)}>Cancel</Btn>}
-        </div> : <div className="flex h-9 items-center gap-2 rounded-lg border bg-muted/50 px-3 text-[13px]">
-          <Store className="size-3.5 text-muted-foreground"/><span className="flex-1 truncate font-medium">{links.map(pageName).join(", ")}</span>
-          <button className="text-[12px] text-muted-foreground hover:text-foreground" onClick={() => { setPick(""); setPicking(true); }}>Change</button>
-        </div>}
+      <Field label="Creator Staq creator">
+        <div className="flex h-9 items-center gap-2 rounded-lg border bg-muted/50 px-3 text-[13px]">
+          <Store className="size-3.5 text-muted-foreground"/><span className="flex-1 truncate font-medium">{creator ? `${creator.name} · ${money(creator.net)} this period` : creators.isPending ? "Loading revenue…" : "No matching creator in this key’s revenue response"}</span>
+        </div>
       </Field>
       <Field label="Period">
         <Segmented size="md" value={preset} onChange={v => { setPreset(v); if (v !== "custom") setRange(presetRange(v, today)); }}
@@ -123,7 +96,7 @@ export default function PnL() {
     : !p ? <Empty title="Choose a model"/> : <>
       <div className="space-y-2">
         {creators.isError && <Notice tone="red" icon={AlertTriangle}>Creator Staq revenue is unavailable: {(creators.error as Error).message}. Costs are shown; profit can’t be calculated.</Notice>}
-        {creators.isSuccess && !p.linked && <Notice icon={Link2}>Link {p.name}’s Creator Staq page above to pull in her earnings.</Notice>}
+        {creators.isSuccess && !p.linked && <Notice icon={Link2}>No revenue record for {p.name} is visible to the current Creator Staq key. Earnings and profit remain unavailable.</Notice>}
         {p.linked && p.dealType !== "Managed" && p.dealType !== "Chat-only" && <Notice icon={AlertTriangle}>{p.name} has no recognised deal type. Set it under Revenue → Model deals before profit can be calculated.</Notice>}
         {p.linked && p.income !== null && p.payout === null && <Notice icon={AlertTriangle}>{p.name} has no Model’s Cut % set, so her payout and profit can’t be calculated.</Notice>}
       </div>
@@ -138,7 +111,7 @@ export default function PnL() {
 
       {company && <Panel title="Company summary" icon={Wallet}>
         <p className="mb-3 text-[12px] text-muted-foreground">Managed models and chatting clients are separate. Unassigned paid expenses stay outside both until linked to a model.</p>
-        {company.unmatched > 0 && <Notice icon={AlertTriangle}>{company.unmatched} Creator Staq account{company.unmatched === 1 ? " is" : "s are"} not mapped in Airtable. Aggregate revenue and profit are unavailable until reconciled.</Notice>}
+        {company.unmatched > 0 && <Notice icon={AlertTriangle}>{company.unmatched} Creator Staq creator{company.unmatched === 1 ? " is" : "s are"} not matched to an Airtable model. Aggregate revenue and profit are unavailable until reconciled.</Notice>}
         {company.unknownDeals > 0 && <Notice icon={AlertTriangle}>{company.unknownDeals} model{company.unknownDeals === 1 ? " has" : "s have"} an unknown deal type and are excluded from these sections.</Notice>}
         <div className="mt-3 grid gap-3 lg:grid-cols-2">
           {([["Managed models", company.managed], ["Chatting agency", company.chat]] as const).map(([title, section]) => <div key={title} className="rounded-lg border p-4 text-[13px]">
