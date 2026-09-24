@@ -1,0 +1,155 @@
+"use client";
+import {useEffect, useMemo, useState} from "react";
+import {toast} from "sonner";
+import {AlertTriangle, Banknote, Link2, Receipt, RefreshCw, Store, TrendingUp, Users, Wallet} from "lucide-react";
+import {Bar, Btn, Empty, Field, Notice, PageHeader, PageSkeleton, Panel, Segmented, Stat, inputClass} from "@/components/bh/ui";
+import {addDays, label, linkIds, money, todayIso, validDay} from "@/lib/bh";
+import {useCreators, useTable} from "@/lib/tables";
+import {modelPnL} from "@/lib/finance";
+
+type Preset = "month" | "last-month" | "7d" | "30d" | "custom";
+const MODEL_KEY = "bh-pnl-model";
+
+function presetRange(p: Preset, today: string): [string, string] {
+  if (p === "7d") return [addDays(today, -6), today];
+  if (p === "30d") return [addDays(today, -29), today];
+  if (p === "last-month") { const last = addDays(today.slice(0, 8) + "01", -1); return [last.slice(0, 8) + "01", last]; }
+  return [today.slice(0, 8) + "01", today];
+}
+
+export default function PnL() {
+  const [today, setToday] = useState<string | null>(null);
+  const [preset, setPreset] = useState<Preset>("month");
+  const [range, setRange] = useState<[string, string] | null>(null);
+  useEffect(() => { const t = todayIso(); setToday(t); setRange(presetRange("month", t)); }, []);
+  const [modelId, setModelId] = useState("");
+  const [includeShared, setIncludeShared] = useState(true);
+  const [picking, setPicking] = useState(false);
+  const [pick, setPick] = useState("");
+  const [linking, setLinking] = useState(false);
+
+  const models = useTable("models"), map = useTable("map"), expenses = useTable("expenses"), pay = useTable("paylog"), staff = useTable("staff");
+  const [start, end] = range ?? ["", ""];
+  const valid = !!today && validDay(start) && validDay(end) && start <= end && end <= today;
+  const creators = useCreators(valid ? start : null, valid ? end : null);
+
+  useEffect(() => {
+    if (modelId || !models.rows.length) return;
+    let saved = "";
+    try { saved = localStorage.getItem(MODEL_KEY) || ""; } catch {}
+    const live = models.rows.filter(m => label(m.fields.status) !== "Ended");
+    setModelId(models.rows.some(m => m.id === saved) ? saved : (live[0] ?? models.rows[0]).id);
+  }, [models.rows]);
+  useEffect(() => { if (modelId) try { localStorage.setItem(MODEL_KEY, modelId); } catch {} setPicking(false); }, [modelId]);
+
+  const model = models.rows.find(m => m.id === modelId);
+  const links = map.rows.filter(r => r.fields.include !== false && linkIds(r.fields.model).includes(modelId));
+  const p = useMemo(() => model && valid ? modelPnL(model, {staff: staff.rows, paylog: pay.rows, expenses: expenses.rows, map: map.rows, creators: creators.data ?? [], start, end, includeShared, revenueKnown: creators.isSuccess}) : null,
+    [model, valid, staff.rows, pay.rows, expenses.rows, map.rows, creators.data, creators.isSuccess, start, end, includeShared]);
+
+  if (!today || !range || [models, map, expenses, pay, staff].some(t => t.loading)) return <PageSkeleton/>;
+  const pageName = (r: typeof links[number]) => creators.data?.find(c => c.id === String(r.fields.accountId))?.name ?? label(r.fields.slug);
+
+  async function linkPage() {
+    const c = creators.data?.find(c => c.id === pick);
+    if (!c || !model) return;
+    setLinking(true);
+    try {
+      for (const old of links) if (String(old.fields.accountId) !== c.id) await map.update(old.id, {include: false});
+      const existing = map.rows.find(r => String(r.fields.accountId) === c.id);
+      if (existing) await map.update(existing.id, {model: [modelId], include: true});
+      else await map.create({slug: c.name, accountId: Number(c.id), model: [modelId], include: true});
+      toast.success(`${c.name} linked to ${label(model.fields.model)}`);
+      setPicking(false);
+    } catch (e: any) { toast.error(e.message); } finally { setLinking(false); }
+  }
+
+  const syncing = creators.isFetching || [models, map, expenses, pay, staff].some(t => t.fetching);
+  const showRevenue = p && p.income !== null;
+
+  return <div className="space-y-6">
+    <PageHeader eyebrow="Finance" title="Profit & Loss" subtitle="One model at a time: her Creator Staq earnings, less payout, staff wages and expenses."
+      actions={<Btn onClick={() => { creators.refetch(); [models, map, expenses, pay, staff].forEach(t => t.refetch()); }} disabled={syncing}><RefreshCw className={syncing ? "animate-spin" : ""}/>Refresh</Btn>}/>
+
+    <Panel bodyClass="grid gap-5 lg:grid-cols-[1fr_1.3fr_auto]">
+      <Field label="Model">
+        <select className={inputClass} value={modelId} onChange={e => setModelId(e.target.value)}>
+          {models.rows.map(m => <option key={m.id} value={m.id}>{label(m.fields.model)}{label(m.fields.status) === "Ended" ? " (ended)" : ""}</option>)}
+        </select>
+      </Field>
+      <Field label="Creator Staq page">
+        {picking || !links.length ? <div className="flex gap-2">
+          <select className={inputClass} value={pick} onChange={e => setPick(e.target.value)} disabled={!creators.isSuccess}>
+            <option value="">{creators.isError ? "Creator Staq unavailable" : creators.isPending ? "Loading pages…" : "Choose her page…"}</option>
+            {creators.data?.map(c => <option key={c.id} value={c.id}>{c.name} · {money(c.net)} this period</option>)}
+          </select>
+          <Btn variant="primary" onClick={linkPage} disabled={!pick} loading={linking}><Link2/>Link</Btn>
+          {links.length > 0 && <Btn variant="ghost" onClick={() => setPicking(false)}>Cancel</Btn>}
+        </div> : <div className="flex h-9 items-center gap-2 rounded-lg border bg-muted/50 px-3 text-[13px]">
+          <Store className="size-3.5 text-muted-foreground"/><span className="flex-1 truncate font-medium">{links.map(pageName).join(", ")}</span>
+          <button className="text-[12px] text-muted-foreground hover:text-foreground" onClick={() => { setPick(""); setPicking(true); }}>Change</button>
+        </div>}
+      </Field>
+      <Field label="Period">
+        <Segmented size="md" value={preset} onChange={v => { setPreset(v); if (v !== "custom") setRange(presetRange(v, today)); }}
+          options={[["month", "This month"], ["last-month", "Last month"], ["7d", "7d"], ["30d", "30d"], ["custom", "Custom"]] as const}/>
+      </Field>
+      <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-[12.5px] text-muted-foreground lg:col-span-3">
+        {preset === "custom" ? <span className="flex items-center gap-2">
+          <input type="date" value={start} max={today} onChange={e => setRange([e.target.value, end])} className={inputClass + " h-8 w-auto"}/>→
+          <input type="date" value={end} max={today} onChange={e => setRange([start, e.target.value])} className={inputClass + " h-8 w-auto"}/>
+        </span> : <span className="num">{start} → {end}</span>}
+        <label className="flex items-center gap-2"><input type="checkbox" className="accent-[var(--brand)]" checked={includeShared} onChange={e => setIncludeShared(e.target.checked)}/>Include shared expenses (no model assigned)</label>
+      </div>
+    </Panel>
+
+    {!valid ? <Notice icon={AlertTriangle}>Choose valid dates, ending no later than today.</Notice>
+    : [models, map, expenses, pay, staff].some(t => t.error) ? <Notice tone="red" icon={AlertTriangle}>Couldn’t load costs from Airtable. Refresh to try again.</Notice>
+    : !p ? <Empty title="Choose a model"/> : <>
+      <div className="space-y-2">
+        {creators.isError && <Notice tone="red" icon={AlertTriangle}>Creator Staq revenue is unavailable: {(creators.error as Error).message}. Costs are shown; profit can’t be calculated.</Notice>}
+        {creators.isSuccess && !p.linked && <Notice icon={Link2}>Link {p.name}’s Creator Staq page above to pull in her earnings.</Notice>}
+        {p.linked && !p.dealType && <Notice icon={AlertTriangle}>{p.name} has no deal type. Set it under Revenue → Model deals; until then she’s treated as Managed.</Notice>}
+        {p.linked && p.income !== null && p.payout === null && <Notice icon={AlertTriangle}>{p.name} has no Model’s Cut % set, so her payout and profit can’t be calculated.</Notice>}
+      </div>
+
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
+        <Stat label={p.dealType === "Chat-only" ? "Our chatting fee" : "Earnings"} icon={Banknote} value={p.income === null ? "—" : money(p.income, 2)} sub={p.dealType === "Chat-only" ? `${p.ourCut ?? "?"}% of ${money(p.pageRevenue)}` : "Creator Staq net"}/>
+        <Stat label="Model payout" icon={Wallet} value={p.payout === null ? "—" : money(-p.payout, 2)} sub={p.dealType === "Chat-only" ? "Not applicable" : `${p.modelCut ?? "?"}% to ${p.name}`}/>
+        <Stat label="Staff wages" icon={Users} value={money(-p.wages, 2)} sub={`${p.byStaff.length} staff · ${money(p.unpaidWages)} unpaid`}/>
+        <Stat label="Expenses" icon={Receipt} value={money(-p.expenses, 2)} sub={p.unpaidExpenses ? `${money(p.unpaidExpenses)} unpaid, not deducted` : "Paid expenses"}/>
+        <Stat accent label="Net profit" icon={TrendingUp} value={p.profit === null ? "—" : money(p.profit, 2)} tone={p.profit === null ? "" : p.profit >= 0 ? "positive" : "negative"} sub={p.margin === null ? "—" : `${(p.margin * 100).toFixed(1)}% margin`}/>
+      </div>
+
+      {showRevenue && <Panel title="Where the money goes">
+        <div className="space-y-3">
+          {([["Earnings", p.income!, "bg-foreground"], ["Model payout", -(p.payout ?? 0), "bg-chart-4"], ["Staff wages", -p.wages, "bg-brand"], ["Expenses", -p.expenses, "bg-chart-2"], ["Net profit", p.profit ?? 0, (p.profit ?? 0) >= 0 ? "bg-positive" : "bg-negative"]] as [string, number, string][]).map(([name, v, cls], i) => {
+            const max = Math.max(1, p.income!, p.wages + p.expenses + (p.payout ?? 0));
+            return <div key={name} className={"grid grid-cols-[110px_1fr_110px] items-center gap-4 text-[13px] " + (i === 4 ? "border-t pt-3 font-semibold" : "")}>
+              <span className={i === 4 ? "" : "text-muted-foreground"}>{name}</span>
+              <div className="h-2.5 overflow-hidden rounded-full bg-muted"><div className={"h-full rounded-full " + cls} style={{width: `${Math.abs(v) / max * 100}%`}}/></div>
+              <span className="num text-right">{money(v, 2)}</span>
+            </div>;
+          })}
+        </div>
+      </Panel>}
+
+      <div className="grid gap-6 lg:grid-cols-2">
+        <Panel title="Staff wages" icon={Users} actions={<span className="num text-[13px] font-semibold">{money(p.wages, 2)}</span>}>
+          {p.byStaff.length ? <ul className="divide-y">{p.byStaff.map(s => <li key={s.id} className="grid grid-cols-[1fr_80px_90px] items-center gap-4 py-2.5 text-[13px]">
+            <span className="min-w-0"><span className="block truncate font-medium">{s.name}</span><span className="num text-[12px] text-muted-foreground">{s.hours.toLocaleString()} h{s.unpaid ? ` · ${money(s.unpaid)} unpaid` : ""}</span></span>
+            <Bar value={s.pay} max={p.byStaff[0].pay} className="bg-brand"/>
+            <span className="num text-right">{money(s.pay, 2)}</span>
+          </li>)}</ul> : <Empty title="No hours logged">No pay entries for {p.name}’s staff in this period.</Empty>}
+        </Panel>
+        <Panel title="Expenses by category" icon={Receipt} actions={<span className="num text-[13px] font-semibold">{money(p.expenses, 2)}</span>}>
+          {p.byCategory.length ? <ul className="divide-y">{p.byCategory.map(c => <li key={c.name} className="grid grid-cols-[1fr_80px_90px] items-center gap-4 py-2.5 text-[13px]">
+            <span className="truncate font-medium">{c.name}</span>
+            <Bar value={c.amount} max={p.byCategory[0].amount} className="bg-chart-2"/>
+            <span className="num text-right">{money(c.amount, 2)}</span>
+          </li>)}</ul> : <Empty title="No paid expenses">Nothing paid in this period.</Empty>}
+        </Panel>
+      </div>
+    </>}
+  </div>;
+}

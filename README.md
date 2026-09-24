@@ -14,7 +14,7 @@ AIRTABLE_TOKEN and CREATORSTAQ_AUTH are secrets. CREATORSTAQ_AUTH is the full Be
 
 ## Checks
 
-Run `node scripts/check-core.cjs`, `node scripts/check-bh-calendar.cjs`, `node scripts/check-expectations.cjs`, `node scripts/check-overview.cjs`, and `node scripts/check-paid-subs.cjs`. The Sites build helper creates the production output.
+Run `node scripts/check-core.cjs` and `node scripts/check-finance.cjs`. The Sites build helper creates the production output.
 
 ## Preserved business rules
 

@@ -1,2 +1,2 @@
-import Overview from "@/app/blocks/overview";
+import Overview from "@/views/overview";
 export default function Page(){return <Overview/>;}

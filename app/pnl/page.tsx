@@ -1,2 +1,2 @@
-import PnL from "@/app/blocks/pnl";
+import PnL from "@/views/pnl";
 export default function Page(){return <PnL/>;}
