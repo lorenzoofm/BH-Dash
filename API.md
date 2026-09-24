@@ -6,13 +6,13 @@ This document describes the **implemented code in this repository**, not a live 
 
 | Concern | Source |
 | --- | --- |
-| Dashboard route handlers | `app/api/session/route.ts`, `app/api/data/[key]/route.ts`, `app/api/revenue/route.ts` |
+| Dashboard route handlers | `app/api/session/route.ts`, `app/api/users/route.ts`, `app/api/data/[key]/route.ts`, `app/api/revenue/route.ts` |
 | Airtable base, table, field and write allowlists | `lib/data-config.json` |
 | Airtable transport, caching and response mapping | `lib/data-server.ts` |
 | Validation, required and unique fields | `lib/data-rules.ts` |
 | Permitted Creatorstaq requests | `lib/revenue-request.ts` |
 | Client calls | `lib/datasource.ts` and `app/blocks/*.tsx` |
-| Cloudflare Access verification | `lib/cloudflare-access.ts`, `worker.ts`, `app/auth.ts` |
+| Cloudflare Access verification and policy management | `lib/cloudflare-access.ts`, `lib/access-policy.ts`, `worker.ts`, `app/auth.ts` |
 | Worker configuration and deployment | `wrangler.json`, `CLOUDFLARE.md` |
 
 ## Configuration and access
@@ -23,13 +23,15 @@ This document describes the **implemented code in this repository**, not a live 
 | `CREATORSTAQ_AUTH` | Complete Creatorstaq `Authorization` header value, including `Bearer ` if that is how the issued token is used | Ignored local `.env.local` or encrypted Worker secret |
 | `ACCESS_TEAM_DOMAIN` | HTTPS Cloudflare Access issuer, for example `https://your-team.cloudflareaccess.com` | Worker configuration; must match the Access application |
 | `ACCESS_AUD` | Cloudflare Access application audience | Worker configuration; must match the Access application |
-| `MANAGER_EMAILS` | Comma-separated email allowlist | Worker configuration; keep Access policy in sync |
+| `ACCESS_ACCOUNT_ID`, `ACCESS_APP_ID`, `ACCESS_POLICY_ID` | Exact Cloudflare account, application and manager policy IDs | Worker configuration |
+| `ACCESS_API_TOKEN` | Cloudflare API token with Access Apps and Policies read/write for the account; used to read and edit the exact-email manager policy | Encrypted Worker secret |
+| `ADMIN_EMAILS` | Comma-separated dashboard administrator emails, separate from manager access | Worker configuration |
 | `DASHBOARD_KIND` | `bh` | Worker configuration |
 | `OTHER_DASHBOARD_URL` | Link to Content Studio | Worker configuration |
 
-`wrangler.json` currently has `workers_dev: false` and does not contain real Access issuer/audience values. Configure Access and the two secrets before enabling a URL. `npm run deploy` builds and deploys the Worker, but does not configure Access or supply missing credentials. Do not put secrets in source, GitHub Actions logs, browser code, or issue reports. See [CLOUDFLARE.md](CLOUDFLARE.md) for the deployment boundary.
+`wrangler.json` currently has `workers_dev: true` and contains Access identifiers. This is configuration, not proof that the deployed application or data integrations work. Configure the three secrets and verify the exact Access application and policy before relying on the URL. `npm run deploy` builds and deploys the Worker, but does not supply missing credentials. Do not put secrets in source, GitHub Actions logs, browser code, or issue reports. See [CLOUDFLARE.md](CLOUDFLARE.md) for the deployment boundary.
 
-Every production request, including pages, assets and API routes, must carry a valid Cloudflare Access JWT for an email in `MANAGER_EMAILS`. The Worker verifies the issuer, audience, signature and claims. The BH data routes also check manager authorization. Writes require an `Origin` header equal to the dashboard origin. This is a **session API for the dashboard**, not a public token-based integration API. Use the signed-in browser for the examples below; do not expose Airtable or Creatorstaq tokens to browser JavaScript.
+Production pages and API routes require a valid Cloudflare Access JWT for an email in the exact-email Access policy. The Worker verifies the issuer, audience, signature and claims, then reads the configured policy. It serves `/_next/static/` build assets without this app-level JWT check; those assets must contain no account data. Admin actions also require an email in `ADMIN_EMAILS`. Writes require an `Origin` header equal to the dashboard origin. This is a **session API for the dashboard**, not a public token-based integration API. Use the signed-in browser for the examples below; do not expose Airtable, Creatorstaq or Cloudflare API tokens to browser JavaScript.
 
 ## Dashboard routes
 
@@ -37,9 +39,12 @@ All responses are JSON. Error responses have `{ "error": "message" }`. Data and 
 
 | Route | Methods | Purpose |
 | --- | --- | --- |
-| `/api/session` | GET | Current signed-in user and whether they can edit; `allowedEmails` is only populated for a manager |
+| `/api/session` | GET | Current signed-in user, `canEdit` and `isAdmin` flags |
+| `/api/users` | GET, POST, DELETE | Admin-only list, add or remove manager emails in the Cloudflare Access policy |
 | `/api/data/:key` | GET, POST, PATCH, DELETE where allowed | Read, create, edit or delete records in an allowlisted Airtable table |
 | `/api/revenue?url=...` | GET | Server-side proxy for two specifically allowed Creatorstaq revenue endpoints |
+
+`GET /api/users` returns `{ "emails": ["manager@example.com"] }`. `POST /api/users` with `{ "email": "manager@example.com" }` adds an exact-email Allow rule; `DELETE /api/users` with the same body removes it. The API rejects duplicate additions, unknown removals and removal of the current admin's own access. It requires the Access API token and an Allow policy containing only exact email rules; the server refuses to modify policies with other rule types. Policy reads are cached for up to 15 seconds per Worker isolate, so removal is not instantaneous. See `lib/access-policy.ts` for the actual Cloudflare request and error handling.
 
 ### Airtable-backed records
 

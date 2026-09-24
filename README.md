@@ -2,13 +2,13 @@
 
 Standalone manager-only dashboard backed by the existing BH Airtable base and a server-side Creatorstaq connection. The first hosted review is owner-private. It does not replace or publish the existing Softr site.
 
-This repository contains the custom dashboard source, including Overview, Conversions, Staff, Pay & Hours, P&L, Expenses and Revenue. Publishing this repository does **not** make the dashboard site live or publish its Airtable records. The Cloudflare Worker URL remains disabled until Cloudflare Access is configured and the route is deliberately enabled. See [CLOUDFLARE.md](CLOUDFLARE.md).
+This repository contains the custom dashboard source, including Overview, Conversions, Staff, Pay & Hours, P&L, Expenses and Revenue. Publishing this repository does **not** make the dashboard site live or publish its Airtable records. The current Worker configuration enables a URL and specifies Cloudflare Access, but deployment, signed-in rendering and live data still need to be verified. See [CLOUDFLARE.md](CLOUDFLARE.md).
 
 For API routes, Airtable tables and fields, Creatorstaq integration, authentication, and request examples, see [API.md](API.md).
 
 ## Local setup
 
-Use Node 22.13 or newer. Run `npm run install:ci`, then the checks below and `npm run build`. Keep credentials in ignored `.env.local` for local development; do not commit them. A Cloudflare deployment needs encrypted Worker secrets `AIRTABLE_TOKEN` and `CREATORSTAQ_AUTH`, plus real Access issuer/audience settings. The account ID, Airtable base/table IDs and example email addresses in this source are configuration identifiers, not credentials; forks must use their own values and data.
+Use Node 22.13 or newer. Run `npm run install:ci`, then the checks below and `npm run build`. Keep credentials in ignored `.env.local` for local development; do not commit them. A Cloudflare deployment needs encrypted Worker secrets `AIRTABLE_TOKEN`, `CREATORSTAQ_AUTH` and `ACCESS_API_TOKEN`, plus a working Access application and policy. The account ID, Airtable base/table IDs and email addresses in this source are configuration identifiers, not credentials; forks must use their own values and data.
 
 ## Runtime configuration
 
