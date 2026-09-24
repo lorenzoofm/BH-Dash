@@ -6,7 +6,7 @@
   "compatibility_flags": [
     "nodejs_compat"
   ],
-  "workers_dev": false,
+  "workers_dev": true,
   "preview_urls": false,
   "assets": {
     "run_worker_first": true,
@@ -19,6 +19,10 @@
     "DASHBOARD_KIND": "bh",
     "ADMIN_EMAILS": "massi@20mg.co",
     "ACCESS_ACCOUNT_ID": "33946261fcbfb4f4b406f95941a57f3d",
+    "ACCESS_APP_ID": "d46b8af8-256e-4f48-9104-e617f6defa52",
+    "ACCESS_POLICY_ID": "9674556b-425e-48b2-b82b-f8e84f1e11ec",
+    "ACCESS_AUD": "0126e2e223597b6e6d5292f06388b558666cbc5c3db4c972f4b11e18511991c1",
+    "ACCESS_TEAM_DOMAIN": "https://purple-hall-68cf.cloudflareaccess.com",
     "OTHER_DASHBOARD_URL": "https://20mg-content-studio.twentymg-automation.workers.dev"
   }
 }
