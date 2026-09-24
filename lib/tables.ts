@@ -9,7 +9,7 @@ import {fetchCreators, label, linkIds, rowsOf, useAllPages} from "@/lib/bh";
 export const SELECT = {
   staff: {name: "Full Name", staffId: "Staff ID", status: "Status", model: "Model", platform: "Platform", payType: "Pay Type", rate: "Current Hourly Rate", currency: "Currency", hours: "Standard Daily Hours", start: "Start Date", end: "End Date", email: "Email"},
   paylog: {workDate: "Work Date", staff: "Staff", hours: "Hours Worked", rate: "Hourly Rate Snapshot", bonus: "Bonus", deductions: "Deductions", status: "Payment Status", paidDate: "Payment Date", notes: "Notes", submittedBy: "Submitted By", totalPay: "Total Pay"},
-  expenses: {expenseId: "Expense ID", date: "Expense Date", description: "Description", amount: "Amount", currency: "Currency", category: "Category", channel: "Channel", model: "Model", vendor: "Vendor", billing: "Billing Type", status: "Status", paidDate: "Paid Date", notes: "Notes", createdBy: "Created By"},
+  expenses: {expenseId: "Expense ID", date: "Expense Date", description: "Description", amount: "Amount", currency: "Currency", category: "Category", channel: "Channel", model: "Model", vendor: "Vendor", billing: "Billing Type", status: "Status", paidDate: "Paid Date", notes: "Notes", createdBy: "Created By", sourceRef: "Source Ref"},
   models: {model: "Model", status: "Status", dealType: "Deal Type", modelCut: "Model's Cut %", ourCut: "Our Cut %", basis: "Payout Basis", start: "Start Date", notes: "Notes"},
   map: {slug: "Account Slug", accountId: "Account ID", ofUsername: "OF Username", model: "Model", include: "Include in P&L", notes: "Notes"},
   conversions: {week: "Week Starting", staff: "Staff", model: "Model", conversions: "Conversions", notes: "Notes", source: "Source"},
@@ -30,7 +30,7 @@ export function useTable(name: TableName) {
   const rows = useMemo(() => rowsOf(result), [result.data]);
   return {
     rows,
-    loading: result.status === "pending" || !!result.hasNextPage,
+    loading: result.status !== "error" && (result.status === "pending" || !!result.hasNextPage),
     error: result.status === "error" ? (result.error as Error) : null,
     refetch: result.refetch,
     fetching: result.isFetching,

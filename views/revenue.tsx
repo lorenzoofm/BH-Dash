@@ -5,7 +5,7 @@ import {toast} from "sonner";
 import {Bar, BarChart, CartesianGrid, XAxis, YAxis} from "recharts";
 import {AlertTriangle, Banknote, CalendarDays, CircleDot, Hash, Link2, Percent, Plus, Store, Tag, TrendingUp, Trophy, User} from "lucide-react";
 import {ChartConfig, ChartContainer, ChartTooltip, ChartTooltipContent} from "@/components/ui/chart";
-import {Btn, Drawer, Field, Notice, PageHeader, PageSkeleton, Panel, Stat, inputClass} from "@/components/bh/ui";
+import {TableError, Btn, Drawer, Field, Notice, PageHeader, PageSkeleton, Panel, Stat, inputClass} from "@/components/bh/ui";
 import {DataGrid} from "@/components/bh/grid";
 import {label, linkIds, money, num, todayIso} from "@/lib/bh";
 import {useProxyFetch} from "@/lib/datasource";
@@ -22,7 +22,7 @@ export default function Revenue() {
   const monthly = useQuery({queryKey: ["bh-monthly"], staleTime: 300000, retry: 1, queryFn: async () => {
     const res = await proxyFetch(MONTHLY);
     const body: any = await res.json().catch(() => ({}));
-    if (!res.ok) throw new Error(body.error || `Creator Staq returned ${res.status}`);
+  if (!res.ok) throw new Error(body.error || `Creator Staq returned ${res.status}`);
     return (body.monthly_by_account ?? []) as {month: string; accounts: {account_id: number; name: string; net: number | string}[]}[];
   }});
   const mtd = useCreators(today ? today.slice(0, 8) + "01" : null, today);
@@ -51,6 +51,7 @@ export default function Revenue() {
     return {chart, config, shown, last, prev, best, mtdTotal, trailing: full.slice(-6).reduce((s, r) => s + r.total, 0), unlinked: (mtd.data ?? []).filter(c => !pageModel.has(c.id))};
   }, [monthly.data, map.rows, models.rows, mtd.data, today]);
 
+  if ([models, map].some(t => t.error)) return <TableError tables={[models, map]}/>;
   if (!today || models.loading || map.loading) return <PageSkeleton/>;
   const fmtMonth = (m: string) => new Date(m + "-01T00:00:00Z").toLocaleDateString("en-GB", {month: "short", year: "2-digit", timeZone: "UTC"});
 

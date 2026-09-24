@@ -2,7 +2,7 @@
 import {useEffect, useMemo, useState} from "react";
 import {toast} from "sonner";
 import {AtSign, CalendarDays, CircleDot, Clock, DollarSign, Globe, Hash, Plus, Tag, Target, User, UserCheck, Users, Wallet} from "lucide-react";
-import {Avatar, Bar, Btn, Drawer, Field, PageHeader, PageSkeleton, Panel, Pill, Segmented, Stat, inputClass} from "@/components/bh/ui";
+import {TableError, Avatar, Bar, Btn, Drawer, Field, PageHeader, PageSkeleton, Panel, Pill, Segmented, Stat, inputClass} from "@/components/bh/ui";
 import {DataGrid} from "@/components/bh/grid";
 import {addDays, label, linkIds, money, mondayOf, num, todayIso, weekLabel} from "@/lib/bh";
 import {CHOICES, linkOptions, opts, useTable} from "@/lib/tables";
@@ -17,7 +17,7 @@ export default function Staff() {
   const [adding, setAdding] = useState<null | "staff" | "target">(null);
 
   const perf = useMemo(() => {
-    if (!today) return null;
+  if (!today) return null;
     const thisWeek = mondayOf(today);
     const weeks = period === "this" ? [thisWeek] : period === "last" ? [addDays(thisWeek, -7)] : [-28, -21, -14, -7].map(n => addDays(thisWeek, n));
     const target = (sid: string, w: string) => targets.rows.filter(t => linkIds(t.fields.staff).includes(sid) && String(t.fields.week ?? "").slice(0, 10) <= w && t.fields.weekly != null)
@@ -38,6 +38,7 @@ export default function Staff() {
     };
   }, [today, period, staff.rows, conv.rows, targets.rows]);
 
+  if ([staff, models, conv, targets, pay].some(t => t.error)) return <TableError tables={[staff, models, conv, targets, pay]}/>;
   if (!perf || [staff, models, conv, targets, pay].some(t => t.loading)) return <PageSkeleton/>;
   const active = staff.rows.filter(s => label(s.fields.status) === "Active");
   const thisWeek = mondayOf(today!);
@@ -88,6 +89,8 @@ export default function Staff() {
           {key: "rate", label: "Rate /h", icon: DollarSign, type: "money", editable: true},
           {key: "hours", label: "Std hours", icon: Clock, type: "number", editable: true, hideBelow: "xl"},
           {key: "start", label: "Started", icon: CalendarDays, type: "date", editable: true, hideBelow: "lg"},
+          {key: "end", label: "End date", type: "date", editable: true, hideBelow: "xl"},
+          {key: "currency", label: "Currency", type: "select", options: opts(CHOICES.currency), editable: true, hideBelow: "xl"},
           {key: "email", label: "Email", icon: AtSign, editable: true, hideBelow: "xl"},
         ]}
         onUpdate={(id, key, value) => staff.update(id, {[key]: value})}/>

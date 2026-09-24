@@ -2,7 +2,7 @@
 import {useEffect, useMemo, useState} from "react";
 import {toast} from "sonner";
 import {CalendarDays, Check, CircleDot, Clock, DollarSign, FileText, Minus, Plus, User, Wallet} from "lucide-react";
-import {Btn, Drawer, Field, PageHeader, PageSkeleton, Panel, Segmented, Stat, inputClass} from "@/components/bh/ui";
+import {TableError, Btn, Drawer, Field, PageHeader, PageSkeleton, Panel, Segmented, Stat, inputClass} from "@/components/bh/ui";
 import {DataGrid} from "@/components/bh/grid";
 import {addDays, label, linkIds, money, mondayOf, num, todayIso} from "@/lib/bh";
 import {CHOICES, linkOptions, opts, useTable} from "@/lib/tables";
@@ -17,7 +17,7 @@ export default function PayHours() {
   const [adding, setAdding] = useState(false);
 
   const bounds = useMemo((): [string, string] | null => {
-    if (!today) return null;
+  if (!today) return null;
     if (range === "week") return [mondayOf(today), today];
     if (range === "month") return [today.slice(0, 8) + "01", today];
     if (range === "last-month") { const last = addDays(today.slice(0, 8) + "01", -1); return [last.slice(0, 8) + "01", last]; }
@@ -25,6 +25,7 @@ export default function PayHours() {
   }, [today, range]);
   const rows = useMemo(() => bounds ? pay.rows.filter(r => { const d = String(r.fields.workDate ?? "").slice(0, 10); return d >= bounds[0] && d <= bounds[1]; }) : [], [pay.rows, bounds]);
 
+  if ([pay, staff].some(t => t.error)) return <TableError tables={[pay, staff]}/>;
   if (!today || pay.loading || staff.loading) return <PageSkeleton/>;
   const week = mondayOf(today);
   const sum = (rs: typeof pay.rows, k: string) => rs.reduce((s, r) => s + num(r.fields[k]), 0);

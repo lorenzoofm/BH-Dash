@@ -1,0 +1,65 @@
+const assert=require('node:assert/strict');
+const fs=require('node:fs');
+const vm=require('node:vm');
+const {stripTypeScriptTypes}=require('node:module');
+const source=fs.readFileSync(__dirname+'/../app/blocks/bc93a79d-128d-4be2-811e-a4e03b225375.tsx','utf8');
+const ctx={Date,Map};vm.createContext(ctx);
+for(const [start,end] of [['function label','function linkLabels'],['function toDate','function fmtWeek'],['type Bucket','function fmtDate'],['function manualTarget','function Expectations(']])vm.runInContext(stripTypeScriptTypes(source.slice(source.indexOf(start),source.indexOf(end))),ctx);
+assert.equal(ctx.manualTarget(''),null);assert.equal(ctx.manualTarget(null),null);assert.equal(ctx.manualTarget('0'),0);assert.equal(ctx.manualTarget('10'),10);
+for(const x of [-1,1.5,'oops',Infinity,'9007199254740992'])assert.throws(()=>ctx.manualTarget(x));
+assert.equal(ctx.expectationMonday('2026-09-07'),'2026-09-07');
+assert.throws(()=>ctx.expectationMonday('2026-09-08'));assert.throws(()=>ctx.expectationMonday('2026-02-30'));
+const employee={id:'recTest',name:'Test employee'},keys=['2026-09-07'];
+const empty=ctx.expectationPayload({staff:'recTest',week:'2026-09-07',daily:'',weekly:''},[employee],[],null);
+assert.equal(empty.daily,null);assert.equal(empty.weekly,null);
+assert.equal(empty.staff.join(','),'recTest');
+const rows=[{id:'one',staff:['recTest'],week:'2026-08-31',daily:null,weekly:50},{id:'two',staff:['recTest'],week:'2026-09-14',daily:20,weekly:100}];
+assert.equal(ctx.expectationAt(rows,'recTest','2026-09-07').weekly,50);
+assert.equal(ctx.expectationAt(rows,'recTest','2026-09-14').weekly,100);
+assert.throws(()=>ctx.expectationPayload({staff:'recTest',week:'2026-08-31',daily:'',weekly:'2'},[employee],rows,null),/already exist/);
+assert.equal(ctx.expectationPayload({staff:'recTest',week:'2026-08-31',daily:'',weekly:''},[employee],rows,'one').weekly,null);
+assert.throws(()=>ctx.expectationPayload({staff:'unknown',week:'2026-08-31'},[employee],rows,null),/Choose an employee/);
+const bucket=n=>new Map([['2026-09-07',{rows:1,total:n}]]);
+assert.equal(ctx.expectationResult([],employee.id,keys,bucket(0),'2026-09-14').status,'No target set');
+assert.equal(ctx.expectationResult(rows,employee.id,keys,undefined,'2026-09-14').status,'Not reported');
+assert.equal(ctx.expectationResult(rows,employee.id,keys,bucket(0),'2026-09-14').status,'Below target');
+assert.equal(ctx.expectationResult(rows,employee.id,keys,bucket(50),'2026-09-14').status,'At target');
+assert.equal(ctx.expectationResult(rows,employee.id,keys,bucket(60),'2026-09-14').status,'Above target');
+assert.equal(ctx.expectationResult(rows,employee.id,keys,bucket(60),'2026-09-14').percent,120);
+assert.equal(ctx.expectationResult(rows,employee.id,keys,bucket(5),'2026-09-07').status,'In progress');
+assert.equal(ctx.expectationResult(rows,employee.id,['2026-08-31','2026-09-07'],bucket(20),'2026-09-14').actual,null);
+const zero=[{...rows[0],weekly:0}];assert.equal(ctx.expectationResult(zero,employee.id,keys,bucket(0),'2026-09-14').percent,null);
+assert.equal(ctx.expectationResult(zero,employee.id,keys,bucket(0),'2026-09-14').status,'No minimum');
+assert.equal(ctx.expectationResult([rows[0],{...rows[0],id:'duplicate'}],employee.id,keys,bucket(1),'2026-09-14').status,'Review expectations');
+assert.equal(ctx.expectationWeeks('four',new Date(2026,8,14),'','').join(','),'2026-08-17,2026-08-24,2026-08-31,2026-09-07');
+assert.equal(ctx.expectationWeeks('custom',new Date(2026,8,14),'2026-09-02','2026-09-08').join(','),'2026-08-31,2026-09-07');
+
+// All three manual targets remain independent and nullable.
+assert.equal(empty.monthly,null);
+const three=ctx.expectationPayload({staff:'recTest',week:'2026-09-07',daily:'7',weekly:'50',monthly:'300'},[employee],[],null);
+assert.equal(three.daily,7);assert.equal(three.weekly,50);assert.equal(three.monthly,300);
+assert.throws(()=>ctx.expectationPayload({...three,staff:'recTest',monthly:'2.5'},[employee],[],null));
+const dailyRows=[{...rows[0],daily:10,weekly:100,monthly:500}];
+const daily=ctx.expectationResult(dailyRows,employee.id,keys,bucket(49),'2026-09-14','daily');
+assert.equal(daily.actual,7);assert.equal(daily.minimum,10);assert.equal(daily.percent,70);assert.equal(daily.gap,3);assert.equal(daily.status,'Below target');
+assert.equal(ctx.expectationResult([{...dailyRows[0],daily:null}],employee.id,keys,bucket(49),'2026-09-14','daily').status,'No target set');
+// Each whole week belongs only to the month containing its Monday.
+const sept=ctx.expectationMonth('custom',new Date(2026,9,5),'2026-09');
+assert.equal(sept.keys.join(','),'2026-09-07,2026-09-14,2026-09-21,2026-09-28');
+const aug=ctx.expectationMonth('custom',new Date(2026,9,5),'2026-08');assert.ok(aug.keys.includes('2026-08-31'));assert.ok(!sept.keys.includes('2026-08-31'));
+assert.equal(ctx.expectationMonth('last',new Date(2027,0,10),'').label,'December 2026');
+assert.equal(ctx.expectationMonth('custom',new Date(2028,2,10),'2028-02').keys.length,4);
+assert.throws(()=>ctx.expectationMonth('custom',new Date(),''));assert.throws(()=>ctx.expectationMonth('custom',new Date(),'2026-13'));
+const allWeeks=new Map(sept.keys.map(k=>[k,{rows:1,total:100}]));
+const monthly=ctx.expectationResult(dailyRows,employee.id,sept.keys,allWeeks,'2026-10-05','monthly',sept.cutoff);
+assert.equal(monthly.actual,400);assert.equal(monthly.minimum,500);assert.equal(monthly.percent,80);assert.equal(monthly.gap,100);assert.equal(monthly.status,'Below target');
+assert.equal(ctx.expectationResult(dailyRows,employee.id,sept.keys,allWeeks,'2026-09-28','monthly',sept.cutoff).status,'In progress');
+const partialMonth=ctx.expectationResult(dailyRows,employee.id,sept.keys,bucket(100),'2026-09-14','monthly','2026-09-14');assert.equal(partialMonth.actual,100);assert.equal(partialMonth.percent,20);assert.equal(partialMonth.status,'In progress');
+assert.equal(ctx.expectationResult(dailyRows,employee.id,sept.keys,bucket(100),'2026-10-05','monthly',sept.cutoff).actual,null);
+// Later changes cannot rewrite a previous month's target.
+const targetHistory=[...dailyRows,{...dailyRows[0],id:'later',week:'2026-10-05',monthly:1000}];
+assert.equal(ctx.expectationResult(targetHistory,employee.id,sept.keys,allWeeks,'2026-10-12','monthly',sept.cutoff).minimum,500);
+// Blank conversion rows do not turn into a zero or a complete report.
+const withBlank=new Map();ctx.bump(withBlank,'2026-09-07',10);ctx.bump(withBlank,'2026-09-07',null);
+assert.equal(ctx.sumWeeks(withBlank,keys),null);assert.equal(ctx.expectationResult(dailyRows,employee.id,keys,withBlank,'2026-09-14').status,'Not reported');
+console.log('Passed: independent blank daily/weekly/monthly targets, averages, Monday month allocation, target history, gaps, progress and missing reports.');

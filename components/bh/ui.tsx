@@ -171,3 +171,8 @@ export function Avatar({name, className}: {name: string; className?: string}) {
 export function Bar({value, max, className}: {value: number; max: number; className?: string}) {
   return <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted"><div className={cn("h-full rounded-full bg-foreground/80", className)} style={{width: `${max > 0 ? Math.min(100, value / max * 100) : 0}%`}}/></div>;
 }
+
+export function TableError({tables}: {tables: {error: Error | null; refetch: () => unknown}[]}) {
+  const failed=tables.filter(t=>t.error);
+  return <div role="alert" className="rounded-xl border border-destructive/30 bg-card p-5 text-sm"><p className="font-medium">Data could not finish loading.</p><p className="my-2 text-muted-foreground">{failed[0]?.error?.message || "Please retry before editing records."}</p><Btn onClick={()=>failed.forEach(t=>t.refetch())}>Retry loading</Btn></div>;
+}

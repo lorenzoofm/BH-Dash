@@ -2,7 +2,7 @@
 import {useEffect, useMemo, useState} from "react";
 import {toast} from "sonner";
 import {Building2, CalendarDays, CircleDot, DollarSign, FileText, Hash, Layers, Plus, Receipt, Repeat, Tag, Type} from "lucide-react";
-import {Bar, Btn, Drawer, Empty, Field, PageHeader, PageSkeleton, Panel, Segmented, Stat, inputClass} from "@/components/bh/ui";
+import {TableError, Bar, Btn, Drawer, Empty, Field, PageHeader, PageSkeleton, Panel, Segmented, Stat, inputClass} from "@/components/bh/ui";
 import {DataGrid} from "@/components/bh/grid";
 import {addDays, label, money, num, todayIso} from "@/lib/bh";
 import {CHOICES, linkOptions, opts, useTable} from "@/lib/tables";
@@ -17,7 +17,7 @@ export default function Expenses() {
   const [adding, setAdding] = useState(false);
 
   const bounds = useMemo((): [string, string] | null => {
-    if (!today) return null;
+  if (!today) return null;
     if (range === "month") return [today.slice(0, 8) + "01", today];
     if (range === "last-month") { const last = addDays(today.slice(0, 8) + "01", -1); return [last.slice(0, 8) + "01", last]; }
     if (range === "90d") return [addDays(today, -89), today];
@@ -25,6 +25,7 @@ export default function Expenses() {
   }, [today, range]);
   const rows = useMemo(() => bounds ? exp.rows.filter(r => { const d = String(r.fields.date ?? "").slice(0, 10); return range === "all" || (d >= bounds[0] && d <= bounds[1]); }) : [], [exp.rows, bounds, range]);
 
+  if ([exp, models].some(t => t.error)) return <TableError tables={[exp, models]}/>;
   if (!today || exp.loading || models.loading) return <PageSkeleton/>;
   const sum = (rs: typeof rows) => rs.reduce((s, r) => s + num(r.fields.amount), 0);
   const paid = rows.filter(r => label(r.fields.status) === "Paid");
@@ -67,6 +68,9 @@ export default function Expenses() {
               {key: "billing", label: "Billing", icon: Repeat, type: "select", options: opts(CHOICES.billing), editable: true, render: r => label(r.fields.billing), hideBelow: "xl"},
               {key: "status", label: "Status", icon: CircleDot, type: "select", options: opts(CHOICES.expenseStatus), editable: true, filter: true},
               {key: "amount", label: "Amount", icon: DollarSign, type: "money", editable: true},
+              {key: "currency", label: "Currency", type: "select", options: opts([...CHOICES.currency, "Other"]), editable: true, hideBelow: "xl"},
+              {key: "channel", label: "Channel", editable: true, hideBelow: "xl"},
+              {key: "sourceRef", label: "Source reference", editable: true, hideBelow: "xl"},
               {key: "notes", label: "Notes", icon: FileText, type: "longtext", editable: true, hideBelow: "xl"},
             ]}
             onUpdate={(id, key, value) => exp.update(id, {[key]: value})}

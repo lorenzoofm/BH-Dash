@@ -2,7 +2,7 @@
 import {useEffect, useMemo, useState} from "react";
 import {toast} from "sonner";
 import {CalendarDays, FileText, Hash, Save, Sparkles, Tag, User, Users} from "lucide-react";
-import {Avatar, Btn, Empty, PageHeader, PageSkeleton, Panel, Pill, Stat, WeekStepper, inputClass} from "@/components/bh/ui";
+import {TableError, Avatar, Btn, Empty, PageHeader, PageSkeleton, Panel, Pill, Stat, WeekStepper, inputClass} from "@/components/bh/ui";
 import {DataGrid} from "@/components/bh/grid";
 import {addDays, label, linkIds, mondayOf, num, todayIso, weekLabel} from "@/lib/bh";
 import {linkOptions, useTable} from "@/lib/tables";
@@ -17,7 +17,7 @@ export default function Conversions() {
   useEffect(() => { setDraft({}); setSubDraft({}); }, [week]);
 
   const rows = useMemo(() => {
-    if (!week) return [];
+  if (!week) return [];
     const entries = conv.rows.filter(r => String(r.fields.week ?? "").slice(0, 10) === week);
     return staff.rows
       .filter(s => label(s.fields.status) === "Active" || entries.some(e => linkIds(e.fields.staff).includes(s.id)))
@@ -28,6 +28,7 @@ export default function Conversions() {
       }).sort((a, b) => a.name.localeCompare(b.name));
   }, [week, staff.rows, conv.rows]);
 
+  if ([staff, conv, models, subs].some(t => t.error)) return <TableError tables={[staff, conv, models, subs]}/>;
   if (!week || [staff, conv, models, subs].some(t => t.loading)) return <PageSkeleton/>;
 
   const current = week === mondayOf(todayIso());
@@ -41,21 +42,24 @@ export default function Conversions() {
   const totalSubs = liveModels.reduce((s, m) => s + num(subsFor(m.id)?.fields.paidSubs), 0);
 
   async function saveWeek() {
+    if (saving) return;
     setSaving(true);
+    const savedIds: string[] = [];
     let ok = 0;
     for (const r of changed) {
-      const value = Math.round(Number(draft[r.id]));
+      const value = Number(draft[r.id]);
       try {
+        if (!Number.isSafeInteger(value) || value < 0) throw new Error(`${r.name}: enter a whole number of conversions`);
         if (r.entries.length === 1) await conv.update(r.entries[0].id, {conversions: value});
         else if (!r.entries.length) {
           if (!r.modelId) throw new Error(`${r.name} has no model assigned — set one on the Staff page`);
           await conv.create({week, staff: [r.id], model: [r.modelId], conversions: value, source: "Weekly entry"});
         } else throw new Error(`${r.name} has several entries this week — edit them in the log`);
-        ok++;
+        ok++; savedIds.push(r.id);
       } catch (e: any) { toast.error(e.message); }
     }
     setSaving(false);
-    if (ok) { toast.success(`Saved ${ok} ${ok === 1 ? "entry" : "entries"} · ${weekLabel(week!)}`); setDraft({}); }
+    if (ok) { toast.success(`Saved ${ok} ${ok === 1 ? "entry" : "entries"} · ${weekLabel(week!)}`); setDraft(d => Object.fromEntries(Object.entries(d).filter(([id]) => !savedIds.includes(id)))); }
   }
 
   async function saveSubs(modelId: string, modelName: string) {
@@ -98,7 +102,7 @@ export default function Conversions() {
                 <td className="py-2 pl-5"><div className="flex items-center gap-2.5"><Avatar name={r.name}/><span className="font-medium">{r.name}</span></div></td>
                 <td className="hidden py-2 text-muted-foreground sm:table-cell">{r.model || "No model"}</td>
                 <td className="py-2 pr-5 text-right">
-                  <input type="number" min={0} inputMode="numeric" placeholder="—" aria-label={`Conversions for ${r.name}`} disabled={r.entries.length > 1}
+                  <input type="number" min={0} inputMode="numeric" placeholder="—" aria-label={`Conversions for ${r.name}`} disabled={saving || r.entries.length > 1}
                     className={inputClass + " num ml-auto w-24 text-right " + (dirty ? "border-brand" : "")}
                     value={draft[r.id] ?? (r.saved ?? "")} onChange={e => setDraft(d => ({...d, [r.id]: e.target.value}))}
                     onKeyDown={e => e.key === "Enter" && changed.length && saveWeek()}/>

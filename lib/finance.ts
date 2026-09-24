@@ -34,11 +34,12 @@ const inRange = (d: any, start: string, end: string) => {
     Chat-only: 20MG earns Our Cut % of page revenue; no payout.
   - Wages: every Pay Log row (paid or unpaid) for staff assigned to the model,
     split evenly when a staff member covers several models.
-  - Expenses: Paid expenses linked to the model (split evenly across linked models),
-    plus unassigned expenses when includeShared is on. Unpaid/planned are reported, not deducted.
+  - Expenses: Paid expenses linked to the model (split evenly across linked models).
+    Unassigned expenses are excluded until allocated to a model; otherwise each
+    model's report would count the same company expense in full.
 */
-export function modelPnL(model: Rec, {staff, paylog, expenses, map, creators, start, end, includeShared, revenueKnown}: {
-  staff: Rec[]; paylog: Rec[]; expenses: Rec[]; map: Rec[]; creators: Creator[]; start: string; end: string; includeShared: boolean; revenueKnown: boolean;
+export function modelPnL(model: Rec, {staff, paylog, expenses, map, creators, start, end, revenueKnown}: {
+  staff: Rec[]; paylog: Rec[]; expenses: Rec[]; map: Rec[]; creators: Creator[]; start: string; end: string; revenueKnown: boolean;
 }): ModelPnL {
   const modelId = model.id;
   const pages = new Set(map.filter(r => r.fields.include !== false && linkIds(r.fields.model).includes(modelId)).map(r => String(r.fields.accountId ?? "")));
@@ -47,7 +48,7 @@ export function modelPnL(model: Rec, {staff, paylog, expenses, map, creators, st
   const modelCut = model.fields.modelCut == null ? null : num(model.fields.modelCut);
   const ourCut = model.fields.ourCut == null ? null : num(model.fields.ourCut);
   const chatOnly = dealType === "Chat-only";
-  const known = revenueKnown && pages.size > 0;
+  const known = revenueKnown && pages.size > 0 && (dealType === "Managed" || chatOnly);
   const income = !known ? null : chatOnly ? (ourCut === null ? null : pageRevenue * ourCut / 100) : pageRevenue;
   const payout = !known ? null : chatOnly ? 0 : (modelCut === null ? (pageRevenue === 0 ? 0 : null) : pageRevenue * modelCut / 100);
 
@@ -71,7 +72,7 @@ export function modelPnL(model: Rec, {staff, paylog, expenses, map, creators, st
   for (const e of expenses) {
     if (!inRange(e.fields.date, start, end)) continue;
     const ids = linkIds(e.fields.model);
-    if (ids.length ? !ids.includes(modelId) : !includeShared) continue;
+    if (!ids.includes(modelId)) continue;
     const amount = num(e.fields.amount) / Math.max(1, ids.length);
     if (label(e.fields.status) !== "Paid") { unpaidExpenses += amount; continue; }
     const cat = label(e.fields.category) || "Uncategorised";

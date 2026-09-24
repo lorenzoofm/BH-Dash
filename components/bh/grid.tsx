@@ -49,30 +49,32 @@ function Cell({col, row, onSave}: {col: Column; row: Row; onSave?: (value: any) 
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState<any>("");
   const [saving, setSaving] = useState(false);
-  const ref = useRef<any>(null);
+  const ref = useRef<any>(null), finished = useRef(false);
   const editable = !!onSave && col.editable;
   useEffect(() => { if (editing) ref.current?.focus?.(); }, [editing]);
 
   function start() {
     if (!editable || saving) return;
+    finished.current = false;
     if (col.type === "checkbox") { void commit(!raw); return; }
-    setDraft(col.type === "link" ? linkIds(raw)[0] ?? "" : col.type === "date" ? String(raw ?? "").slice(0, 10) : raw == null ? "" : col.type === "select" ? label(raw) : String(raw));
+    setDraft(col.type === "link" ? linkIds(raw) : col.type === "date" ? String(raw ?? "").slice(0, 10) : raw == null ? "" : col.type === "select" ? label(raw) : String(raw));
     setEditing(true);
   }
   async function commit(value = draft) {
+    if (finished.current) return; finished.current = true;
     setEditing(false);
     let out: any = value;
     if (col.type === "number" || col.type === "money") out = value === "" ? null : Number(value);
-    if (col.type === "link") out = value ? [value] : [];
+    if (col.type === "link") out = Array.isArray(value) ? value : value ? [value] : [];
     if (col.type !== "link" && col.type !== "checkbox" && out === "") out = null;
-    const same = col.type === "link" ? (linkIds(raw)[0] ?? "") === value : col.type === "date" ? String(raw ?? "").slice(0, 10) === (value ?? "") : (raw ?? null) === out || label(raw) === value;
+    const same = col.type === "link" ? JSON.stringify([...linkIds(raw)].sort()) === JSON.stringify([...out].sort()) : col.type === "date" ? String(raw ?? "").slice(0, 10) === (value ?? "") : (raw ?? null) === out || label(raw) === value;
     if (same) return;
     if ((col.type === "number" || col.type === "money") && out !== null && !Number.isFinite(out)) { toast.error("Enter a number"); return; }
     setSaving(true);
     try { await onSave!(out); } catch (e: any) { toast.error(e.message); } finally { setSaving(false); }
   }
   const keys = (e: {key: string}) => {
-    if (e.key === "Escape") setEditing(false);
+    if (e.key === "Escape") { finished.current = true; setEditing(false); }
     if (e.key === "Enter" && col.type !== "longtext") commit();
   };
 
@@ -80,8 +82,8 @@ function Cell({col, row, onSave}: {col: Column; row: Row; onSave?: (value: any) 
   if (editing) {
     const cls = "h-8 w-full rounded-md border border-brand bg-card px-2 text-[13px] outline-none ring-2 ring-brand/15 " + (align === "right" ? "text-right num" : "");
     if (col.type === "select" || col.type === "link")
-      return <select ref={ref} className={cls} value={draft} onChange={e => commit(e.target.value)} onBlur={() => setEditing(false)} onKeyDown={keys}>
-        <option value="">—</option>
+      return <select ref={ref} multiple={col.type === "link"} className={cls + (col.type === "link" ? " h-24" : "")} value={draft} onChange={e => col.type === "link" ? setDraft(Array.from(e.target.selectedOptions, o => o.value)) : commit(e.target.value)} onBlur={() => col.type === "link" ? commit() : setEditing(false)} onKeyDown={keys}>
+        {col.type !== "link" && <option value="">—</option>}
         {(col.options ?? []).map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
       </select>;
     return <input ref={ref} className={cls} type={col.type === "date" ? "date" : col.type === "number" || col.type === "money" ? "number" : "text"} step="any"
@@ -110,6 +112,7 @@ export function DataGrid({rows, columns, onUpdate, onDelete, loading, toolbar, f
   rowActions?: (row: Row) => React.ReactNode; searchPlaceholder?: string; empty?: string;
 }) {
   const [search, setSearch] = useState("");
+  const [showAll, setShowAll] = useState(false);
   const [filters, setFilters] = useState<Record<string, string>>({});
   const [sort, setSort] = useState(initialSort ?? null);
   const [page, setPage] = useState(0);
@@ -137,7 +140,7 @@ export function DataGrid({rows, columns, onUpdate, onDelete, loading, toolbar, f
   useEffect(() => setPage(0), [search, filters, sort, rows.length]);
   const pages = Math.max(1, Math.ceil(filtered.length / pageSize));
   const visible = filtered.slice(page * pageSize, (page + 1) * pageSize);
-  const hide = (c: Column) => c.hideBelow === "md" ? "hidden md:table-cell" : c.hideBelow === "lg" ? "hidden lg:table-cell" : c.hideBelow === "xl" ? "hidden xl:table-cell" : "";
+  const hide = (c: Column) => showAll ? "" : c.hideBelow === "md" ? "hidden md:table-cell" : c.hideBelow === "lg" ? "hidden lg:table-cell" : c.hideBelow === "xl" ? "hidden xl:table-cell" : "";
 
   return <div>
     <div className="flex flex-wrap items-center gap-2 border-b px-5 py-3">
@@ -152,7 +155,7 @@ export function DataGrid({rows, columns, onUpdate, onDelete, loading, toolbar, f
           {(c.options ?? []).map(o => <option key={o.value} value={o.value}>{c.label}: {o.label}</option>)}
         </select>
       </div>)}
-      <div className="ml-auto flex items-center gap-2">{toolbar}</div>
+      <div className="ml-auto flex items-center gap-2">{columns.some(c => c.hideBelow) && <Btn size="sm" variant="ghost" onClick={() => setShowAll(v => !v)}>{showAll ? "Compact columns" : "All columns"}</Btn>}{toolbar}</div>
     </div>
     <div className="overflow-x-auto">
       <table className="w-full min-w-max text-[13px]">
