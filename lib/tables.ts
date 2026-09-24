@@ -74,7 +74,7 @@ export function linkedPages(mapRows: {fields: Record<string, any>}[], modelId: s
   return new Set(mapRows.filter(r => r.fields.include !== false && linkIds(r.fields.model).includes(modelId)).map(r => String(r.fields.accountId ?? "")));
 }
 
-export function useAccountRevenue(slugs: string[], start: string | null, end: string | null) {
+export function useAccountRevenues(slugs: string[], start: string | null, end: string | null) {
   const proxyFetch = useProxyFetch("live");
   const accounts = [...new Set(slugs)].sort();
   return useQuery({
@@ -82,20 +82,26 @@ export function useAccountRevenue(slugs: string[], start: string | null, end: st
     enabled: accounts.length > 0 && !!start && !!end && start <= end,
     staleTime: 60000, retry: 1,
     queryFn: async () => {
-      let total = 0;
-      for (const slug of accounts) for (const range of revenueRanges(start!, end!)) {
-        const url = `https://api.creatorstaq.com/v1/computed/${encodeURIComponent(slug)}/revenue/ranged?start=${range.start}&end=${range.end}`;
-        const response = await proxyFetch(url);
-        if (!response.ok) {
-          const body = await response.json().catch(() => ({}));
-          throw new Error(body.error || `Creator Staq returned ${response.status}`);
-        }
-        const body = await response.json();
-        const amount = Number(body.kpis?.total_net);
-        if (!Number.isFinite(amount)) throw new Error("Creator Staq returned incomplete account revenue");
-        total += amount;
-      }
-      return total;
+      const result: Record<string, {net: number | null; error?: string}> = {};
+      for (let i = 0; i < accounts.length; i += 5) await Promise.all(accounts.slice(i, i + 5).map(async slug => {
+        try {
+          let total = 0;
+          for (const range of revenueRanges(start!, end!)) {
+            const url = `https://api.creatorstaq.com/v1/computed/${encodeURIComponent(slug)}/revenue/ranged?start=${range.start}&end=${range.end}`;
+            const response = await proxyFetch(url);
+            if (!response.ok) {
+              const body = await response.json().catch(() => ({}));
+              throw new Error(body.error || `Creator Staq returned ${response.status}`);
+            }
+            const body = await response.json();
+            const amount = Number(body.kpis?.total_net);
+            if (!Number.isFinite(amount)) throw new Error("Incomplete account revenue");
+            total += amount;
+          }
+          result[slug] = {net: total};
+        } catch (e) { result[slug] = {net: null, error: e instanceof Error ? e.message : "Connection failed"}; }
+      }));
+      return result;
     },
   });
 }

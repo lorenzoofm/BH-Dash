@@ -5,9 +5,9 @@ import {toast} from "sonner";
 import {AlertTriangle, Banknote, Link2, Plus, Receipt, RefreshCw, Store, TrendingUp, Users, Wallet} from "lucide-react";
 import {Bar, Btn, Drawer, Empty, Field, Notice, PageHeader, PageSkeleton, Panel, Segmented, Stat, inputClass} from "@/components/bh/ui";
 import {addDays, label, linkIds, money, num, todayIso, validDay} from "@/lib/bh";
-import {useAccountRevenue, useCreators, useTable} from "@/lib/tables";
+import {useAccountRevenues, useCreators, useTable} from "@/lib/tables";
 import {useProxyFetch} from "@/lib/datasource";
-import {modelPnL} from "@/lib/finance";
+import {modelPnL, type ModelPnL} from "@/lib/finance";
 
 type Preset = "month" | "last-month" | "7d" | "30d" | "custom";
 const MODEL_KEY = "bh-pnl-model";
@@ -25,6 +25,7 @@ export default function PnL() {
   const [range, setRange] = useState<[string, string] | null>(null);
   useEffect(() => { const t = todayIso(); setToday(t); setRange(presetRange("month", t)); }, []);
   const [modelId, setModelId] = useState("");
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [managing, setManaging] = useState(false);
   const [newModel, setNewModel] = useState("");
   const [newAccount, setNewAccount] = useState("");
@@ -50,14 +51,24 @@ export default function PnL() {
     setModelId(models.rows.some(m => m.id === saved) ? saved : (live[0] ?? models.rows[0]).id);
   }, [models.rows]);
   useEffect(() => { if (modelId) try { localStorage.setItem(MODEL_KEY, modelId); } catch {} }, [modelId]);
+  useEffect(() => { if (modelId && !selectedIds.length) setSelectedIds([modelId]); }, [modelId, selectedIds.length]);
 
   const model = models.rows.find(m => m.id === modelId);
   const mappedCount = models.rows.filter(m => map.rows.some(r => r.fields.include !== false && linkIds(r.fields.model).includes(m.id))).length;
   const accountRows = map.rows.filter(r => r.fields.include !== false && linkIds(r.fields.model).includes(modelId));
   const accountSlugs = accountRows.map(r => label(r.fields.slug)).filter(Boolean);
-  const accountRevenue = useAccountRevenue(accountSlugs, valid ? start : null, valid ? end : null);
-  const p = useMemo(() => model && valid ? modelPnL(model, {staff: staff.rows, paylog: pay.rows, expenses: expenses.rows, map: map.rows, creators: creators.data ?? [], start, end, revenueKnown: creators.isSuccess, accountRevenue: accountRows.length === accountSlugs.length && accountRevenue.isSuccess ? accountRevenue.data : null}) : null,
-    [model, valid, staff.rows, pay.rows, expenses.rows, map.rows, creators.data, creators.isSuccess, accountRevenue.data, accountRevenue.isSuccess, accountRows.length, accountSlugs.length, start, end]);
+  const selectedModels = models.rows.filter(m => selectedIds.includes(m.id));
+  const selectedSlugs = map.rows.filter(r => r.fields.include !== false && linkIds(r.fields.model).some(id => selectedIds.includes(id))).map(r => label(r.fields.slug)).filter(Boolean);
+  const accountRevenue = useAccountRevenues(selectedSlugs, valid ? start : null, valid ? end : null);
+  const reports = useMemo(() => selectedModels.map(m => {
+    const rows = map.rows.filter(r => r.fields.include !== false && linkIds(r.fields.model).includes(m.id));
+    const slugs = rows.map(r => label(r.fields.slug));
+    const known = rows.length > 0 && slugs.every(slug => slug && accountRevenue.data?.[slug]?.net !== null && accountRevenue.data?.[slug]?.net !== undefined);
+    const overlap = rows.some(r => linkIds(r.fields.model).filter(id => selectedIds.includes(id)).length > 1);
+    return modelPnL(m, {staff: staff.rows, paylog: pay.rows, expenses: expenses.rows, map: map.rows, creators: creators.data ?? [], start, end, revenueKnown: creators.isSuccess,
+      accountRevenue: known && !overlap ? slugs.reduce((n, slug) => n + (accountRevenue.data![slug].net ?? 0), 0) : null});
+  }), [selectedModels, map.rows, selectedIds, accountRevenue.data, staff.rows, pay.rows, expenses.rows, creators.data, creators.isSuccess, start, end]);
+  const p = reports.find(r => r.modelId === modelId) ?? null;
   const company = useMemo(() => {
     if (!valid || !creators.isSuccess) return null;
     const active = models.rows.filter(m => label(m.fields.status) !== "Ended").map(m => modelPnL(m, {staff: staff.rows, paylog: pay.rows, expenses: expenses.rows, map: map.rows, creators: creators.data ?? [], start, end, revenueKnown: true}));
@@ -80,13 +91,29 @@ export default function PnL() {
 
   const syncing = creators.isFetching || accountRevenue.isFetching || [models, map, expenses, pay, staff].some(t => t.fetching);
   const showRevenue = p && p.income !== null;
+  const combined = reports.length > 1 ? {
+    income: reports.every(r => r.income !== null) ? reports.reduce((n, r) => n + (r.income ?? 0), 0) : null,
+    payout: reports.every(r => r.payout !== null) ? reports.reduce((n, r) => n + (r.payout ?? 0), 0) : null,
+    profit: reports.every(r => r.profit !== null) ? reports.reduce((n, r) => n + (r.profit ?? 0), 0) : null,
+    wages: reports.reduce((n, r) => n + r.wages, 0), expenses: reports.reduce((n, r) => n + r.expenses, 0),
+  } : null;
+  const accountErrors = selectedSlugs.flatMap(slug => accountRevenue.data?.[slug]?.error ? [`${slug}: ${accountRevenue.data[slug].error}`] : []);
+
+  function toggleModel(id: string) {
+    if (selectedIds.includes(id)) {
+      if (selectedIds.length === 1) return;
+      const next = selectedIds.filter(x => x !== id);
+      setSelectedIds(next);
+      if (modelId === id) setModelId(next[0]);
+    } else { setSelectedIds([...selectedIds, id]); setModelId(id); }
+  }
 
   async function addModel() {
     const name = newModel.trim();
     if (!name) return;
     if (models.rows.some(r => label(r.fields.model).toLowerCase() === name.toLowerCase())) return toast.error("That model already exists");
     setSaving(true);
-    try { const row = await models.create({model: name}); setNewModel(""); if (row?.id) setModelId(row.id); toast.success(`${name} added. Set her deal and connect her DAP account.`); }
+    try { const row = await models.create({model: name}); setNewModel(""); if (row?.id) { setModelId(row.id); setSelectedIds([row.id]); } toast.success(`${name} added. Set her deal and connect her DAP account.`); }
     catch (e: any) { toast.error(e.message); } finally { setSaving(false); }
   }
 
@@ -104,20 +131,19 @@ export default function PnL() {
   }
 
   return <div className="space-y-6">
-    <PageHeader eyebrow="Finance" title="Profit & Loss" subtitle="One model at a time: DAP revenue, payout, staff wages and expenses."
+    <PageHeader eyebrow="Finance" title="Profit & Loss" subtitle="Select one model or combine several models into one P&L."
       actions={<div className="flex gap-2"><Btn onClick={() => setManaging(true)}><Plus/>Manage models</Btn><Btn onClick={() => { creators.refetch(); accountRevenue.refetch(); [models, map, expenses, pay, staff].forEach(t => t.refetch()); }} disabled={syncing}><RefreshCw className={syncing ? "animate-spin" : ""}/>Refresh</Btn></div>}/>
 
-    <p className="text-[13px] text-muted-foreground">{models.rows.length} models in the roster · {mappedCount} with a selected DAP account. Choose any model below for its own P&amp;L.</p>
+    <p className="text-[13px] text-muted-foreground">{models.rows.length} models in the roster · {mappedCount} with a selected DAP account · {selectedIds.length} selected for this report.</p>
 
     <Panel bodyClass="grid gap-5 lg:grid-cols-[1fr_1.3fr_auto]">
-      <Field label="Model">
-        <select className={inputClass} value={modelId} onChange={e => setModelId(e.target.value)}>
-          {models.rows.map(m => <option key={m.id} value={m.id}>{label(m.fields.model)}{label(m.fields.status) === "Ended" ? " (ended)" : ""}</option>)}
-        </select>
+      <Field label="Models in this P&L">
+        <div className="max-h-40 space-y-1 overflow-y-auto rounded-lg border p-2">{models.rows.map(m => <label key={m.id} className="flex cursor-pointer items-center gap-2 rounded px-2 py-1 text-[13px] hover:bg-muted"><input type="checkbox" checked={selectedIds.includes(m.id)} onChange={() => toggleModel(m.id)}/><span>{label(m.fields.model)}{label(m.fields.status) === "Ended" ? " (ended)" : ""}</span></label>)}</div>
+        <div className="mt-2 flex gap-2"><Btn size="sm" variant="ghost" onClick={() => { const ids = models.rows.filter(m => label(m.fields.status) !== "Ended").map(m => m.id); if (ids.length) { setSelectedIds(ids); if (!ids.includes(modelId)) setModelId(ids[0]); } }}>All active</Btn><Btn size="sm" variant="ghost" onClick={() => setSelectedIds(modelId ? [modelId] : [])}>One model</Btn></div>
       </Field>
       <Field label="Creator-wide reference · not DAP revenue">
         <div className="flex h-9 items-center gap-2 rounded-lg border bg-muted/50 px-3 text-[13px]">
-          <Store className="size-3.5 text-muted-foreground"/><span className="flex-1 truncate font-medium">{creator ? `${creator.name} · ${money(creator.net)} this period` : creators.isPending ? "Loading revenue…" : "No matching creator in this key’s revenue response"}</span>
+          <Store className="size-3.5 text-muted-foreground"/><span className="flex-1 truncate font-medium">{selectedIds.length > 1 ? "Combined report uses DAP account revenue for each selected model" : creator ? `${creator.name} · ${money(creator.net)} this period` : creators.isPending ? "Loading revenue…" : "No matching creator in this key’s revenue response"}</span>
         </div>
       </Field>
       <Field label="Period">
@@ -135,10 +161,24 @@ export default function PnL() {
 
     {!valid ? <Notice icon={AlertTriangle}>Choose valid dates, ending no later than today.</Notice>
     : [models, map, expenses, pay, staff].some(t => t.error) ? <Notice tone="red" icon={AlertTriangle}>Couldn’t load costs from Airtable. Refresh to try again.</Notice>
-    : !p ? <Empty title="Choose a model"/> : <>
+    : combined ? <>
+      {accountErrors.length > 0 && <Notice tone="red" icon={AlertTriangle}>Some selected DAP accounts could not be read: {accountErrors.join(" · ")}. Combined earnings and profit remain blank.</Notice>}
+      {reports.some(r => r.pageRevenue === null) && <Notice icon={AlertTriangle}>A selected model has no verified DAP revenue. Connect its account and confirm API access before using the combined earnings or profit.</Notice>}
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
+        <Stat label="20MG income" icon={Banknote} value={money(combined.income, 2)} sub={`${reports.length} selected models · before chargebacks`}/>
+        <Stat label="Model payouts" icon={Wallet} value={combined.payout === null ? "—" : money(-combined.payout, 2)}/>
+        <Stat label="Staff wages" icon={Users} value={money(-combined.wages, 2)}/>
+        <Stat label="Paid expenses" icon={Receipt} value={money(-combined.expenses, 2)}/>
+        <Stat accent label="Combined net profit" icon={TrendingUp} value={money(combined.profit, 2)} tone={combined.profit === null ? "" : combined.profit >= 0 ? "positive" : "negative"}/>
+      </div>
+      <Panel title="Selected models" subtitle="Each row uses only that model’s mapped DAP accounts. Missing revenue stays blank.">
+        <div className="overflow-x-auto"><table className="w-full min-w-[650px] text-left text-[13px]"><thead className="border-b text-muted-foreground"><tr><th className="py-2">Model</th><th>DAP revenue</th><th>20MG income</th><th>Payout</th><th>Wages</th><th>Expenses</th><th>Profit</th></tr></thead><tbody>{reports.map(r => <tr key={r.modelId} className="border-b last:border-0"><th className="py-2 font-medium">{r.name}</th><td>{money(r.pageRevenue, 2)}</td><td>{money(r.income, 2)}</td><td>{money(r.payout, 2)}</td><td>{money(r.wages, 2)}</td><td>{money(r.expenses, 2)}</td><td>{money(r.profit, 2)}</td></tr>)}</tbody></table></div>
+      </Panel>
+      <Notice>Wages and paid expenses linked to several models are split between them. Unassigned expenses are excluded. Revenue is transaction net before chargebacks.</Notice>
+    </> : !p ? <Empty title="Choose a model"/> : <>
       <div className="space-y-2">
         {creators.isError && <Notice tone="red" icon={AlertTriangle}>Creator Staq revenue is unavailable: {(creators.error as Error).message}. Costs are shown; profit can’t be calculated.</Notice>}
-        {accountRevenue.isError && <Notice tone="red" icon={AlertTriangle}>DAP account revenue is unavailable: {(accountRevenue.error as Error).message}. Check the mapped account slug and Creator Staq access.</Notice>}
+        {accountErrors.length > 0 && <Notice tone="red" icon={AlertTriangle}>DAP account revenue is unavailable: {accountErrors.join(" · ")}. Check the mapped account and Creator Staq access.</Notice>}
         {!accountRows.length && <Notice icon={Link2}>No DAP account is mapped to {p.name}. Select its account under Revenue → Model deals.</Notice>}
         {accountRows.length !== accountSlugs.length && <Notice icon={AlertTriangle}>A mapped account has no slug. Earnings and profit remain unavailable until all mapped accounts are identified.</Notice>}
         {p.pageRevenue !== null && <Notice>Revenue for {accountSlugs.join(", ")} is transaction net before chargebacks. The monthly ledger may differ after chargebacks.</Notice>}
