@@ -100,7 +100,7 @@ export default function Overview() {
       <Stat accent label="Profit · this month" icon={Wallet} value={d.profit === null ? "—" : money(d.profit)} tone={d.profit === null ? "" : d.profit >= 0 ? "positive" : "negative"}
         sub={<a href="/pnl" className="inline-flex items-center gap-1 hover:text-white">Open P&amp;L <ArrowRight className="size-3"/></a>}/>
       <Stat label="Earnings · this month" icon={Banknote} value={d.income === null ? "—" : money(d.income)}
-        sub={creators.isError ? "Creator Staq unavailable" : d.income === null ? "Creator Staq returned incomplete model coverage" : d.payout ? `${money(d.payout)} paid out to model` : "Creator Staq net"}/>
+        sub={creators.isError ? "Creator Staq unavailable" : d.income === null ? "DAP account-level revenue is not connected" : d.payout ? `${money(d.payout)} paid out to model` : "Creator Staq net"}/>
       <Stat label="Costs · this month" icon={Wallet} value={money(d.wages + d.exp)} sub={`${money(d.wages)} wages · ${money(d.exp)} expenses`}/>
       <Stat label="Conversions · this week" icon={Target} value={d.thisTotal.toLocaleString()} delta={d.lastTotal ? d.thisTotal - d.lastTotal : null} deltaLabel="vs last week" sub={`Last week ${d.lastTotal}`}/>
     </div>

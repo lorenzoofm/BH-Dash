@@ -51,7 +51,7 @@ export default function Revenue() {
     const matched = (mtd.data ?? []).filter(c => activeNames.includes(c.name.trim().toLowerCase()));
     const missing = activeNames.filter(name => !matched.some(c => c.name.trim().toLowerCase() === name));
     const unlinked = (mtd.data ?? []).filter(c => !activeNames.includes(c.name.trim().toLowerCase()));
-    return {chart, config, shown, last, prev, best, mtdTotal: matched.reduce((s, c) => s + c.net, 0), trailing: full.slice(-6).reduce((s, r) => s + r.total, 0), missing, unlinked};
+    return {chart, config, shown, last, prev, best, trailing: full.slice(-6).reduce((s, r) => s + r.total, 0), missing, unlinked};
   }, [monthly.data, map.rows, models.rows, mtd.data, today]);
 
   if ([models, map].some(t => t.error)) return <TableError tables={[models, map]}/>;
@@ -59,14 +59,15 @@ export default function Revenue() {
   const fmtMonth = (m: string) => new Date(m + "-01T00:00:00Z").toLocaleDateString("en-GB", {month: "short", year: "2-digit", timeZone: "UTC"});
 
   return <div className="space-y-6">
-    <PageHeader eyebrow="Finance" title="Revenue" subtitle="Creator Staq earnings by creator, plus each model’s deal and Airtable page assignments."
+    <PageHeader eyebrow="Finance" title="Revenue" subtitle="DAP account assignments, model deals and available account-level history."
       actions={<Btn variant="primary" onClick={() => setAdding(true)}><Plus/>Add model</Btn>}/>
 
     {(monthly.isError || mtd.isError) && <Notice tone="red" icon={AlertTriangle}>Creator Staq is unavailable: {((monthly.error ?? mtd.error) as Error).message}</Notice>}
-    {mtd.isSuccess && (d.missing.length > 0 || d.unlinked.length > 0) && <Notice icon={AlertTriangle}>Creator Staq returned incomplete model coverage for this period. Company revenue totals are hidden until missing and unmatched creators are reconciled.</Notice>}
+    <Notice icon={AlertTriangle}>Creator Staq’s ranged API combines a creator’s accounts. DAP-only current revenue is withheld until account-level revenue is connected.</Notice>
+    {mtd.isSuccess && (d.missing.length > 0 || d.unlinked.length > 0) && <Notice icon={AlertTriangle}>The current API key also has missing or unmatched creators. Reconcile account access before company reporting.</Notice>}
 
     <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-      <Stat accent label="This month so far" icon={Banknote} value={mtd.isSuccess && !d.missing.length && !d.unlinked.length ? money(d.mtdTotal) : "—"} sub="Creator Staq net · all models required"/>
+      <Stat accent label="This month so far" icon={Banknote} value="—" sub="DAP account revenue not connected"/>
       <Stat label="Last full month" icon={CalendarDays} value={!d.missing.length && d.last?.total ? money(d.last.total) : "—"} delta={!d.missing.length && d.last?.total && d.prev?.total ? Math.round(d.last.total - d.prev.total) : null} deltaLabel="vs prior" sub={d.last ? fmtMonth(d.last.month) : undefined}/>
       <Stat label="Last 6 months" icon={TrendingUp} value={monthly.isSuccess && !d.missing.length && d.chart.some(r => r.total) ? money(d.trailing) : "—"} sub="Full months only"/>
       <Stat label="Best month" icon={Trophy} value={!d.missing.length && d.best?.total ? money(d.best.total) : "—"} sub={d.best ? fmtMonth(d.best.month) : undefined}/>
@@ -101,7 +102,7 @@ export default function Revenue() {
       </div>
     </Panel>
 
-    <Panel title="Creator Staq pages" icon={Store} subtitle="Airtable account assignments for account-level reports. Creator-level P&L matches Creator Staq names to models." flush>
+    <Panel title="Creator Staq pages" icon={Store} subtitle="Assign only each model’s DAP account here. Turn off Include in P&L for her other accounts." flush>
       <div className="mt-4 border-t">
         <DataGrid rows={map.rows} initialSort={{key: "slug", dir: "asc"}} searchPlaceholder="Search pages"
           columns={[

@@ -109,7 +109,7 @@ Open this in the dashboard's browser console only after signing in. The URL is s
 
 | Upstream path | Allowed parameters | Expected response data |
 | --- | --- | --- |
-| `/v1/computed/revenue/monthly` | `months=1` through `24`; defaults to 24 | `monthly_by_account` array |
+| `/v1/computed/revenue/monthly` | `months=6`, `12`, `24`, or `all`; defaults to 24 | `monthly_by_account` array |
 | `/v1/computed/revenue/ranged` | `start=YYYY-MM-DD&end=YYYY-MM-DD`; start before end, at most 32 days apart | `by_creator` array |
 
 Other hosts, paths, parameters, credentials in URLs, fragments and redirects are rejected. The proxy forwards the server-side `CREATORSTAQ_AUTH` header, validates the expected array, and caches successful requests for 60 seconds. It does not provide Creatorstaq credentials to the browser. Example signed-in browser call:
@@ -120,15 +120,15 @@ const response = await fetch('/api/revenue?url=' + encodeURIComponent(upstream))
 console.log(await response.json());
 ```
 
-The P&L uses ranged `by_creator` values such as `creator_id`, `name`, and `net_revenue`. Creator IDs are **not** account IDs: creator earnings are matched to Airtable Models by exact case-insensitive name. Revenue's account-level monthly history uses `monthly_by_account` groups with `month` and account values such as `account_id`, `slug`, `name`, and `net`. These are fields consumed by this code, **not a complete official Creatorstaq schema**. Never replace missing revenue with zero.
+The ranged response contains `by_creator` values such as `creator_id`, `name`, and `net_revenue`; it has no `by_account` field. A creator can own multiple accounts, so its net cannot be used as DAP-only P&L. Creator IDs are **not** account IDs. Revenue's account-level monthly history uses `monthly_by_account` groups with `month` and account values such as `account_id`, `slug`, `name`, and `net`. These are fields consumed by this code, **not a complete official Creatorstaq schema**. Never replace missing account revenue with a creator total or zero.
 
 ### Live connection status (24 September 2026)
 
 - The Worker at `https://20mg-bh.twentymg-automation.workers.dev/` is deployed behind Cloudflare Access and reads the configured BH Airtable base. P&L and Revenue were checked in an authenticated browser.
-- The configured Creatorstaq key returns current ranged creator earnings for April, Erin and Kylie. For example, April's 1–24 September net is $6,164.95, and her P&L uses that amount with Airtable payouts, wages and expenses.
+- The configured Creatorstaq key returns current ranged **creator-wide** earnings for April, Erin and Kylie. For example, April's 1–24 September creator-wide net is $6,164.95. This can include multiple accounts and is shown only as a reference; DAP earnings, payouts and profit remain unavailable until an account-level ranged source is connected.
 - The same key returns **no revenue record** for Skye, Lolita, Astrid or Mia in that period. Its account listing includes six pages and does not include the mapped pages for Skye, Lolita or Mia. This could be a scope issue or a true zero for a given model; the dashboard cannot tell which. Company-wide income and profit are withheld until coverage is confirmed.
 - The key's 12-month `monthly_by_account` response contains no account-level history usable for the chart. The Revenue page shows that limitation rather than inventing monthly totals.
-- To finish full company reporting, obtain Creatorstaq access covering every active model and confirm the page/account mapping. Store any replacement authorization value in the encrypted `CREATORSTAQ_AUTH` Worker secret, then recheck P&L, Revenue and Overview. Do not add it to this repository.
+- To finish DAP-only reporting, obtain a Creatorstaq endpoint or export that returns net revenue per **account ID** for an arbitrary date range. Map each DAP account ID to its Airtable Model in `Model Accounts`, excluding other accounts, then sum only those IDs for P&L, Revenue and Overview. The screenshot of April DAP identifies `irlapril` (account 329); the other DAP selections still need confirmation. Also obtain key access covering every selected DAP account. Store any replacement authorization value in the encrypted `CREATORSTAQ_AUTH` Worker secret, then recheck figures against Creatorstaq's account pages. Do not add it to this repository.
 
 ## Operational behavior and errors
 

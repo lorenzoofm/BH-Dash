@@ -9,7 +9,7 @@ export type ModelPnL = {
   modelCut: number | null;
   ourCut: number | null;
   linked: boolean;
-  pageRevenue: number;
+  pageRevenue: number | null;
   income: number | null;   // what 20MG earns before costs; null when a required % is missing
   payout: number | null;   // to the model (Managed deals only)
   wages: number;
@@ -29,7 +29,7 @@ const inRange = (d: any, start: string, end: string) => {
 
 /*
   One model's P&L for [start, end]:
-  - Revenue: Creator Staq's creator-level net, matched by exact model name.
+  - Revenue: unavailable until Creator Staq provides account-level ranged net.
   - Managed: 20MG keeps the page revenue and pays the model Model's Cut %.
     Chat-only: 20MG earns Our Cut % of page revenue; no payout.
   - Wages: every Pay Log row (paid or unpaid) for staff assigned to the model,
@@ -45,14 +45,14 @@ export function modelPnL(model: Rec, {staff, paylog, expenses, map, creators, st
   // The ranged API returns creator_id, not an account ID. Its creator name is
   // the only identity shared with the Airtable Models table.
   const matches = creators.filter(c => c.name.trim().toLowerCase() === label(model.fields.model).trim().toLowerCase());
-  const pageRevenue = matches.length === 1 ? matches[0].net : 0;
+  // by_creator combines a model's accounts. It cannot establish DAP revenue.
+  const pageRevenue = null;
   const dealType = label(model.fields.dealType);
   const modelCut = model.fields.modelCut == null ? null : num(model.fields.modelCut);
   const ourCut = model.fields.ourCut == null ? null : num(model.fields.ourCut);
   const chatOnly = dealType === "Chat-only";
-  const known = revenueKnown && matches.length === 1 && (dealType === "Managed" || chatOnly);
-  const income = !known ? null : chatOnly ? (ourCut === null ? null : pageRevenue * ourCut / 100) : pageRevenue;
-  const payout = !known ? null : chatOnly ? 0 : (modelCut === null ? (pageRevenue === 0 ? 0 : null) : pageRevenue * modelCut / 100);
+  const income = null;
+  const payout = null;
 
   const staffInfo = new Map(staff.map(s => [s.id, {name: label(s.fields.name), models: linkIds(s.fields.model)}]));
   const byStaff = new Map<string, {id: string; name: string; hours: number; pay: number; unpaid: number}>();

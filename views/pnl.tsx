@@ -64,7 +64,7 @@ export default function PnL() {
   const showRevenue = p && p.income !== null;
 
   return <div className="space-y-6">
-    <PageHeader eyebrow="Finance" title="Profit & Loss" subtitle="One model at a time: her Creator Staq earnings, less payout, staff wages and expenses."
+    <PageHeader eyebrow="Finance" title="Profit & Loss" subtitle="One model at a time: DAP revenue, payout, staff wages and expenses."
       actions={<Btn onClick={() => { creators.refetch(); [models, map, expenses, pay, staff].forEach(t => t.refetch()); }} disabled={syncing}><RefreshCw className={syncing ? "animate-spin" : ""}/>Refresh</Btn>}/>
 
     <Panel bodyClass="grid gap-5 lg:grid-cols-[1fr_1.3fr_auto]">
@@ -73,7 +73,7 @@ export default function PnL() {
           {models.rows.map(m => <option key={m.id} value={m.id}>{label(m.fields.model)}{label(m.fields.status) === "Ended" ? " (ended)" : ""}</option>)}
         </select>
       </Field>
-      <Field label="Creator Staq creator">
+      <Field label="Creator-wide reference · not DAP revenue">
         <div className="flex h-9 items-center gap-2 rounded-lg border bg-muted/50 px-3 text-[13px]">
           <Store className="size-3.5 text-muted-foreground"/><span className="flex-1 truncate font-medium">{creator ? `${creator.name} · ${money(creator.net)} this period` : creators.isPending ? "Loading revenue…" : "No matching creator in this key’s revenue response"}</span>
         </div>
@@ -96,13 +96,14 @@ export default function PnL() {
     : !p ? <Empty title="Choose a model"/> : <>
       <div className="space-y-2">
         {creators.isError && <Notice tone="red" icon={AlertTriangle}>Creator Staq revenue is unavailable: {(creators.error as Error).message}. Costs are shown; profit can’t be calculated.</Notice>}
+        <Notice icon={AlertTriangle}>Creator Staq’s ranged API combines every account under a creator. DAP account revenue is not available from this response, so earnings, payout and profit are withheld until an account-level source is connected.</Notice>
         {creators.isSuccess && !p.linked && <Notice icon={Link2}>No revenue record for {p.name} is visible to the current Creator Staq key. Earnings and profit remain unavailable.</Notice>}
         {p.linked && p.dealType !== "Managed" && p.dealType !== "Chat-only" && <Notice icon={AlertTriangle}>{p.name} has no recognised deal type. Set it under Revenue → Model deals before profit can be calculated.</Notice>}
         {p.linked && p.income !== null && p.payout === null && <Notice icon={AlertTriangle}>{p.name} has no Model’s Cut % set, so her payout and profit can’t be calculated.</Notice>}
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
-        <Stat label={p.dealType === "Chat-only" ? "Our chatting fee" : "Earnings"} icon={Banknote} value={p.income === null ? "—" : money(p.income, 2)} sub={p.dealType === "Chat-only" ? `${p.ourCut ?? "?"}% of ${money(p.pageRevenue)}` : "Creator Staq net"}/>
+        <Stat label={p.dealType === "Chat-only" ? "Our chatting fee" : "Earnings"} icon={Banknote} value={p.income === null ? "—" : money(p.income, 2)} sub="DAP account revenue not connected"/>
         <Stat label="Model payout" icon={Wallet} value={p.payout === null ? "—" : money(-p.payout, 2)} sub={p.dealType === "Chat-only" ? "Not applicable" : `${p.modelCut ?? "?"}% to ${p.name}`}/>
         <Stat label="Staff wages" icon={Users} value={money(-p.wages, 2)} sub={`${p.byStaff.length} staff · ${money(p.unpaidWages)} unpaid`}/>
         <Stat label="Expenses" icon={Receipt} value={money(-p.expenses, 2)} sub={p.unpaidExpenses ? `${money(p.unpaidExpenses)} unpaid, not deducted` : "Paid expenses"}/>
