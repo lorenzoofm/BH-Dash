@@ -2,6 +2,12 @@
 
 Standalone manager-only dashboard backed by the existing BH Airtable base and a server-side Creatorstaq connection. The first hosted review is owner-private. It does not replace or publish the existing Softr site.
 
+This repository contains the custom dashboard source, including Overview, Conversions, Staff, Pay & Hours, P&L, Expenses and Revenue. Publishing this repository does **not** make the dashboard site live or publish its Airtable records. The Cloudflare Worker URL remains disabled until Cloudflare Access is configured and the route is deliberately enabled. See [CLOUDFLARE.md](CLOUDFLARE.md).
+
+## Local setup
+
+Use Node 22.13 or newer. Run `npm run install:ci`, then the checks below and `npm run build`. Keep credentials in ignored `.env.local` for local development; do not commit them. A Cloudflare deployment needs encrypted Worker secrets `AIRTABLE_TOKEN` and `CREATORSTAQ_AUTH`, plus real Access issuer/audience settings. The account ID, Airtable base/table IDs and example email addresses in this source are configuration identifiers, not credentials; forks must use their own values and data.
+
 ## Runtime configuration
 
 AIRTABLE_TOKEN and CREATORSTAQ_AUTH are secrets. CREATORSTAQ_AUTH is the full Bearer authorization value. MANAGER_EMAILS is the exact comma-separated email allowlist; DASHBOARD_KIND=bh; OTHER_DASHBOARD_URL links to Content Studio. Use ignored .env.local for local preview. Local loopback mock authentication is excluded from the production server.
