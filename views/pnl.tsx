@@ -3,7 +3,7 @@ import {useEffect, useMemo, useState} from "react";
 import {AlertTriangle, Banknote, Link2, Receipt, RefreshCw, Store, TrendingUp, Users, Wallet} from "lucide-react";
 import {Bar, Btn, Empty, Field, Notice, PageHeader, PageSkeleton, Panel, Segmented, Stat, inputClass} from "@/components/bh/ui";
 import {addDays, label, linkIds, money, num, todayIso, validDay} from "@/lib/bh";
-import {useCreators, useTable} from "@/lib/tables";
+import {useAccountRevenue, useCreators, useTable} from "@/lib/tables";
 import {modelPnL} from "@/lib/finance";
 
 type Preset = "month" | "last-month" | "7d" | "30d" | "custom";
@@ -38,8 +38,11 @@ export default function PnL() {
   useEffect(() => { if (modelId) try { localStorage.setItem(MODEL_KEY, modelId); } catch {} }, [modelId]);
 
   const model = models.rows.find(m => m.id === modelId);
-  const p = useMemo(() => model && valid ? modelPnL(model, {staff: staff.rows, paylog: pay.rows, expenses: expenses.rows, map: map.rows, creators: creators.data ?? [], start, end, revenueKnown: creators.isSuccess}) : null,
-    [model, valid, staff.rows, pay.rows, expenses.rows, map.rows, creators.data, creators.isSuccess, start, end]);
+  const accountRows = map.rows.filter(r => r.fields.include !== false && linkIds(r.fields.model).includes(modelId));
+  const accountSlugs = accountRows.map(r => label(r.fields.slug)).filter(Boolean);
+  const accountRevenue = useAccountRevenue(accountSlugs, valid ? start : null, valid ? end : null);
+  const p = useMemo(() => model && valid ? modelPnL(model, {staff: staff.rows, paylog: pay.rows, expenses: expenses.rows, map: map.rows, creators: creators.data ?? [], start, end, revenueKnown: creators.isSuccess, accountRevenue: accountRows.length === accountSlugs.length && accountRevenue.isSuccess ? accountRevenue.data : null}) : null,
+    [model, valid, staff.rows, pay.rows, expenses.rows, map.rows, creators.data, creators.isSuccess, accountRevenue.data, accountRevenue.isSuccess, accountRows.length, accountSlugs.length, start, end]);
   const company = useMemo(() => {
     if (!valid || !creators.isSuccess) return null;
     const active = models.rows.filter(m => label(m.fields.status) !== "Ended").map(m => modelPnL(m, {staff: staff.rows, paylog: pay.rows, expenses: expenses.rows, map: map.rows, creators: creators.data ?? [], start, end, revenueKnown: true}));
@@ -60,12 +63,12 @@ export default function PnL() {
   if (!today || !range || [models, map, expenses, pay, staff].some(t => t.loading)) return <PageSkeleton/>;
   const creator = creators.data?.find(c => c.name.trim().toLowerCase() === label(model?.fields.model).trim().toLowerCase());
 
-  const syncing = creators.isFetching || [models, map, expenses, pay, staff].some(t => t.fetching);
+  const syncing = creators.isFetching || accountRevenue.isFetching || [models, map, expenses, pay, staff].some(t => t.fetching);
   const showRevenue = p && p.income !== null;
 
   return <div className="space-y-6">
     <PageHeader eyebrow="Finance" title="Profit & Loss" subtitle="One model at a time: DAP revenue, payout, staff wages and expenses."
-      actions={<Btn onClick={() => { creators.refetch(); [models, map, expenses, pay, staff].forEach(t => t.refetch()); }} disabled={syncing}><RefreshCw className={syncing ? "animate-spin" : ""}/>Refresh</Btn>}/>
+      actions={<Btn onClick={() => { creators.refetch(); accountRevenue.refetch(); [models, map, expenses, pay, staff].forEach(t => t.refetch()); }} disabled={syncing}><RefreshCw className={syncing ? "animate-spin" : ""}/>Refresh</Btn>}/>
 
     <Panel bodyClass="grid gap-5 lg:grid-cols-[1fr_1.3fr_auto]">
       <Field label="Model">
@@ -96,14 +99,16 @@ export default function PnL() {
     : !p ? <Empty title="Choose a model"/> : <>
       <div className="space-y-2">
         {creators.isError && <Notice tone="red" icon={AlertTriangle}>Creator Staq revenue is unavailable: {(creators.error as Error).message}. Costs are shown; profit can’t be calculated.</Notice>}
-        <Notice icon={AlertTriangle}>Creator Staq’s ranged API combines every account under a creator. DAP account revenue is not available from this response, so earnings, payout and profit are withheld until an account-level source is connected.</Notice>
-        {creators.isSuccess && !p.linked && <Notice icon={Link2}>No revenue record for {p.name} is visible to the current Creator Staq key. Earnings and profit remain unavailable.</Notice>}
+        {accountRevenue.isError && <Notice tone="red" icon={AlertTriangle}>DAP account revenue is unavailable: {(accountRevenue.error as Error).message}. Check the mapped account slug and Creator Staq access.</Notice>}
+        {!accountRows.length && <Notice icon={Link2}>No DAP account is mapped to {p.name}. Select its account under Revenue → Model deals.</Notice>}
+        {accountRows.length !== accountSlugs.length && <Notice icon={AlertTriangle}>A mapped account has no slug. Earnings and profit remain unavailable until all mapped accounts are identified.</Notice>}
+        {p.pageRevenue !== null && <Notice>Revenue for {accountSlugs.join(", ")} is transaction net before chargebacks. The monthly ledger may differ after chargebacks.</Notice>}
         {p.linked && p.dealType !== "Managed" && p.dealType !== "Chat-only" && <Notice icon={AlertTriangle}>{p.name} has no recognised deal type. Set it under Revenue → Model deals before profit can be calculated.</Notice>}
         {p.linked && p.income !== null && p.payout === null && <Notice icon={AlertTriangle}>{p.name} has no Model’s Cut % set, so her payout and profit can’t be calculated.</Notice>}
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
-        <Stat label={p.dealType === "Chat-only" ? "Our chatting fee" : "Earnings"} icon={Banknote} value={p.income === null ? "—" : money(p.income, 2)} sub="DAP account revenue not connected"/>
+        <Stat label={p.dealType === "Chat-only" ? "Our chatting fee" : "Earnings"} icon={Banknote} value={p.income === null ? "—" : money(p.income, 2)} sub={p.pageRevenue === null ? "DAP account revenue unavailable" : `${accountSlugs.join(", ")} · before chargebacks`}/>
         <Stat label="Model payout" icon={Wallet} value={p.payout === null ? "—" : money(-p.payout, 2)} sub={p.dealType === "Chat-only" ? "Not applicable" : `${p.modelCut ?? "?"}% to ${p.name}`}/>
         <Stat label="Staff wages" icon={Users} value={money(-p.wages, 2)} sub={`${p.byStaff.length} staff · ${money(p.unpaidWages)} unpaid`}/>
         <Stat label="Expenses" icon={Receipt} value={money(-p.expenses, 2)} sub={p.unpaidExpenses ? `${money(p.unpaidExpenses)} unpaid, not deducted` : "Paid expenses"}/>

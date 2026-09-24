@@ -29,7 +29,7 @@ const inRange = (d: any, start: string, end: string) => {
 
 /*
   One model's P&L for [start, end]:
-  - Revenue: unavailable until Creator Staq provides account-level ranged net.
+  - Revenue: selected Creator Staq account-level ranged net, before chargebacks.
   - Managed: 20MG keeps the page revenue and pays the model Model's Cut %.
     Chat-only: 20MG earns Our Cut % of page revenue; no payout.
   - Wages: every Pay Log row (paid or unpaid) for staff assigned to the model,
@@ -38,21 +38,21 @@ const inRange = (d: any, start: string, end: string) => {
     Unassigned expenses are excluded until allocated to a model; otherwise each
     model's report would count the same company expense in full.
 */
-export function modelPnL(model: Rec, {staff, paylog, expenses, map, creators, start, end, revenueKnown}: {
-  staff: Rec[]; paylog: Rec[]; expenses: Rec[]; map: Rec[]; creators: Creator[]; start: string; end: string; revenueKnown: boolean;
+export function modelPnL(model: Rec, {staff, paylog, expenses, map, creators, start, end, revenueKnown, accountRevenue = null}: {
+  staff: Rec[]; paylog: Rec[]; expenses: Rec[]; map: Rec[]; creators: Creator[]; start: string; end: string; revenueKnown: boolean; accountRevenue?: number | null;
 }): ModelPnL {
   const modelId = model.id;
   // The ranged API returns creator_id, not an account ID. Its creator name is
   // the only identity shared with the Airtable Models table.
   const matches = creators.filter(c => c.name.trim().toLowerCase() === label(model.fields.model).trim().toLowerCase());
   // by_creator combines a model's accounts. It cannot establish DAP revenue.
-  const pageRevenue = null;
+  const pageRevenue = accountRevenue;
   const dealType = label(model.fields.dealType);
   const modelCut = model.fields.modelCut == null ? null : num(model.fields.modelCut);
   const ourCut = model.fields.ourCut == null ? null : num(model.fields.ourCut);
   const chatOnly = dealType === "Chat-only";
-  const income = null;
-  const payout = null;
+  const income = pageRevenue === null ? null : chatOnly ? ourCut === null ? null : pageRevenue * ourCut / 100 : dealType === "Managed" ? pageRevenue : null;
+  const payout = pageRevenue === null ? null : chatOnly ? 0 : dealType === "Managed" && modelCut !== null ? pageRevenue * modelCut / 100 : null;
 
   const staffInfo = new Map(staff.map(s => [s.id, {name: label(s.fields.name), models: linkIds(s.fields.model)}]));
   const byStaff = new Map<string, {id: string; name: string; hours: number; pay: number; unpaid: number}>();
@@ -85,7 +85,7 @@ export function modelPnL(model: Rec, {staff, paylog, expenses, map, creators, st
   const expenseTotal = [...byCategory.values()].reduce((s, v) => s + v, 0);
   const profit = income === null || payout === null ? null : income - payout - wages - expenseTotal;
   return {
-    modelId, name: label(model.fields.model), dealType, modelCut, ourCut, linked: matches.length === 1, pageRevenue,
+    modelId, name: label(model.fields.model), dealType, modelCut, ourCut, linked: pageRevenue !== null || matches.length === 1, pageRevenue,
     income, payout, wages, unpaidWages: staffRows.reduce((s, r) => s + r.unpaid, 0), expenses: expenseTotal, unpaidExpenses, profit,
     margin: profit !== null && income ? profit / income : null,
     byStaff: staffRows,

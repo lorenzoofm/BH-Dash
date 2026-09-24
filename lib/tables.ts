@@ -2,7 +2,7 @@
 import {useMemo} from "react";
 import {useQuery} from "@tanstack/react-query";
 import {useProxyFetch, useRecordCreate, useRecordDelete, useRecordUpdate, useRecords} from "@/lib/datasource";
-import {fetchCreators, label, linkIds, rowsOf, useAllPages} from "@/lib/bh";
+import {fetchCreators, label, linkIds, revenueRanges, rowsOf, useAllPages} from "@/lib/bh";
 
 // One field selection per Airtable table. Every page reads through these, so the
 // query cache is shared and navigating between pages doesn't refetch.
@@ -72,4 +72,30 @@ export function useCreators(start: string | null, end: string | null) {
 // The Creator Staq page ids linked to a model through Model Accounts.
 export function linkedPages(mapRows: {fields: Record<string, any>}[], modelId: string) {
   return new Set(mapRows.filter(r => r.fields.include !== false && linkIds(r.fields.model).includes(modelId)).map(r => String(r.fields.accountId ?? "")));
+}
+
+export function useAccountRevenue(slugs: string[], start: string | null, end: string | null) {
+  const proxyFetch = useProxyFetch("live");
+  const accounts = [...new Set(slugs)].sort();
+  return useQuery({
+    queryKey: ["bh-account-revenue", accounts.join(","), start, end],
+    enabled: accounts.length > 0 && !!start && !!end && start <= end,
+    staleTime: 60000, retry: 1,
+    queryFn: async () => {
+      let total = 0;
+      for (const slug of accounts) for (const range of revenueRanges(start!, end!)) {
+        const url = `https://api.creatorstaq.com/v1/computed/${encodeURIComponent(slug)}/revenue/ranged?start=${range.start}&end=${range.end}`;
+        const response = await proxyFetch(url);
+        if (!response.ok) {
+          const body = await response.json().catch(() => ({}));
+          throw new Error(body.error || `Creator Staq returned ${response.status}`);
+        }
+        const body = await response.json();
+        const amount = Number(body.kpis?.total_net);
+        if (!Number.isFinite(amount)) throw new Error("Creator Staq returned incomplete account revenue");
+        total += amount;
+      }
+      return total;
+    },
+  });
 }
