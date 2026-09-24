@@ -19,9 +19,9 @@ export const SELECT = {
 
 export type TableName = keyof typeof SELECT;
 
-export function useTable(name: TableName) {
+export function useTable(name: TableName, enabled = true) {
   const select = SELECT[name];
-  const result = useRecords({from: name, select});
+  const result = useRecords({from: name, select, enabled});
   useAllPages(result);
   const onError = () => {};
   const create = useRecordCreate({from: name, fields: select as any, onError});
@@ -30,7 +30,7 @@ export function useTable(name: TableName) {
   const rows = useMemo(() => rowsOf(result), [result.data]);
   return {
     rows,
-    loading: result.status !== "error" && (result.status === "pending" || !!result.hasNextPage),
+    loading: enabled && result.status !== "error" && (result.status === "pending" || !!result.hasNextPage),
     error: result.status === "error" ? (result.error as Error) : null,
     refetch: result.refetch,
     fetching: result.isFetching,
@@ -61,10 +61,10 @@ export const CHOICES = {
 } as const;
 
 // Creator Staq earnings by page for a date range (inclusive).
-export function useCreators(start: string | null, end: string | null) {
+export function useCreators(start: string | null, end: string | null, enabled = true) {
   const proxyFetch = useProxyFetch("live");
   return useQuery({
-    queryKey: ["bh-creators", start, end], enabled: !!start && !!end && start <= end, staleTime: 60000, refetchInterval: 120000, retry: 1,
+    queryKey: ["bh-creators", start, end], enabled: enabled && !!start && !!end && start <= end, staleTime: 60000, refetchInterval: 120000, retry: 1,
     queryFn: () => fetchCreators(proxyFetch, start!, end!),
   });
 }

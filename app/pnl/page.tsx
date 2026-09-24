@@ -1,2 +1,3 @@
 import PnL from "@/views/pnl";
-export default function Page(){return <PnL/>;}
+import {requireFinance} from '@/app/finance-access';
+export default async function Page(){await requireFinance();return <PnL/>;}

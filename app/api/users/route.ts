@@ -1,4 +1,4 @@
-import { session } from '@/lib/data-server';
+import { session, adminEmails } from '@/lib/data-server';
 import { getPolicy, normalizeEmail, policyEmails, setPolicyEmails } from '@/lib/access-policy';
 
 export const dynamic = 'force-dynamic';
@@ -12,7 +12,7 @@ async function admin() { const s=await session(); if(!s.isAdmin) throw new Error
 function sameOrigin(request:Request) { if (request.headers.get('origin') !== new URL(request.url).origin) throw new Error('403:Invalid request origin.'); }
 
 export async function GET() {
-  try { await admin(); return Response.json({emails:policyEmails(await getPolicy(env()))},{headers:{'Cache-Control':'no-store'}}); }
+  try { await admin(); const emails=policyEmails(await getPolicy(env())); return Response.json({emails,admins:adminEmails()},{headers:{'Cache-Control':'no-store'}}); }
   catch(error) { return failure(error); }
 }
 export async function POST(request:Request) {
