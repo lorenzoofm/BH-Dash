@@ -65,7 +65,7 @@ export default function Overview() {
     const shared = expenses.rows.filter(e => !linkIds(e.fields.model).length && String(e.fields.date ?? "").slice(0, 10) >= monthStart && String(e.fields.date ?? "").slice(0, 10) <= today);
     const sharedPaid = shared.filter(e => label(e.fields.status) === "Paid").reduce((s, e) => s + num(e.fields.amount), 0);
     const linked = pnls.filter(p => p.linked);
-    const income = !creators.isSuccess || !linked.length || linked.some(p => p.income === null) ? null : linked.reduce((s, p) => s + p.income!, 0);
+    const income = !creators.isSuccess || pnls.some(p => p.income === null) ? null : linked.reduce((s, p) => s + p.income!, 0);
     const payout = linked.reduce((s, p) => s + (p.payout ?? 0), 0);
     const wages = pnls.reduce((s, p) => s + p.wages, 0);
     const exp = pnls.reduce((s, p) => s + p.expenses, 0) + sharedPaid;
@@ -81,7 +81,7 @@ export default function Overview() {
       ...active.filter(s => (lastLogged.get(s.id) ?? "") < addDays(today, -2)).map(s => ({tone: "amber" as const, text: `${label(s.fields.name)} — no hours logged since ${lastLogged.get(s.id) ? shortDate(lastLogged.get(s.id)!) : "ever"}`, href: "/pay-hours"})),
       ...active.filter(s => !grid.get(weeks[2])!.has(s.id)).map(s => ({tone: "amber" as const, text: `${label(s.fields.name)} — last week’s conversions not entered`, href: "/conversions"})),
       ...board.filter(b => b.lastTarget !== null && b.last !== null && b.last < b.lastTarget).map(b => ({tone: "red" as const, text: `${b.name} — missed target last week (${b.last}/${b.lastTarget})`, href: "/staff"})),
-      ...live.filter(m => !pnls.find(p => p.modelId === m.id)?.linked).map(m => ({tone: "amber" as const, text: `${label(m.fields.model)} — no Creator Staq page linked`, href: "/pnl"})),
+      ...live.filter(m => !pnls.find(p => p.modelId === m.id)?.linked).map(m => ({tone: "amber" as const, text: `${label(m.fields.model)} — no revenue record in current Creator Staq key`, href: "/pnl"})),
     ];
     const daysIn = Math.round((Date.parse(today) - Date.parse(thisWeek)) / 864e5) + 1;
     return {thisWeek, weeks, chart, keys, config, board, income, payout, wages, exp, profit, unpaidWages, alerts, daysIn,
@@ -100,7 +100,7 @@ export default function Overview() {
       <Stat accent label="Profit · this month" icon={Wallet} value={d.profit === null ? "—" : money(d.profit)} tone={d.profit === null ? "" : d.profit >= 0 ? "positive" : "negative"}
         sub={<a href="/pnl" className="inline-flex items-center gap-1 hover:text-white">Open P&amp;L <ArrowRight className="size-3"/></a>}/>
       <Stat label="Earnings · this month" icon={Banknote} value={d.income === null ? "—" : money(d.income)}
-        sub={creators.isError ? "Creator Staq unavailable" : d.payout ? `${money(d.payout)} paid out to model` : "Creator Staq net, linked pages"}/>
+        sub={creators.isError ? "Creator Staq unavailable" : d.income === null ? "Creator Staq returned incomplete model coverage" : d.payout ? `${money(d.payout)} paid out to model` : "Creator Staq net"}/>
       <Stat label="Costs · this month" icon={Wallet} value={money(d.wages + d.exp)} sub={`${money(d.wages)} wages · ${money(d.exp)} expenses`}/>
       <Stat label="Conversions · this week" icon={Target} value={d.thisTotal.toLocaleString()} delta={d.lastTotal ? d.thisTotal - d.lastTotal : null} deltaLabel="vs last week" sub={`Last week ${d.lastTotal}`}/>
     </div>

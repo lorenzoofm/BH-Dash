@@ -42,19 +42,19 @@ export default function PnL() {
     [model, valid, staff.rows, pay.rows, expenses.rows, map.rows, creators.data, creators.isSuccess, start, end]);
   const company = useMemo(() => {
     if (!valid || !creators.isSuccess) return null;
-    const active = models.rows.map(m => modelPnL(m, {staff: staff.rows, paylog: pay.rows, expenses: expenses.rows, map: map.rows, creators: creators.data ?? [], start, end, revenueKnown: true}))
-      .filter(r => r.linked || r.wages || r.expenses);
+    const active = models.rows.filter(m => label(m.fields.status) !== "Ended").map(m => modelPnL(m, {staff: staff.rows, paylog: pay.rows, expenses: expenses.rows, map: map.rows, creators: creators.data ?? [], start, end, revenueKnown: true}));
+    const missing = active.filter(r => !r.linked).map(r => r.name);
     const names = new Set(models.rows.map(r => label(r.fields.model).trim().toLowerCase()));
     const unmatched = (creators.data ?? []).filter(c => c.net !== 0 && !names.has(c.name.trim().toLowerCase()));
     const unassigned = expenses.rows.filter(r => !linkIds(r.fields.model).length && label(r.fields.status) === "Paid" && String(r.fields.date ?? "").slice(0, 10) >= start && String(r.fields.date ?? "").slice(0, 10) <= end)
       .reduce((sum, r) => sum + num(r.fields.amount), 0);
-    const unresolved = unmatched.length > 0 || active.some(r => r.dealType !== "Managed" && r.dealType !== "Chat-only");
+    const unresolved = unmatched.length > 0 || missing.length > 0 || active.some(r => r.dealType !== "Managed" && r.dealType !== "Chat-only");
     const sum = (rows: typeof active, key: "income" | "payout" | "profit") => rows.some(r => r[key] === null) || unresolved || (key === "profit" && unassigned > 0) ? null : rows.reduce((n, r) => n + (r[key] ?? 0), 0);
     const section = (deal: string) => {
       const rows = active.filter(r => r.dealType === deal);
       return {count: rows.length, income: sum(rows, "income"), payout: sum(rows, "payout"), profit: sum(rows, "profit"), wages: rows.reduce((n, r) => n + r.wages, 0), expenses: rows.reduce((n, r) => n + r.expenses, 0)};
     };
-    return {managed: section("Managed"), chat: section("Chat-only"), unassigned, unmatched: unmatched.length, unknownDeals: active.filter(r => r.dealType !== "Managed" && r.dealType !== "Chat-only").length};
+    return {managed: section("Managed"), chat: section("Chat-only"), unassigned, unmatched: unmatched.length, missing, unknownDeals: active.filter(r => r.dealType !== "Managed" && r.dealType !== "Chat-only").length};
   }, [valid, creators.data, creators.isSuccess, models.rows, staff.rows, pay.rows, expenses.rows, map.rows, start, end]);
 
   if (!today || !range || [models, map, expenses, pay, staff].some(t => t.loading)) return <PageSkeleton/>;
@@ -112,6 +112,7 @@ export default function PnL() {
       {company && <Panel title="Company summary" icon={Wallet}>
         <p className="mb-3 text-[12px] text-muted-foreground">Managed models and chatting clients are separate. Unassigned paid expenses stay outside both until linked to a model.</p>
         {company.unmatched > 0 && <Notice icon={AlertTriangle}>{company.unmatched} Creator Staq creator{company.unmatched === 1 ? " is" : "s are"} not matched to an Airtable model. Aggregate revenue and profit are unavailable until reconciled.</Notice>}
+        {company.missing.length > 0 && <Notice icon={AlertTriangle}>Creator Staq returned no revenue record for {company.missing.join(", ")}. Confirm whether those models had zero revenue or are outside this key’s access; company totals remain unavailable.</Notice>}
         {company.unknownDeals > 0 && <Notice icon={AlertTriangle}>{company.unknownDeals} model{company.unknownDeals === 1 ? " has" : "s have"} an unknown deal type and are excluded from these sections.</Notice>}
         <div className="mt-3 grid gap-3 lg:grid-cols-2">
           {([["Managed models", company.managed], ["Chatting agency", company.chat]] as const).map(([title, section]) => <div key={title} className="rounded-lg border p-4 text-[13px]">

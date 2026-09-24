@@ -47,8 +47,11 @@ export default function Revenue() {
     const full = chart.filter(r => r.month !== thisMonth);
     const last = full.at(-1), prev = full.at(-2);
     const best = [...full].sort((a, b) => b.total - a.total)[0];
-    const mtdTotal = (mtd.data ?? []).filter(c => pageModel.has(c.id)).reduce((s, c) => s + c.net, 0);
-    return {chart, config, shown, last, prev, best, mtdTotal, trailing: full.slice(-6).reduce((s, r) => s + r.total, 0), unlinked: (mtd.data ?? []).filter(c => !pageModel.has(c.id))};
+    const activeNames = models.rows.filter(m => label(m.fields.status) !== "Ended").map(m => label(m.fields.model).toLowerCase());
+    const matched = (mtd.data ?? []).filter(c => activeNames.includes(c.name.trim().toLowerCase()));
+    const missing = activeNames.filter(name => !matched.some(c => c.name.trim().toLowerCase() === name));
+    const unlinked = (mtd.data ?? []).filter(c => !activeNames.includes(c.name.trim().toLowerCase()));
+    return {chart, config, shown, last, prev, best, mtdTotal: matched.reduce((s, c) => s + c.net, 0), trailing: full.slice(-6).reduce((s, r) => s + r.total, 0), missing, unlinked};
   }, [monthly.data, map.rows, models.rows, mtd.data, today]);
 
   if ([models, map].some(t => t.error)) return <TableError tables={[models, map]}/>;
@@ -56,20 +59,21 @@ export default function Revenue() {
   const fmtMonth = (m: string) => new Date(m + "-01T00:00:00Z").toLocaleDateString("en-GB", {month: "short", year: "2-digit", timeZone: "UTC"});
 
   return <div className="space-y-6">
-    <PageHeader eyebrow="Finance" title="Revenue" subtitle="Creator Staq net earnings for the pages linked to your models, plus each model’s deal."
+    <PageHeader eyebrow="Finance" title="Revenue" subtitle="Creator Staq earnings by creator, plus each model’s deal and Airtable page assignments."
       actions={<Btn variant="primary" onClick={() => setAdding(true)}><Plus/>Add model</Btn>}/>
 
     {(monthly.isError || mtd.isError) && <Notice tone="red" icon={AlertTriangle}>Creator Staq is unavailable: {((monthly.error ?? mtd.error) as Error).message}</Notice>}
+    {mtd.isSuccess && (d.missing.length > 0 || d.unlinked.length > 0) && <Notice icon={AlertTriangle}>Creator Staq returned incomplete model coverage for this period. Company revenue totals are hidden until missing and unmatched creators are reconciled.</Notice>}
 
     <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-      <Stat accent label="This month so far" icon={Banknote} value={mtd.isSuccess ? money(d.mtdTotal) : "—"} sub="Linked pages, Creator Staq net"/>
-      <Stat label="Last full month" icon={CalendarDays} value={d.last ? money(d.last.total) : "—"} delta={d.last && d.prev ? Math.round(d.last.total - d.prev.total) : null} deltaLabel="vs prior" sub={d.last ? fmtMonth(d.last.month) : undefined}/>
-      <Stat label="Last 6 months" icon={TrendingUp} value={monthly.isSuccess ? money(d.trailing) : "—"} sub="Full months only"/>
-      <Stat label="Best month" icon={Trophy} value={d.best ? money(d.best.total) : "—"} sub={d.best ? fmtMonth(d.best.month) : undefined}/>
+      <Stat accent label="This month so far" icon={Banknote} value={mtd.isSuccess && !d.missing.length && !d.unlinked.length ? money(d.mtdTotal) : "—"} sub="Creator Staq net · all models required"/>
+      <Stat label="Last full month" icon={CalendarDays} value={!d.missing.length && d.last?.total ? money(d.last.total) : "—"} delta={!d.missing.length && d.last?.total && d.prev?.total ? Math.round(d.last.total - d.prev.total) : null} deltaLabel="vs prior" sub={d.last ? fmtMonth(d.last.month) : undefined}/>
+      <Stat label="Last 6 months" icon={TrendingUp} value={monthly.isSuccess && !d.missing.length && d.chart.some(r => r.total) ? money(d.trailing) : "—"} sub="Full months only"/>
+      <Stat label="Best month" icon={Trophy} value={!d.missing.length && d.best?.total ? money(d.best.total) : "—"} sub={d.best ? fmtMonth(d.best.month) : undefined}/>
     </div>
 
-    <Panel title="Monthly net revenue" subtitle="Last 12 months, linked pages only, split by model.">
-      {monthly.isPending ? <div className="h-[280px] animate-pulse rounded-lg bg-muted"/> : !d.shown.length ? <Notice icon={Link2}>No Creator Staq pages are linked to a model yet. Link one below or on the P&amp;L page.</Notice> :
+    <Panel title="Monthly net revenue" subtitle="Last 12 months, account-level history for pages visible to the API key.">
+      {monthly.isPending ? <div className="h-[280px] animate-pulse rounded-lg bg-muted"/> : !d.chart.some(r => r.total) ? <Notice icon={Link2}>Creator Staq returned no account-level monthly revenue history for the selected key.</Notice> :
         <ChartContainer config={d.config} className="aspect-auto h-[280px] w-full">
           <BarChart data={d.chart} margin={{left: 4, right: 4, top: 8}}>
             <CartesianGrid vertical={false} strokeDasharray="3 3"/>
@@ -97,7 +101,7 @@ export default function Revenue() {
       </div>
     </Panel>
 
-    <Panel title="Creator Staq pages" icon={Store} subtitle="Which page’s earnings count for which model. Untick to exclude a page from the P&L." flush>
+    <Panel title="Creator Staq pages" icon={Store} subtitle="Airtable account assignments for account-level reports. Creator-level P&L matches Creator Staq names to models." flush>
       <div className="mt-4 border-t">
         <DataGrid rows={map.rows} initialSort={{key: "slug", dir: "asc"}} searchPlaceholder="Search pages"
           columns={[
@@ -105,11 +109,11 @@ export default function Revenue() {
             {key: "accountId", label: "Account ID", icon: Hash, render: r => <span className="num text-muted-foreground">{String(r.fields.accountId ?? "")}</span>},
             {key: "ofUsername", label: "OF username", hideBelow: "lg"},
             {key: "model", label: "Model", icon: User, type: "link", options: linkOptions(models.rows, "model"), editable: true, filter: true},
-            {key: "include", label: "In P&L", type: "checkbox", editable: true},
+            {key: "include", label: "In account reports", type: "checkbox", editable: true},
           ]}
           onUpdate={(id, key, value) => map.update(id, {[key]: value})}/>
         {d.unlinked.length > 0 && <div className="border-t px-5 py-3 text-[12.5px] text-muted-foreground">
-          Not linked to any model this month: {d.unlinked.map(c => `${c.name} (${money(c.net)})`).join(" · ")}
+          Creator Staq names not matched to an Airtable model this month: {d.unlinked.map(c => `${c.name} (${money(c.net)})`).join(" · ")}
         </div>}
       </div>
     </Panel>
@@ -127,7 +131,7 @@ function AddModel({open, onClose, create}: {open: boolean; onClose: () => void; 
     try { await create({model: name.trim()}); toast.success(`${name} added — set her deal in the table`); onClose(); }
     catch (e: any) { toast.error(e.message); } finally { setBusy(false); }
   }
-  return <Drawer open={open} onClose={onClose} title="Add model" subtitle="Then set her deal type and cut in Model deals, and link her page on the P&L."
+  return <Drawer open={open} onClose={onClose} title="Add model" subtitle="Then set her deal type and cut in Model deals, and map her pages in the accounts table."
     footer={<><Btn variant="ghost" onClick={onClose}>Cancel</Btn><Btn variant="primary" onClick={submit} loading={busy} disabled={!name.trim()}>Add model</Btn></>}>
     <Field label="Model name"><input className={inputClass} value={name} onChange={e => setName(e.target.value)} autoFocus/></Field>
   </Drawer>;
