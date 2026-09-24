@@ -1,7 +1,7 @@
 "use client";
 import {useEffect, useState} from "react";
 import {usePathname} from "next/navigation";
-import {ArrowUpRight, BarChart3, Clock, LayoutDashboard, LogOut, Menu, Receipt, TrendingUp, Users, Wallet, X} from "lucide-react";
+import {ArrowUpRight, BarChart3, CircleUserRound, Clock, LayoutDashboard, LogOut, Menu, Receipt, TrendingUp, UserCog, Users, Wallet, X} from "lucide-react";
 
 const groups = [
   {title: "", items: [["/", "Overview", LayoutDashboard]]},
@@ -9,7 +9,7 @@ const groups = [
   {title: "Finance", items: [["/pnl", "Profit & Loss", Wallet], ["/expenses", "Expenses", Receipt], ["/revenue", "Revenue", TrendingUp]]},
 ] as const;
 
-export default function Shell({children, email, otherUrl}: {children: React.ReactNode; email: string; otherUrl: string}) {
+export default function Shell({children, email, otherUrl, isAdmin}: {children: React.ReactNode; email: string; otherUrl: string; isAdmin: boolean}) {
   const path = usePathname();
   const [open, setOpen] = useState(false);
   useEffect(() => setOpen(false), [path]);
@@ -56,6 +56,8 @@ export default function Shell({children, email, otherUrl}: {children: React.Reac
     </div>
     <div className="space-y-1 border-t border-sidebar-border px-3 py-4">
       <a href={otherUrl} className="flex h-9 items-center justify-between rounded-md px-3 text-[13px] text-white/60 hover:bg-sidebar-accent hover:text-white">Content Studio<ArrowUpRight className="size-3.5"/></a>
+      <a href="/account" className="flex h-9 items-center gap-3 rounded-md px-3 text-[13px] text-white/60 hover:bg-sidebar-accent hover:text-white"><CircleUserRound className="size-4"/>My account</a>
+      {isAdmin && <a href="/account/users" className="flex h-9 items-center gap-3 rounded-md px-3 text-[13px] text-white/60 hover:bg-sidebar-accent hover:text-white"><UserCog className="size-4"/>Manage users</a>}
       <div className="flex items-center gap-2.5 px-3 pt-2">
         <span className="grid size-7 shrink-0 place-items-center rounded-full bg-sidebar-accent text-[11px] font-semibold uppercase text-white">{email[0]}</span>
         <span className="min-w-0 flex-1 truncate text-[12px] text-white/55">{email}</span>

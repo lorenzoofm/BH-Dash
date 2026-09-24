@@ -10,7 +10,7 @@ Use Node 22.13 or newer. Run `npm run install:ci`, then the checks below and `np
 
 ## Runtime configuration
 
-AIRTABLE_TOKEN and CREATORSTAQ_AUTH are secrets. CREATORSTAQ_AUTH is the full Bearer authorization value. MANAGER_EMAILS is the exact comma-separated email allowlist; DASHBOARD_KIND=bh; OTHER_DASHBOARD_URL links to Content Studio. Use ignored .env.local for local preview. Local loopback mock authentication is excluded from the production server.
+AIRTABLE_TOKEN and CREATORSTAQ_AUTH are secrets. CREATORSTAQ_AUTH is the full Bearer authorization value. Cloudflare Access policy holds the exact manager email allowlist; ADMIN_EMAILS is the dashboard-admin allowlist; DASHBOARD_KIND=bh; OTHER_DASHBOARD_URL links to Content Studio. Use ignored .env.local for local preview. Local loopback mock authentication is excluded from the production server.
 
 ## Checks
 

@@ -1,5 +1,6 @@
 import { createRemoteJWKSet, jwtVerify } from 'jose';
-export type AccessEnv = { ACCESS_TEAM_DOMAIN?: string; ACCESS_AUD?: string; MANAGER_EMAILS?: string };
+import { allowedEmails } from './access-policy.ts';
+export type AccessEnv = { ACCESS_TEAM_DOMAIN?: string; ACCESS_AUD?: string; ACCESS_ACCOUNT_ID?:string; ACCESS_APP_ID?:string; ACCESS_POLICY_ID?:string; ACCESS_API_TOKEN?:string };
 const keySets = new Map<string, ReturnType<typeof createRemoteJWKSet>>();
 
 export async function accessUser(headers: Headers, env: AccessEnv) {
@@ -14,8 +15,7 @@ export async function accessUser(headers: Headers, env: AccessEnv) {
     });
     if (typeof payload.sub !== 'string' || !payload.sub || typeof payload.email !== 'string') return null;
     const email = payload.email.trim().toLowerCase();
-    const allowed = (env.MANAGER_EMAILS || '').split(',').map(value => value.trim().toLowerCase()).filter(Boolean);
-    if (!allowed.includes(email)) return null;
+    if (!(await allowedEmails(env)).includes(email)) return null;
     return { userId: payload.sub, email, displayName: email, fullName: null };
   } catch { return null; }
 }
