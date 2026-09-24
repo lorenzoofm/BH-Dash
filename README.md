@@ -28,6 +28,6 @@ Known existing limitation: wages follow a staff member's current model assignmen
 
 ## Release blocker
 
-The actual Creatorstaq API key is not yet supplied. The previous Softr resource exposes a masked key and a literal token placeholder. Revenue and P&L must be verified against real ranged/monthly API results before cutover; missing revenue is shown as unavailable, never a fabricated zero. All Airtable expense/payroll and weekly calculation checks have passed.
+The Creatorstaq key is stored as an encrypted Worker secret. The ranged response currently reports creator-wide totals, which can combine multiple accounts, so DAP earnings and profit are withheld until account-level ranged data is available. The Airtable model-account mapping must also select only the desired DAP accounts. Never commit the key to this repository.
 
 Airtable lacks cross-client atomic conditional writes. Pre-write conflict and duplicate checks are enforced, but external clients can still race; coordinate writes during the review period.

@@ -27,6 +27,7 @@ export default function Revenue() {
   }});
   const mtd = useCreators(today ? today.slice(0, 8) + "01" : null, today);
   const [adding, setAdding] = useState(false);
+  const [addingAccount, setAddingAccount] = useState(false);
 
   const d = useMemo(() => {
     const pageModel = new Map(map.rows.filter(r => r.fields.include !== false).map(r => [String(r.fields.accountId), linkIds(r.fields.model)[0]]));
@@ -102,7 +103,7 @@ export default function Revenue() {
       </div>
     </Panel>
 
-    <Panel title="Creator Staq pages" icon={Store} subtitle="Assign only each model’s DAP account here. Turn off Include in P&L for her other accounts." flush>
+    <Panel title="Creator Staq pages" icon={Store} subtitle="Assign only each model’s DAP account here. Turn off DAP account for her other accounts." actions={<Btn size="sm" onClick={() => setAddingAccount(true)}><Plus/>Add account</Btn>} flush>
       <div className="mt-4 border-t">
         <DataGrid rows={map.rows} initialSort={{key: "slug", dir: "asc"}} searchPlaceholder="Search pages"
           columns={[
@@ -110,7 +111,7 @@ export default function Revenue() {
             {key: "accountId", label: "Account ID", icon: Hash, render: r => <span className="num text-muted-foreground">{String(r.fields.accountId ?? "")}</span>},
             {key: "ofUsername", label: "OF username", hideBelow: "lg"},
             {key: "model", label: "Model", icon: User, type: "link", options: linkOptions(models.rows, "model"), editable: true, filter: true},
-            {key: "include", label: "In account reports", type: "checkbox", editable: true},
+            {key: "include", label: "DAP account", type: "checkbox", editable: true},
           ]}
           onUpdate={(id, key, value) => map.update(id, {[key]: value})}/>
         {d.unlinked.length > 0 && <div className="border-t px-5 py-3 text-[12.5px] text-muted-foreground">
@@ -120,7 +121,32 @@ export default function Revenue() {
     </Panel>
 
     <AddModel open={adding} onClose={() => setAdding(false)} create={models.create}/>
+    <AddAccount open={addingAccount} onClose={() => setAddingAccount(false)} create={map.create} models={models.rows} existing={map.rows}/>
   </div>;
+}
+
+function AddAccount({open, onClose, create, models, existing}: {open: boolean; onClose: () => void; create: (f: any) => Promise<any>; models: {id: string; fields: Record<string, any>}[]; existing: {fields: Record<string, any>}[]}) {
+  const [slug, setSlug] = useState("");
+  const [accountId, setAccountId] = useState("");
+  const [modelId, setModelId] = useState("");
+  const [busy, setBusy] = useState(false);
+  useEffect(() => { if (open) { setSlug(""); setAccountId(""); setModelId(""); } }, [open]);
+  async function submit() {
+    const id = Number(accountId);
+    if (!/^[a-z0-9_-]+$/i.test(slug.trim()) || !Number.isSafeInteger(id) || id <= 0 || !modelId) return toast.error("Enter an account slug, numeric ID and model");
+    if (existing.some(r => label(r.fields.slug).toLowerCase() === slug.trim().toLowerCase() || Number(r.fields.accountId) === id)) return toast.error("This account is already mapped");
+    setBusy(true);
+    try { await create({slug: slug.trim(), accountId: id, model: [modelId], include: true}); toast.success("Account added"); onClose(); }
+    catch (e: any) { toast.error(e.message); } finally { setBusy(false); }
+  }
+  return <Drawer open={open} onClose={onClose} title="Add DAP account" subtitle="Use the exact account slug and ID from Creatorstaq. Only selected DAP accounts will count in account-level reports."
+    footer={<><Btn variant="ghost" onClick={onClose}>Cancel</Btn><Btn variant="primary" onClick={submit} loading={busy}>Add account</Btn></>}>
+    <div className="space-y-4">
+      <Field label="Creatorstaq account slug"><input className={inputClass} value={slug} onChange={e => setSlug(e.target.value)} placeholder="irlapril"/></Field>
+      <Field label="Account ID"><input className={inputClass} type="number" min="1" step="1" value={accountId} onChange={e => setAccountId(e.target.value)} placeholder="329"/></Field>
+      <Field label="Model"><select className={inputClass} value={modelId} onChange={e => setModelId(e.target.value)}><option value="">Choose model</option>{models.map(m => <option key={m.id} value={m.id}>{label(m.fields.model)}</option>)}</select></Field>
+    </div>
+  </Drawer>;
 }
 
 function AddModel({open, onClose, create}: {open: boolean; onClose: () => void; create: (f: any) => Promise<any>}) {

@@ -115,7 +115,7 @@ Open this in the dashboard's browser console only after signing in. The URL is s
 Other hosts, paths, parameters, credentials in URLs, fragments and redirects are rejected. The proxy forwards the server-side `CREATORSTAQ_AUTH` header, validates the expected array, and caches successful requests for 60 seconds. It does not provide Creatorstaq credentials to the browser. Example signed-in browser call:
 
 ```js
-const upstream = 'https://api.creatorstaq.com/v1/computed/revenue/monthly?months=1';
+const upstream = 'https://api.creatorstaq.com/v1/computed/revenue/monthly?months=12';
 const response = await fetch('/api/revenue?url=' + encodeURIComponent(upstream));
 console.log(await response.json());
 ```
