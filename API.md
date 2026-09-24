@@ -109,6 +109,7 @@ Open this in the dashboard's browser console only after signing in. The URL is s
 
 | Upstream path | Allowed parameters | Expected response data |
 | --- | --- | --- |
+| `/v1/me` | none | `accounts` array only; key metadata is removed from the dashboard response |
 | `/v1/computed/revenue/monthly` | `months=6`, `12`, `24`, or `all`; defaults to 24 | `monthly_by_account` array |
 | `/v1/computed/revenue/ranged` | `start=YYYY-MM-DD&end=YYYY-MM-DD`; start before end, at most 32 days apart | `by_creator` array |
 | `/v1/computed/{account}/revenue/ranged` | Same date range; account is a slug such as `irlapril` | `kpis.total_net` for that account |
@@ -128,6 +129,7 @@ The agency ranged response contains `by_creator` values; a creator can own multi
 - The Worker at `https://20mg-bh.twentymg-automation.workers.dev/` is deployed behind Cloudflare Access and reads the configured BH Airtable base. P&L and Revenue were checked in an authenticated browser.
 - The configured Creatorstaq key returns current ranged **creator-wide** earnings for April, Erin and Kylie. These can include multiple accounts and are shown only as references.
 - The account-specific route for April DAP (`irlapril`, ID `329`) returned $3,712.95 transaction net for 1–24 September, matching the Creatorstaq April DAP view for the same date range. April's model P&L uses this account-specific route. Its figures are before chargebacks.
+- P&L's Manage models panel lists every model in the Airtable roster and the accounts visible to the Creatorstaq key. Adding a model creates a Models row; connecting a selected DAP account creates or enables its Model Accounts row. Another model's mapped account cannot be silently reassigned. Deal type and cuts are edited on Revenue.
 - The same key returns **no revenue record** for Skye, Lolita, Astrid or Mia in that period. Its account listing includes six pages and does not include the mapped pages for Skye, Lolita or Mia. This could be a scope issue or a true zero for a given model; the dashboard cannot tell which. Company-wide income and profit are withheld until coverage is confirmed.
 - The key's 12-month `monthly_by_account` response contains no account-level history usable for the chart. The Revenue page shows that limitation rather than inventing monthly totals.
 - On 25 September, April's Airtable `Model Accounts` row was corrected to `irlapril` (account ID `329`) at the owner's direction. A live ranged request with `account_id=329` returned the same creator-wide rows as an unfiltered request, so that parameter is ignored by the available endpoint and is not supported by this dashboard proxy.

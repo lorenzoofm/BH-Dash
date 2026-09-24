@@ -1,9 +1,12 @@
 "use client";
 import {useEffect, useMemo, useState} from "react";
-import {AlertTriangle, Banknote, Link2, Receipt, RefreshCw, Store, TrendingUp, Users, Wallet} from "lucide-react";
-import {Bar, Btn, Empty, Field, Notice, PageHeader, PageSkeleton, Panel, Segmented, Stat, inputClass} from "@/components/bh/ui";
+import {useQuery} from "@tanstack/react-query";
+import {toast} from "sonner";
+import {AlertTriangle, Banknote, Link2, Plus, Receipt, RefreshCw, Store, TrendingUp, Users, Wallet} from "lucide-react";
+import {Bar, Btn, Drawer, Empty, Field, Notice, PageHeader, PageSkeleton, Panel, Segmented, Stat, inputClass} from "@/components/bh/ui";
 import {addDays, label, linkIds, money, num, todayIso, validDay} from "@/lib/bh";
 import {useAccountRevenue, useCreators, useTable} from "@/lib/tables";
+import {useProxyFetch} from "@/lib/datasource";
 import {modelPnL} from "@/lib/finance";
 
 type Preset = "month" | "last-month" | "7d" | "30d" | "custom";
@@ -22,11 +25,22 @@ export default function PnL() {
   const [range, setRange] = useState<[string, string] | null>(null);
   useEffect(() => { const t = todayIso(); setToday(t); setRange(presetRange("month", t)); }, []);
   const [modelId, setModelId] = useState("");
+  const [managing, setManaging] = useState(false);
+  const [newModel, setNewModel] = useState("");
+  const [newAccount, setNewAccount] = useState("");
+  const [saving, setSaving] = useState(false);
 
   const models = useTable("models"), map = useTable("map"), expenses = useTable("expenses"), pay = useTable("paylog"), staff = useTable("staff");
   const [start, end] = range ?? ["", ""];
   const valid = !!today && validDay(start) && validDay(end) && start <= end && end <= today;
   const creators = useCreators(valid ? start : null, valid ? end : null);
+  const proxyFetch = useProxyFetch("live");
+  const directory = useQuery({queryKey: ["bh-creatorstaq-accounts"], enabled: managing, staleTime: 300000, retry: 1, queryFn: async (): Promise<{id: number; slug: string; of_username: string}[]> => {
+    const response = await proxyFetch("https://api.creatorstaq.com/v1/me");
+    const body = await response.json();
+    if (!response.ok) throw new Error(body.error || "Could not list Creatorstaq accounts");
+    return body.accounts;
+  }});
 
   useEffect(() => {
     if (modelId || !models.rows.length) return;
@@ -38,6 +52,7 @@ export default function PnL() {
   useEffect(() => { if (modelId) try { localStorage.setItem(MODEL_KEY, modelId); } catch {} }, [modelId]);
 
   const model = models.rows.find(m => m.id === modelId);
+  const mappedCount = models.rows.filter(m => map.rows.some(r => r.fields.include !== false && linkIds(r.fields.model).includes(m.id))).length;
   const accountRows = map.rows.filter(r => r.fields.include !== false && linkIds(r.fields.model).includes(modelId));
   const accountSlugs = accountRows.map(r => label(r.fields.slug)).filter(Boolean);
   const accountRevenue = useAccountRevenue(accountSlugs, valid ? start : null, valid ? end : null);
@@ -66,9 +81,33 @@ export default function PnL() {
   const syncing = creators.isFetching || accountRevenue.isFetching || [models, map, expenses, pay, staff].some(t => t.fetching);
   const showRevenue = p && p.income !== null;
 
+  async function addModel() {
+    const name = newModel.trim();
+    if (!name) return;
+    if (models.rows.some(r => label(r.fields.model).toLowerCase() === name.toLowerCase())) return toast.error("That model already exists");
+    setSaving(true);
+    try { const row = await models.create({model: name}); setNewModel(""); if (row?.id) setModelId(row.id); toast.success(`${name} added. Set her deal and connect her DAP account.`); }
+    catch (e: any) { toast.error(e.message); } finally { setSaving(false); }
+  }
+
+  async function connectAccount() {
+    const account = directory.data?.find(a => String(a.id) === newAccount);
+    if (!account || !modelId) return;
+    const existing = map.rows.find(r => Number(r.fields.accountId) === account.id || label(r.fields.slug).toLowerCase() === account.slug.toLowerCase());
+    if (existing && linkIds(existing.fields.model).some(id => id !== modelId)) return toast.error("That account is already assigned to another model");
+    setSaving(true);
+    try {
+      if (existing) await map.update(existing.id, {model: [modelId], include: true});
+      else await map.create({slug: account.slug, accountId: account.id, ofUsername: account.of_username, model: [modelId], include: true});
+      setNewAccount(""); toast.success(`${account.slug} connected to ${label(model?.fields.model)}`);
+    } catch (e: any) { toast.error(e.message); } finally { setSaving(false); }
+  }
+
   return <div className="space-y-6">
     <PageHeader eyebrow="Finance" title="Profit & Loss" subtitle="One model at a time: DAP revenue, payout, staff wages and expenses."
-      actions={<Btn onClick={() => { creators.refetch(); accountRevenue.refetch(); [models, map, expenses, pay, staff].forEach(t => t.refetch()); }} disabled={syncing}><RefreshCw className={syncing ? "animate-spin" : ""}/>Refresh</Btn>}/>
+      actions={<div className="flex gap-2"><Btn onClick={() => setManaging(true)}><Plus/>Manage models</Btn><Btn onClick={() => { creators.refetch(); accountRevenue.refetch(); [models, map, expenses, pay, staff].forEach(t => t.refetch()); }} disabled={syncing}><RefreshCw className={syncing ? "animate-spin" : ""}/>Refresh</Btn></div>}/>
+
+    <p className="text-[13px] text-muted-foreground">{models.rows.length} models in the roster · {mappedCount} with a selected DAP account. Choose any model below for its own P&amp;L.</p>
 
     <Panel bodyClass="grid gap-5 lg:grid-cols-[1fr_1.3fr_auto]">
       <Field label="Model">
@@ -165,5 +204,18 @@ export default function PnL() {
         </Panel>
       </div>
     </>}
+    <Drawer open={managing} onClose={() => setManaging(false)} title="Manage P&L models" subtitle="Add a model, then explicitly connect only her DAP account. Other pages stay out of her P&L.">
+      <div className="space-y-5">
+        <div className="space-y-2"><Field label="New model name"><input className={inputClass} value={newModel} onChange={e => setNewModel(e.target.value)} placeholder="Model name"/></Field><Btn onClick={addModel} disabled={!newModel.trim() || saving}><Plus/>Add model</Btn></div>
+        <div className="border-t pt-4"><Field label="Choose model"><select className={inputClass} value={modelId} onChange={e => setModelId(e.target.value)}>{models.rows.map(m => <option key={m.id} value={m.id}>{label(m.fields.model)}</option>)}</select></Field>
+          <p className="mt-2 text-[12px] text-muted-foreground">Connected DAP accounts: {accountSlugs.length ? accountSlugs.join(", ") : "none"}</p></div>
+        <div className="space-y-2 border-t pt-4"><Field label="Available Creatorstaq account"><select className={inputClass} value={newAccount} onChange={e => setNewAccount(e.target.value)} disabled={!directory.data}><option value="">Choose the DAP account</option>{directory.data?.map(a => { const owner = map.rows.find(r => Number(r.fields.accountId) === a.id || label(r.fields.slug).toLowerCase() === a.slug.toLowerCase()); const other = owner && linkIds(owner.fields.model).some(id => id !== modelId); return <option key={a.id} value={a.id} disabled={!!other}>{a.slug} · @{a.of_username}{other ? " · assigned elsewhere" : ""}</option>; })}</select></Field>
+          {directory.isPending && <p className="text-[12px] text-muted-foreground">Loading available accounts…</p>}{directory.isError && <Notice tone="red" icon={AlertTriangle}>{(directory.error as Error).message}</Notice>}
+          <Btn onClick={connectAccount} disabled={!newAccount || !modelId || saving}><Link2/>Connect DAP account</Btn>
+          <p className="text-[12px] text-muted-foreground">Only accounts available to the connected Creatorstaq key appear here. Set the model’s deal type and cut on the Revenue page.</p>
+        </div>
+        <div className="space-y-2 border-t pt-4"><p className="text-[12px] font-medium">Current roster</p>{models.rows.map(m => <button key={m.id} type="button" onClick={() => setModelId(m.id)} className="flex w-full justify-between rounded-lg border px-3 py-2 text-left text-[13px] hover:bg-muted"><span>{label(m.fields.model)}</span><span className="text-muted-foreground">{map.rows.filter(r => r.fields.include !== false && linkIds(r.fields.model).includes(m.id)).length} DAP accounts</span></button>)}</div>
+      </div>
+    </Drawer>
   </div>;
 }

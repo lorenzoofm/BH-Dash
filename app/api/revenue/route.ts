@@ -11,10 +11,12 @@ export async function GET(req:Request){try{
    if(response.status>=300&&response.status<400)throw new Error('502:Creatorstaq redirected the revenue request.');
    if(!response.ok)throw new Error('502:Creatorstaq could not complete the revenue request ('+response.status+').');
    const body:any=await response.json();const accountRange=/^\/v1\/computed\/[a-zA-Z0-9_-]{1,64}\/revenue\/ranged$/.test(url.pathname);
-   if(accountRange){if(!body.kpis||body.kpis.total_net===undefined||body.kpis.total_net===null)throw new Error('502:Creatorstaq returned an incomplete account revenue response.');}
+   if(url.pathname==='/v1/me'){if(!Array.isArray(body.accounts))throw new Error('502:Creatorstaq returned an incomplete account list.');}
+   else if(accountRange){if(!body.kpis||body.kpis.total_net===undefined||body.kpis.total_net===null)throw new Error('502:Creatorstaq returned an incomplete account revenue response.');}
    else {const rows=url.pathname.endsWith('/ranged')?body.by_creator:body.monthly_by_account;if(!Array.isArray(rows))throw new Error('502:Creatorstaq returned an incomplete revenue response.');}
    return body;
   });entry={data,until:Date.now()+60000};cache.set(key,entry);data.catch(()=>cache.delete(key));if(cache.size>100)cache.delete(cache.keys().next().value!);
  }
- return Response.json(await entry.data,{headers:{'Cache-Control':'private, no-store'}});
+ const result=await entry.data;
+ return Response.json(url.pathname==='/v1/me'?{accounts:result.accounts}:result,{headers:{'Cache-Control':'private, no-store'}});
  }catch(e){return failure(e);}}
