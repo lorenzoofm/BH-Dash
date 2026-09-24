@@ -1,6 +1,6 @@
 # BH dashboard API and data connections
 
-This document describes the **implemented code in this repository**, not a live API guarantee or official Airtable/Creatorstaq documentation. The dashboard currently uses Airtable for editable records and Creatorstaq for revenue. It does not contain a database export, API credentials, or a working Creatorstaq token. The source alone cannot reproduce the live data.
+This document describes the **implemented code in this repository**, not an official Airtable or Creatorstaq specification. The deployed dashboard uses Airtable for editable records and Creatorstaq for revenue. Credentials are encrypted Worker secrets and are not in the repository; source alone cannot reproduce the live data.
 
 ## Where the implementation lives
 
@@ -29,7 +29,7 @@ This document describes the **implemented code in this repository**, not a live 
 | `DASHBOARD_KIND` | `bh` | Worker configuration |
 | `OTHER_DASHBOARD_URL` | Link to Content Studio | Worker configuration |
 
-`wrangler.json` currently has `workers_dev: true` and contains Access identifiers. This is configuration, not proof that the deployed application or data integrations work. Configure the three secrets and verify the exact Access application and policy before relying on the URL. `npm run deploy` builds and deploys the Worker, but does not supply missing credentials. Do not put secrets in source, GitHub Actions logs, browser code, or issue reports. See [CLOUDFLARE.md](CLOUDFLARE.md) for the deployment boundary.
+`wrangler.json` has `workers_dev: true` and contains Access identifiers. `npm run deploy` builds and deploys the Worker but does not supply secrets. The current deployment has Airtable and Creatorstaq secrets configured. Do not put secrets in source, GitHub Actions logs, browser code, or issue reports. See [CLOUDFLARE.md](CLOUDFLARE.md) for the deployment boundary.
 
 Production pages and API routes require a valid Cloudflare Access JWT for an email in the exact-email Access policy. The Worker verifies the issuer, audience, signature and claims, then reads the configured policy. It serves `/_next/static/` build assets without this app-level JWT check; those assets must contain no account data. Admin actions also require an email in `ADMIN_EMAILS`. Writes require an `Origin` header equal to the dashboard origin. This is a **session API for the dashboard**, not a public token-based integration API. Use the signed-in browser for the examples below; do not expose Airtable, Creatorstaq or Cloudflare API tokens to browser JavaScript.
 
@@ -120,11 +120,19 @@ const response = await fetch('/api/revenue?url=' + encodeURIComponent(upstream))
 console.log(await response.json());
 ```
 
-The P&L uses ranged `by_creator` values such as `creator_id`, `name`, and `net_revenue`. Revenue and account mapping use monthly `monthly_by_account` groups with `month` and account values such as `account_id`, `slug`, `name`, and `net`. These are fields consumed by this code, **not a complete official Creatorstaq schema**. The actual token and live response contract still need verification; until `CREATORSTAQ_AUTH` is installed, this route returns HTTP 503 and revenue/P&L cannot be considered verified. Never replace missing revenue with zero.
+The P&L uses ranged `by_creator` values such as `creator_id`, `name`, and `net_revenue`. Creator IDs are **not** account IDs: creator earnings are matched to Airtable Models by exact case-insensitive name. Revenue's account-level monthly history uses `monthly_by_account` groups with `month` and account values such as `account_id`, `slug`, `name`, and `net`. These are fields consumed by this code, **not a complete official Creatorstaq schema**. Never replace missing revenue with zero.
+
+### Live connection status (24 September 2026)
+
+- The Worker at `https://20mg-bh.twentymg-automation.workers.dev/` is deployed behind Cloudflare Access and reads the configured BH Airtable base. P&L and Revenue were checked in an authenticated browser.
+- The configured Creatorstaq key returns current ranged creator earnings for April, Erin and Kylie. For example, April's 1–24 September net is $6,164.95, and her P&L uses that amount with Airtable payouts, wages and expenses.
+- The same key returns **no revenue record** for Skye, Lolita, Astrid or Mia in that period. Its account listing includes six pages and does not include the mapped pages for Skye, Lolita or Mia. This could be a scope issue or a true zero for a given model; the dashboard cannot tell which. Company-wide income and profit are withheld until coverage is confirmed.
+- The key's 12-month `monthly_by_account` response contains no account-level history usable for the chart. The Revenue page shows that limitation rather than inventing monthly totals.
+- To finish full company reporting, obtain Creatorstaq access covering every active model and confirm the page/account mapping. Store any replacement authorization value in the encrypted `CREATORSTAQ_AUTH` Worker secret, then recheck P&L, Revenue and Overview. Do not add it to this repository.
 
 ## Operational behavior and errors
 
 - Airtable requests use its REST API at `https://api.airtable.com/v0/{baseId}/{tableId}`, server-side only. Reads page at 100 records, cache for 60 seconds, and retry HTTP 429 up to three times after a delay. Successful writes clear the read cache.
 - The dashboard's client pages refresh some datasets every minute. This is polling, not Airtable webhooks or a permanent replica.
 - HTTP 400 means invalid input or unsupported fields; 403 means authentication, origin or action denial; 404 means unknown source; 409 means stale or duplicate record; 413 means payload too large; 502 means upstream failure or incomplete response; 503 means missing backend configuration or an upstream permission failure.
-- The public repository contains schema/configuration and business logic. It does not contain the Airtable records, private API credentials, an official Creatorstaq API specification, or a live replacement for Softr.
+- The public repository contains schema/configuration and business logic. It does not contain the Airtable records, private API credentials or an official Creatorstaq API specification. The deployed Worker is the live BH dashboard replacement for Softr, subject to the coverage limits above.
