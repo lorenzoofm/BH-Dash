@@ -1,0 +1,4 @@
+import {requireUser} from '@/app/auth';
+import {adminEmails} from '@/lib/data-server';
+export const dynamic='force-dynamic';
+export default async function AccountPage(){const user=await requireUser();const isAdmin=adminEmails().includes(user.email.toLowerCase());return <div className="mx-auto max-w-2xl space-y-5"><h1 className="text-3xl font-semibold">Your account</h1><div className="rounded-lg border p-5"><p className="font-medium">{user.email}</p><p className="mt-1 text-sm text-muted-foreground">{isAdmin?'Administrator':'Manager'} · Signed in with Cloudflare Access</p></div>{isAdmin&&<a href="/account/users" className="inline-block rounded-md border px-4 py-2">Manage dashboard users</a>}<p><a href="/cdn-cgi/access/logout" className="text-sm underline">Sign out</a></p></div>;}

@@ -12,7 +12,7 @@ export async function getUser(): Promise<DashboardUser | null> {
     const userId = requestHeaders.get('oai-authenticated-user-id');
     return email && userId ? { email, userId, displayName: email, fullName: null } : null;
   }
-  return accessUser(requestHeaders, { ACCESS_TEAM_DOMAIN: process.env.ACCESS_TEAM_DOMAIN, ACCESS_AUD: process.env.ACCESS_AUD, MANAGER_EMAILS: process.env.MANAGER_EMAILS });
+  return accessUser(requestHeaders, { ACCESS_TEAM_DOMAIN: process.env.ACCESS_TEAM_DOMAIN, ACCESS_AUD: process.env.ACCESS_AUD, ACCESS_ACCOUNT_ID: process.env.ACCESS_ACCOUNT_ID, ACCESS_APP_ID: process.env.ACCESS_APP_ID, ACCESS_POLICY_ID: process.env.ACCESS_POLICY_ID, ACCESS_API_TOKEN: process.env.ACCESS_API_TOKEN });
 }
 export async function requireUser(): Promise<DashboardUser> {
   const user = await getUser();

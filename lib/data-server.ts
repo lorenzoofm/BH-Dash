@@ -5,8 +5,8 @@ export const config:any=rawConfig;
 const cache=new Map<string,{until:number,value:Promise<any>}>();
 let nextRequest=0;
 const pause=(ms:number)=>new Promise(r=>setTimeout(r,Math.max(0,ms)));
-export function managerEmails(){return (process.env.MANAGER_EMAILS||'').split(',').map(s=>s.trim().toLowerCase()).filter(Boolean);}
-export async function session(){const user=await getUser();return {user,canEdit:!!user&&managerEmails().includes(user.email.toLowerCase())};}
+export function adminEmails(){return (process.env.ADMIN_EMAILS||'massi@20mg.co').split(',').map(s=>s.trim().toLowerCase()).filter(Boolean);}
+export async function session(){const user=await getUser();return {user,canEdit:!!user,isAdmin:!!user&&adminEmails().includes(user.email.toLowerCase())};}
 export async function guard(write=false){const s=await session();if((write||config.kind==='bh')&&!s.canEdit)throw new Error('403:Sign in with an authorised manager account.');return s;}
 let generation=0;
 export const dataGeneration=()=>generation;

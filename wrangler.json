@@ -17,7 +17,8 @@
   },
   "vars": {
     "DASHBOARD_KIND": "bh",
-    "MANAGER_EMAILS": "massi@20mg.co",
+    "ADMIN_EMAILS": "massi@20mg.co",
+    "ACCESS_ACCOUNT_ID": "33946261fcbfb4f4b406f95941a57f3d",
     "OTHER_DASHBOARD_URL": "https://20mg-content-studio.twentymg-automation.workers.dev"
   }
 }
