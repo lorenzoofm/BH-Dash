@@ -14,7 +14,7 @@ The Worker verifies the signed Access JWT and checks the dedicated Access policy
 
 Before retiring Softr, compare actual Airtable, Creatorstaq Revenue and P&L values for matching date ranges, and check all write flows. The scraper is separate and unchanged.
 
-## Page permissions (pending Cloudflare D1 provisioning)
+## Page permissions
 
 The Users screen now supports per-manager page access. Administrator emails in
 `ADMIN_EMAILS` always see every page. New managers default to Overview,
@@ -25,9 +25,7 @@ table (`app0OseEBbAAAU6xt` / `tblbHePRmAbfWwXBU`), so no export/import or
 record copy is needed. Do not migrate historical staff records into a second
 store; Softr and this dashboard read the same source.
 
-To activate editable grants, create a Cloudflare D1 database in the same
-account, bind it to this Worker as `PERMISSIONS_DB` in `wrangler.json`, then
-apply `migrations/0001_dashboard_permissions.sql` remotely before deploying.
-The binding needs the actual database ID returned by Cloudflare. Until that
-binding exists, the safe default grants above still apply and the Users page
-returns an explicit 503 if someone tries to change a manager's page access.
+The `bh-dashboard-permissions` D1 database and its table were created in the
+Massi Cloudflare account. `wrangler.json` binds it as `PERMISSIONS_DB`. Deploy
+the Worker to activate the page controls. If the binding is unavailable, the
+safe default grants above still apply and edits return an explicit 503.

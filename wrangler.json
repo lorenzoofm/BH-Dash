@@ -24,5 +24,12 @@
     "ACCESS_AUD": "0126e2e223597b6e6d5292f06388b558666cbc5c3db4c972f4b11e18511991c1",
     "ACCESS_TEAM_DOMAIN": "https://purple-hall-68cf.cloudflareaccess.com",
     "OTHER_DASHBOARD_URL": "https://20mg-content-studio.twentymg-automation.workers.dev"
-  }
+  },
+  "d1_databases": [
+    {
+      "binding": "PERMISSIONS_DB",
+      "database_name": "bh-dashboard-permissions",
+      "database_id": "6cdb0a1d-81fe-403b-b1d8-7ed1ec4f482a"
+    }
+  ]
 }
