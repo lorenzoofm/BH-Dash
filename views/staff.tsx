@@ -48,7 +48,7 @@ export default function Staff() {
   const onTarget = perf.rows.filter(r => r.pct !== null && r.pct >= 1).length, withGoal = perf.rows.filter(r => r.pct !== null).length;
 
   return <div className="space-y-6">
-    <PageHeader eyebrow="Operations" title="Staff" subtitle="Team directory, weekly targets and performance."
+    <PageHeader eyebrow="Operations · Live Airtable records" title="Staff" subtitle="Team directory, weekly targets and performance from the existing BH staff base."
       actions={<><Btn onClick={() => setAdding("target")}><Target/>Set target</Btn><Btn variant="primary" onClick={() => setAdding("staff")}><Plus/>Add staff</Btn></>}/>
 
     <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
