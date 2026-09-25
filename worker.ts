@@ -1,8 +1,13 @@
 import handler from 'vinext/server/fetch-handler';
 import { accessUser, type AccessEnv } from './lib/cloudflare-access';
+import {pagesFor, type Page} from './lib/page-access';
 
-const financePaths = ['/pnl', '/revenue', '/detailed/revenue', '/detailed/overview', '/api/revenue', '/api/data/map'];
-const isFinancePath = (path: string) => financePaths.some(route => path === route || path.startsWith(route + '/'));
+const routePage = (path:string):Page|null => {
+  const segment=path.split('/').filter(Boolean);
+  if(!segment.length)return 'overview';
+  if(segment[0]==='detailed')return routePage('/'+(segment[1]==='overview'?'pnl':segment[1]));
+  return (['conversions','staff','pay-hours','expenses','pnl','revenue'] as string[]).includes(segment[0]) ? segment[0] as Page : null;
+};
 
 export default {
   async fetch(request: Request, env: AccessEnv & { ASSETS: Fetcher; ADMIN_EMAILS?: string }, ctx: ExecutionContext) {
@@ -15,8 +20,11 @@ export default {
         status: 403, headers: { 'Cache-Control': 'private, no-store' },
       });
     }
-    if (!import.meta.env.DEV && isFinancePath(new URL(request.url).pathname) && !(env.ADMIN_EMAILS || 'massi@20mg.co').split(',').some(email => email.trim().toLowerCase() === user?.email)) {
-      return Response.json({error: 'Administrator access required for finance.'}, {status: 403, headers: {'Cache-Control': 'private, no-store'}});
+    const path=new URL(request.url).pathname;
+    const page=routePage(path);
+    if(!import.meta.env.DEV && user && page) {
+      const isAdmin=(env.ADMIN_EMAILS || 'massi@20mg.co').split(',').some(email=>email.trim().toLowerCase()===user.email);
+      if(!(await pagesFor(user.email,isAdmin)).includes(page))return Response.json({error:'This page is not enabled for your account.'},{status:403,headers:{'Cache-Control':'private, no-store'}});
     }
     const response = await handler.fetch(request, env, ctx);
     const secured = new Response(response.body, response);

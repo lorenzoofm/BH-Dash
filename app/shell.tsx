@@ -2,6 +2,7 @@
 import {useEffect, useState} from "react";
 import {usePathname} from "next/navigation";
 import {ArrowUpRight, BarChart3, CircleUserRound, Clock, LayoutDashboard, LogOut, Menu, Receipt, TrendingUp, UserCog, Users, Wallet, X} from "lucide-react";
+import type {Page} from '@/lib/page-access-constants';
 
 const groups = [
   {title: "", items: [["/", "Overview", LayoutDashboard]]},
@@ -9,7 +10,7 @@ const groups = [
   {title: "Finance", items: [["/pnl", "Profit & Loss", Wallet], ["/expenses", "Expenses", Receipt], ["/revenue", "Revenue", TrendingUp]]},
 ] as const;
 
-export default function Shell({children, email, otherUrl, isAdmin}: {children: React.ReactNode; email: string; otherUrl: string; isAdmin: boolean}) {
+export default function Shell({children, email, otherUrl, isAdmin, pages}: {children: React.ReactNode; email: string; otherUrl: string; isAdmin: boolean; pages:Page[]}) {
   const path = usePathname();
   const [open, setOpen] = useState(false);
   useEffect(() => setOpen(false), [path]);
@@ -45,7 +46,7 @@ export default function Shell({children, email, otherUrl, isAdmin}: {children: R
     <div className="flex-1 space-y-6 px-3">
       {groups.map(g => <div key={g.title}>
         {g.title && <div className="px-3 pb-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-white/35">{g.title}</div>}
-        <ul className="space-y-0.5">{g.items.filter(([href]) => isAdmin || (href !== '/pnl' && href !== '/revenue')).map(([href, text, Icon]) => {
+        <ul className="space-y-0.5">{g.items.filter(([href]) => pages.includes((href==='/'?'overview':href.slice(1)) as Page)).map(([href, text, Icon]) => {
           const active = path === href;
           return <li key={href}><a href={href} className={"group relative flex h-9 items-center gap-3 rounded-md px-3 text-[13px] transition-colors " + (active ? "bg-sidebar-accent font-medium text-white" : "text-white/60 hover:bg-sidebar-accent/60 hover:text-white")}>
             {active && <span className="absolute inset-y-2 left-0 w-0.5 rounded-full bg-brand"/>}

@@ -1,9 +1,10 @@
 import {guard,failure} from '@/lib/data-server';
 import {revenueURL} from '@/lib/revenue-request';
+import {pagesFor} from '@/lib/page-access';
 export const dynamic='force-dynamic';
 const cache=new Map<string,{until:number;data:Promise<any>}>();
 export async function GET(req:Request){try{
- if(!(await guard()).isAdmin)throw new Error('403:Administrator access required for revenue.');const url=revenueURL(new URL(req.url).searchParams.get('url'));
+ const actor=await guard();const pages=await pagesFor(actor.user!.email,actor.isAdmin);if(!pages.includes('revenue')&&!pages.includes('pnl'))throw new Error('403:Revenue access is not enabled for your account.');const url=revenueURL(new URL(req.url).searchParams.get('url'));
  if(!process.env.CREATORSTAQ_AUTH)throw new Error('503:Creatorstaq is not connected yet.');
  const key=url.href;let entry=cache.get(key);
  if(!entry||entry.until<Date.now()){

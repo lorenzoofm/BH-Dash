@@ -13,3 +13,21 @@ The BH dashboard is a Cloudflare Worker. It does not need the DigitalOcean dropl
 The Worker verifies the signed Access JWT and checks the dedicated Access policy email list. If the policy API is unavailable, it denies the request. Managers can be invited/deactivated at `/account/users` by an admin. The dashboard changes the exact email list in Cloudflare; after adding an email, share the dashboard URL. Cloudflare handles the login code. Removing an email takes up to 15 seconds per Worker isolate to take effect due to the short policy cache. Keep the Access application limited to the exact BH hostname. No custom `/login` bypass is needed.
 
 Before retiring Softr, compare actual Airtable, Creatorstaq Revenue and P&L values for matching date ranges, and check all write flows. The scraper is separate and unchanged.
+
+## Page permissions (pending Cloudflare D1 provisioning)
+
+The Users screen now supports per-manager page access. Administrator emails in
+`ADMIN_EMAILS` always see every page. New managers default to Overview,
+Conversions, Staff, Pay & Hours, and Expenses; Profit & Loss and Revenue start
+blocked. Page routes, the Revenue API, and Airtable data routes enforce these
+permissions on the server. The Staff page reads the existing BH Airtable Staff
+table (`app0OseEBbAAAU6xt` / `tblbHePRmAbfWwXBU`), so no export/import or
+record copy is needed. Do not migrate historical staff records into a second
+store; Softr and this dashboard read the same source.
+
+To activate editable grants, create a Cloudflare D1 database in the same
+account, bind it to this Worker as `PERMISSIONS_DB` in `wrangler.json`, then
+apply `migrations/0001_dashboard_permissions.sql` remotely before deploying.
+The binding needs the actual database ID returned by Cloudflare. Until that
+binding exists, the safe default grants above still apply and the Users page
+returns an explicit 503 if someone tries to change a manager's page access.
