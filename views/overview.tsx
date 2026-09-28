@@ -89,8 +89,8 @@ export default function Overview({isAdmin}: {isAdmin: boolean}) {
   }, [today, staff.rows, conv.rows, pay.rows, expenses.rows, targets.rows, models.rows, map.rows, creators.data, creators.isSuccess, isAdmin]);
 
   const tables = [staff, conv, pay, expenses, targets, models, map];
-  if (!d || tables.some(t => t.loading)) return <PageSkeleton/>;
   if (tables.some(t => t.error)) return <Empty icon={AlertTriangle} title="Couldn’t load data from Airtable">{tables.find(t => t.error)?.error?.message || "Refresh the page to try again."}</Empty>;
+  if (!d || tables.some(t => t.loading)) return <PageSkeleton/>;
   const maxNow = Math.max(1, ...d.board.map(b => Math.max(b.now ?? 0, b.target ?? 0)));
 
   return <div className="space-y-6">
