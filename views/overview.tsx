@@ -13,8 +13,8 @@ const COLORS = ["var(--chart-1)", "var(--chart-2)", "var(--chart-3)", "var(--cha
 export default function Overview({isAdmin}: {isAdmin: boolean}) {
   const [today, setToday] = useState<string | null>(null);
   useEffect(() => setToday(todayIso()), []);
-  const staff = useTable("staff"), conv = useTable("conversions"), pay = useTable("paylog"), expenses = useTable("expenses");
-  const targets = useTable("expectations"), models = useTable("models"), map = useTable("map", isAdmin);
+  const staff = useTable("staff"), conv = useTable("conversions"), pay = useTable("paylog"), expenses = useTable("expenses", isAdmin);
+  const targets = useTable("expectations"), models = useTable("models", isAdmin), map = useTable("map", isAdmin);
   const monthStart = today ? today.slice(0, 8) + "01" : null;
   const creators = useCreators(monthStart, today, isAdmin);
   const [mode, setMode] = useState<"va" | "total">("va");
