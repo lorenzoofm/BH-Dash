@@ -120,6 +120,13 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
+/* Also appears if the browser never starts the page's JavaScript. */
+.skeleton-help { animation: show-skeleton-help 0s 15s both; }
+@keyframes show-skeleton-help {
+  from { visibility: hidden; }
+  to { visibility: visible; }
+}
+
 .num {
   font-family: var(--font-mono);
   font-variant-numeric: tabular-nums;
