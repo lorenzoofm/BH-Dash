@@ -110,12 +110,12 @@ export function Skeleton({className}: {className?: string}) {
 export function PageSkeleton() {
   return <div className="space-y-6">
     <Skeleton className="h-12 w-72"/>
-    <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">{[0, 1, 2, 3].map(i => <Skeleton key={i} className="h-[118px]"/>)}</div>
-    <Skeleton className="h-96"/>
     <div className="skeleton-help rounded-xl border bg-card p-5 text-sm" role="status">
       <p className="font-medium">This page is taking longer than expected to load.</p>
       <p className="mt-1 text-muted-foreground">Please <a className="underline" href="">reload the page</a>. If it stays here, tell the dashboard administrator which page you opened.</p>
     </div>
+    <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">{[0, 1, 2, 3].map(i => <Skeleton key={i} className="h-[118px]"/>)}</div>
+    <Skeleton className="h-96"/>
   </div>;
 }
 
