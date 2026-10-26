@@ -33,12 +33,14 @@ export async function allowedEmails(env: Parameters<typeof getPolicy>[0]) {
   cache.set(key,{emails,until:Date.now()+15000});
   return emails;
 }
+// PUT replaces the whole policy, so carry over its other settings instead of resetting them to defaults.
+const keptSettings=['session_duration','approval_required','approval_groups','isolation_required','purpose_justification_required','purpose_justification_prompt','mfa_config'];
 export async function setPolicyEmails(env: Parameters<typeof getPolicy>[0], emailList:string[]) {
   const policy = await getPolicy(env);
   const emails = [...new Set(emailList.map(normalizeEmail))];
   if (!emails.length) throw new Error('400:At least one manager must remain.');
   const url = policyUrl(env);
-  const response = await fetch(url,{method:'PUT',headers:{Authorization:`Bearer ${env.ACCESS_API_TOKEN}`,'Content-Type':'application/json'},body:JSON.stringify({name:policy.name,decision:'allow',include:emails.map(email=>({email:{email}}))}),signal:AbortSignal.timeout(10000)});
+  const response = await fetch(url,{method:'PUT',headers:{Authorization:`Bearer ${env.ACCESS_API_TOKEN}`,'Content-Type':'application/json'},body:JSON.stringify({...Object.fromEntries(keptSettings.filter(k=>k in policy).map(k=>[k,(policy as Record<string,unknown>)[k]])),name:policy.name,decision:'allow',include:emails.map(email=>({email:{email}}))}),signal:AbortSignal.timeout(10000)});
   const data = await response.json() as {success?:boolean;result?:Policy};
   if (!response.ok || !data.success || !data.result) throw new Error('502:Cloudflare did not save the Access policy.');
   const saved = policyEmails(data.result);
