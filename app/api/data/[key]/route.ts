@@ -3,22 +3,30 @@ import {uniqueFields,sameValue} from '@/lib/data-rules';
 import {pagesFor,type Page} from '@/lib/page-access';
 export const dynamic='force-dynamic';
 const response=(body:any)=>Response.json(body,{headers:{'Cache-Control':'private, no-store'}});
-const tablePages:Record<string,Page[]>={staff:['overview','staff','conversions','pay-hours','pnl'],models:['overview','staff','pnl','revenue'],conversions:['overview','conversions','staff','pnl'],expectations:['overview','staff','conversions'],paylog:['overview','staff','pay-hours','pnl'],expenses:['overview','expenses','pnl'],map:['pnl','revenue'],paidSubs:['conversions']};
-async function access(actor:Awaited<ReturnType<typeof guard>>,key:string){const pages=await pagesFor(actor.user!.email,actor.isAdmin);if(!tablePages[key]?.some(page=>pages.includes(page)))throw new Error('403:This data is not enabled for your account.');return pages;}
+const tablePages:Record<string,Page[]>={staff:['overview','staff','conversions','pay-hours','pnl'],models:['overview','staff','pnl','revenue'],conversions:['overview','conversions','staff','pnl'],expectations:['overview','staff','conversions'],paylog:['overview','staff','pay-hours','pnl'],expenses:['expenses','pnl'],map:['pnl','revenue'],paidSubs:['conversions']};
+// Writes need the page that edits the table, not just one that reads it.
+const writePages:Record<string,Page[]>={staff:['staff'],expectations:['staff'],conversions:['conversions'],paidSubs:['conversions'],paylog:['pay-hours'],expenses:['expenses'],models:['pnl','revenue'],map:['pnl','revenue']};
+// Fields hidden unless the user has one of the listed pages.
+const privateFields:Record<string,{fields:Set<string>;pages:Page[]}>={
+ models:{fields:new Set(["Deal Type","Model's Cut %","Our Cut %","Payout Basis"]),pages:['pnl']},
+ staff:{fields:new Set(["Current Hourly Rate"]),pages:['staff','pay-hours','pnl']},
+ paylog:{fields:new Set(["Hourly Rate Snapshot","Bonus","Deductions","Total Pay"]),pages:['staff','pay-hours','pnl']},
+};
+const hidden=(key:string,pages:Page[],field:string)=>{const p=privateFields[key];return !!p&&p.fields.has(field)&&!p.pages.some(page=>pages.includes(page));};
+async function access(actor:Awaited<ReturnType<typeof guard>>,key:string,write=false){const pages=await pagesFor(actor.user!.email,actor.isAdmin);if(!(write?writePages:tablePages)[key]?.some(page=>pages.includes(page)))throw new Error('403:This data is not enabled for your account.');return pages;}
 export async function GET(req:Request,{params}:any){try{
  const actor=await guard();const {key}=await params,s=source(key),url=new URL(req.url);
  const pages=await access(actor,key);
- const privateModelFields=new Set(["Deal Type","Model's Cut %","Our Cut %","Payout Basis"]);
  if(url.searchParams.has('options')){
   const name=url.searchParams.get('options'),f=s.fields.find((f:any)=>f.name===name);if(!f)throw new Error('400:Unknown field.');
-  if(key==='models'&&!pages.includes('pnl')&&privateModelFields.has(name!))throw new Error('403:Profit & Loss access required for model deal terms.');
+  if(hidden(key,pages,name!))throw new Error('403:This field is not enabled for your account.');
   let options=f.options?.choices??[];
   if(s.table==='Expense Log'&&name==='Category'){const values=(await allRows(s)).map(r=>r.fields.Category).filter(Boolean);options=[...new Set([...options.map((o:any)=>o.label),...values])].sort().map(label=>({label,value:label}));}
   return response({options});
  }
  let raw:any;try{raw=JSON.parse(url.searchParams.get('select')||'{}');}catch{throw new Error('400:Invalid field selection.');}
  const select=projection(s,raw),query=new URLSearchParams({pageSize:'100'});
- if(key==='models'&&!pages.includes('pnl'))for(const [alias,field] of Object.entries(select))if(privateModelFields.has(field as string))delete select[alias];
+ for(const [alias,field] of Object.entries(select))if(hidden(key,pages,field as string))delete select[alias];
  [...new Set(Object.values(select))].forEach(f=>query.append('fields[]',f));
  const offset=url.searchParams.get('offset');if(offset){if(offset.length>1024)throw new Error('400:Invalid page.');query.set('offset',offset);}
  const sort=url.searchParams.get('sort');if(sort){if(!select[sort])throw new Error('400:Unknown sort field.');query.set('sort[0][field]',select[sort]);query.set('sort[0][direction]',url.searchParams.get('direction')==='desc'?'desc':'asc');}
@@ -35,7 +43,7 @@ async function mutate(req:Request,context:any){
 async function save(req:Request,{params}:any){try{
  const actor=await guard(true);
  if(Number(req.headers.get('content-length'))>200000)throw new Error('413:Record is too large.');
- const {key}=await params,s=source(key);await access(actor,key);if((key==='models'||key==='map')&&!actor.isAdmin)throw new Error('403:Administrator access required for model finance settings.');if(!s.actions[req.method])throw new Error('403:This action is unavailable.');
+ const {key}=await params,s=source(key);await access(actor,key,true);if((key==='models'||key==='map')&&!actor.isAdmin)throw new Error('403:Administrator access required for model finance settings.');if(!s.actions[req.method])throw new Error('403:This action is unavailable.');
  const text=await req.text();if(text.length>200000)throw new Error('413:Record is too large.');let body:any;try{body=JSON.parse(text);}catch{throw new Error('400:Invalid record.');}
  const id=body.recordId;if(req.method!=='POST'&&(typeof id!=='string'||!/^rec[A-Za-z0-9]{14}$/.test(id)))throw new Error('400:Invalid record.');
  const select=projection(s,body.select||{}),fields=req.method==='DELETE'?{}:validateFields(s,req.method,select,body.fields);
@@ -63,7 +71,7 @@ async function save(req:Request,{params}:any){try{
   if(req.method==='POST'){
    if(s.table==='Pay Log')fields['Submitted By']=actor.user!.email;
    if(s.table==='Expense Log')fields['Created By']=actor.user!.email;
-  }
+  }else{delete fields['Submitted By'];delete fields['Created By'];}
  }
  const result=await airtable(s.tableId+(id?'/'+id:''),{method:req.method,...(req.method!=='DELETE'?{body:JSON.stringify({fields,...(s.table==='Expense Log'&&fields.Category?{typecast:true}:{})})}:{})},false);clearCache();
  return response(req.method==='DELETE'?result:await formatRecord(s,result,select));

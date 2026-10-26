@@ -10,7 +10,7 @@ let keyReads=0,policyReads=0;
 let policy={id:'test-policy',name:'BH managers',decision:'allow',include:[{email:{email:'massi@20mg.co'}}]};
 globalThis.fetch=async (url,init={})=>{
  if(String(url)===env.ACCESS_TEAM_DOMAIN+'/cdn-cgi/access/certs'){keyReads++;return Response.json({keys:[jwk]});}
- assert.equal(String(url),'https://api.cloudflare.com/client/v4/accounts/test-account/access/apps/test-app/policies/test-policy');
+ assert.equal(String(url),'https://api.cloudflare.com/client/v4/accounts/test-account/access/policies/test-policy');
  assert.equal(init.headers.Authorization,'Bearer test-token');
  if(init.method==='PUT'){policy={...policy,...JSON.parse(init.body)};return Response.json({success:true,result:policy});}
  policyReads++;return Response.json({success:true,result:policy});

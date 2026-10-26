@@ -7,7 +7,7 @@ export async function getUser(): Promise<DashboardUser | null> {
   const requestHeaders = await headers();
   // The loopback-only development middleware strips and supplies these headers.
   // This branch is removed from production builds; production always verifies Access.
-  if (process.env.NODE_ENV === 'development') {
+  if (import.meta.env.DEV) {
     const email = requestHeaders.get('oai-authenticated-user-email');
     const userId = requestHeaders.get('oai-authenticated-user-id');
     return email && userId ? { email, userId, displayName: email, fullName: null } : null;

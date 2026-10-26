@@ -45,6 +45,7 @@ export async function DELETE(request:Request) {
     if(typeof email!=='string') throw new Error('400:Enter an email address.');
     const target=normalizeEmail(email);
     if(target===s.user?.email) throw new Error('400:You cannot remove your own access.');
+    if(adminEmails().includes(target)) throw new Error('403:Administrator access is configured outside the dashboard.');
     const current=policyEmails(await getPolicy(env()));
     if(!current.includes(target)) throw new Error('404:This person does not have access.');
     const emails=await setPolicyEmails(env(),current.filter(value=>value!==target));await removePages(target);return Response.json({emails});
