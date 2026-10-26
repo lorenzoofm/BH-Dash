@@ -94,7 +94,7 @@ export default function Overview({isAdmin}: {isAdmin: boolean}) {
   const maxNow = Math.max(1, ...d.board.map(b => Math.max(b.now ?? 0, b.target ?? 0)));
 
   return <div className="space-y-6">
-    <PageHeader eyebrow={`Week of ${weekLabel(d.thisWeek)} · day ${d.daysIn}/7`} title="Overview" subtitle={`${d.activeCount} active staff${isAdmin ? ` · month to date figures from ${shortDate(d.thisWeek.slice(0, 8) + "01")}` : ""}`}/>
+    <PageHeader eyebrow={`Week of ${weekLabel(d.thisWeek)} · day ${d.daysIn}/7`} title="Overview" subtitle={`${d.activeCount} active staff${isAdmin ? ` · month to date figures from ${shortDate(monthStart!)}` : ""}`}/>
 
     <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
       {isAdmin && <><Stat accent label="Profit · this month" icon={Wallet} value={d.profit === null ? "—" : money(d.profit)} tone={d.profit === null ? "" : d.profit >= 0 ? "positive" : "negative"}

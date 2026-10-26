@@ -90,10 +90,10 @@ export function useAccountRevenues(slugs: string[], start: string | null, end: s
             const url = `https://api.creatorstaq.com/v1/computed/${encodeURIComponent(slug)}/revenue/ranged?start=${range.start}&end=${range.end}`;
             const response = await proxyFetch(url);
             if (!response.ok) {
-              const body = await response.json().catch(() => ({}));
+              const body: any = await response.json().catch(() => ({}));
               throw new Error(body.error || `Creator Staq returned ${response.status}`);
             }
-            const body = await response.json();
+            const body: any = await response.json();
             const amount = Number(body.kpis?.total_net);
             if (!Number.isFinite(amount)) throw new Error("Incomplete account revenue");
             total += amount;

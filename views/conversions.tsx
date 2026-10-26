@@ -15,6 +15,7 @@ export default function Conversions() {
   const [subDraft, setSubDraft] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
   useEffect(() => { setDraft({}); setSubDraft({}); }, [week]);
+  const changeWeek = (w: string) => { if ((Object.keys(draft).length || Object.keys(subDraft).length) && !window.confirm("Discard unsaved changes for this week?")) return; setWeek(w); };
 
   const rows = useMemo(() => {
   if (!week) return [];
@@ -78,7 +79,7 @@ export default function Conversions() {
 
   return <div className="space-y-6">
     <PageHeader eyebrow="Operations" title="Conversions" subtitle="Weekly totals per VA, dated to the Monday of the week."
-      actions={<WeekStepper label={weekLabel(week)} onPrev={() => setWeek(addDays(week, -7))} onNext={() => setWeek(addDays(week, 7))} nextDisabled={current} badge={current ? <Pill tone="orange">This week</Pill> : undefined}/>}/>
+      actions={<WeekStepper label={weekLabel(week)} onPrev={() => changeWeek(addDays(week, -7))} onNext={() => changeWeek(addDays(week, 7))} nextDisabled={current} badge={current ? <Pill tone="orange">This week</Pill> : undefined}/>}/>
 
     <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
       <Stat label="Week total" icon={Hash} value={total.toLocaleString()} delta={prevTotal ? total - prevTotal : null} deltaLabel="vs prior week"/>

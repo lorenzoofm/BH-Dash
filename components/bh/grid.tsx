@@ -98,6 +98,7 @@ function Cell({col, row, onSave}: {col: Column; row: Row; onSave?: (value: any) 
   const empty = content === "" || content === null || content === undefined;
 
   return <div onClick={start} title={editable ? "Click to edit" : undefined}
+    {...(editable ? {role: "button", tabIndex: 0, onKeyDown: (e: React.KeyboardEvent) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); start(); } }} : {})}
     className={cn("-mx-2 flex min-h-8 items-center rounded-md px-2", align === "right" && "justify-end", (col.type === "money" || col.type === "number") && "num", editable && "cursor-text hover:bg-muted/70 hover:ring-1 hover:ring-border", col.type === "longtext" && "max-w-[260px]")}>
     {saving ? <Loader2 className="size-3.5 animate-spin text-muted-foreground"/> : empty ? <span className="text-muted-foreground/50">—</span> : col.type === "longtext" ? <span className="truncate">{content}</span> : content}
   </div>;
@@ -182,7 +183,7 @@ export function DataGrid({rows, columns, onUpdate, onDelete, loading, toolbar, f
                 {rowActions?.(r)}
                 {onDelete && (confirm === r.id
                   ? <><Btn size="sm" variant="danger" onClick={async () => { setConfirm(null); try { await onDelete(r); toast.success("Deleted"); } catch (e: any) { toast.error(e.message); } }}>Delete</Btn><Btn size="sm" variant="ghost" onClick={() => setConfirm(null)}>Cancel</Btn></>
-                  : <Btn size="icon" variant="ghost" className="text-muted-foreground opacity-0 group-hover:opacity-100 focus:opacity-100" onClick={() => setConfirm(r.id)} aria-label="Delete row"><Trash2/></Btn>)}
+                  : <Btn size="icon" variant="ghost" className="text-muted-foreground opacity-0 group-hover:opacity-100 focus:opacity-100 [@media(hover:none)]:opacity-100" onClick={() => setConfirm(r.id)} aria-label="Delete row"><Trash2/></Btn>)}
               </div>
             </td>}
           </tr>)}

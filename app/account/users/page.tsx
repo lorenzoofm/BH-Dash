@@ -8,18 +8,18 @@ type Users={emails:string[];admins:string[];permissions:Record<string,Page[]>;ed
 export default function UsersPage(){
  const [users,setUsers]=useState<Users>({emails:[],admins:[],permissions:{},editable:false});
  const [email,setEmail]=useState(''),[error,setError]=useState(''),[busy,setBusy]=useState(''),[ready,setReady]=useState(false),[invited,setInvited]=useState('');
- const load=async()=>{const response=await fetch('/api/users',{cache:'no-store'});const data=await response.json() as Users&{error?:string};if(!response.ok)throw new Error(data.error);setUsers(data);setReady(true);};
+ const load=async()=>{const response=await fetch('/api/users',{cache:'no-store'});const data=await response.json() as Users&{error?:string};if(!response.ok)throw new Error(data.error||"Request failed.");setUsers(data);setReady(true);};
  useEffect(()=>{load().catch(e=>{setError(e.message);setReady(true);});},[]);
  const change=async(method:'POST'|'DELETE',target:string)=>{
   setBusy(target);setError('');
-  try{const response=await fetch('/api/users',{method,headers:{'Content-Type':'application/json'},body:JSON.stringify({email:target})});const data=await response.json() as {error?:string};if(!response.ok)throw new Error(data.error);await load();if(method==='POST')setInvited(target);setEmail('');}
+  try{const response=await fetch('/api/users',{method,headers:{'Content-Type':'application/json'},body:JSON.stringify({email:target})});const data=await response.json() as {error?:string};if(!response.ok)throw new Error(data.error||"Request failed.");await load();if(method==='POST')setInvited(target);setEmail('');}
   catch(e){setError(e instanceof Error?e.message:'Could not update access.');}finally{setBusy('');}
  };
  const toggle=async(target:string,page:Page)=>{
   const current=users.permissions[target]??DEFAULT_MANAGER_PAGES;
   const pages=current.includes(page)?current.filter(p=>p!==page):[...current,page];
   setBusy(target);setError('');
-  try{const response=await fetch('/api/users',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:target,pages})});const data=await response.json() as {error?:string;pages?:Page[]};if(!response.ok)throw new Error(data.error);setUsers(u=>({...u,permissions:{...u.permissions,[target]:data.pages!}}));}
+  try{const response=await fetch('/api/users',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:target,pages})});const data=await response.json() as {error?:string;pages?:Page[]};if(!response.ok)throw new Error(data.error||"Request failed.");setUsers(u=>({...u,permissions:{...u.permissions,[target]:data.pages!}}));}
   catch(e){setError(e instanceof Error?e.message:'Could not save page access.');}finally{setBusy('');}
  };
  const link=typeof window==='undefined'?'':window.location.origin;

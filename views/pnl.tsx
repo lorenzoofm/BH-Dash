@@ -38,7 +38,7 @@ export default function PnL() {
   const proxyFetch = useProxyFetch("live");
   const directory = useQuery({queryKey: ["bh-creatorstaq-accounts"], enabled: managing, staleTime: 300000, retry: 1, queryFn: async (): Promise<{id: number; slug: string; of_username: string}[]> => {
     const response = await proxyFetch("https://api.creatorstaq.com/v1/me");
-    const body = await response.json();
+    const body: any = await response.json();
     if (!response.ok) throw new Error(body.error || "Could not list Creatorstaq accounts");
     return body.accounts;
   }});
@@ -99,6 +99,8 @@ export default function PnL() {
   } : null;
   const accountErrors = selectedSlugs.flatMap(slug => accountRevenue.data?.[slug]?.error ? [`${slug}: ${accountRevenue.data[slug].error}`] : []);
 
+  // Picking a model in the drawer also adds it to the report, so it never vanishes behind "Choose a model".
+  const chooseModel = (id: string) => selectedIds.includes(id) ? setModelId(id) : toggleModel(id);
   function toggleModel(id: string) {
     if (selectedIds.includes(id)) {
       if (selectedIds.length === 1) return;
@@ -216,11 +218,11 @@ export default function PnL() {
 
       {showRevenue && <Panel title="Where the money goes">
         <div className="space-y-3">
-          {([["Earnings", p.income!, "bg-foreground"], ["Model payout", -(p.payout ?? 0), "bg-chart-4"], ["Staff wages", -p.wages, "bg-brand"], ["Expenses", -p.expenses, "bg-chart-2"], ["Net profit", p.profit ?? 0, (p.profit ?? 0) >= 0 ? "bg-positive" : "bg-negative"]] as [string, number, string][]).map(([name, v, cls], i) => {
+          {([["Earnings", p.income!, "bg-foreground"], ["Model payout", p.payout === null ? null : -p.payout, "bg-chart-4"], ["Staff wages", -p.wages, "bg-brand"], ["Expenses", -p.expenses, "bg-chart-2"], ["Net profit", p.profit, (p.profit ?? 0) >= 0 ? "bg-positive" : "bg-negative"]] as [string, number | null, string][]).map(([name, v, cls], i) => {
             const max = Math.max(1, p.income!, p.wages + p.expenses + (p.payout ?? 0));
             return <div key={name} className={"grid grid-cols-[110px_1fr_110px] items-center gap-4 text-[13px] " + (i === 4 ? "border-t pt-3 font-semibold" : "")}>
               <span className={i === 4 ? "" : "text-muted-foreground"}>{name}</span>
-              <div className="h-2.5 overflow-hidden rounded-full bg-muted"><div className={"h-full rounded-full " + cls} style={{width: `${Math.abs(v) / max * 100}%`}}/></div>
+              <div className="h-2.5 overflow-hidden rounded-full bg-muted"><div className={"h-full rounded-full " + cls} style={{width: `${Math.abs(v ?? 0) / max * 100}%`}}/></div>
               <span className="num text-right">{money(v, 2)}</span>
             </div>;
           })}
@@ -247,14 +249,14 @@ export default function PnL() {
     <Drawer open={managing} onClose={() => setManaging(false)} title="Manage P&L models" subtitle="Add a model, then explicitly connect only her DAP account. Other pages stay out of her P&L.">
       <div className="space-y-5">
         <div className="space-y-2"><Field label="New model name"><input className={inputClass} value={newModel} onChange={e => setNewModel(e.target.value)} placeholder="Model name"/></Field><Btn onClick={addModel} disabled={!newModel.trim() || saving}><Plus/>Add model</Btn></div>
-        <div className="border-t pt-4"><Field label="Choose model"><select className={inputClass} value={modelId} onChange={e => setModelId(e.target.value)}>{models.rows.map(m => <option key={m.id} value={m.id}>{label(m.fields.model)}</option>)}</select></Field>
+        <div className="border-t pt-4"><Field label="Choose model"><select className={inputClass} value={modelId} onChange={e => chooseModel(e.target.value)}>{models.rows.map(m => <option key={m.id} value={m.id}>{label(m.fields.model)}</option>)}</select></Field>
           <p className="mt-2 text-[12px] text-muted-foreground">Connected DAP accounts: {accountSlugs.length ? accountSlugs.join(", ") : "none"}</p></div>
         <div className="space-y-2 border-t pt-4"><Field label="Available Creatorstaq account"><select className={inputClass} value={newAccount} onChange={e => setNewAccount(e.target.value)} disabled={!directory.data}><option value="">Choose the DAP account</option>{directory.data?.map(a => { const owner = map.rows.find(r => Number(r.fields.accountId) === a.id || label(r.fields.slug).toLowerCase() === a.slug.toLowerCase()); const other = owner && linkIds(owner.fields.model).some(id => id !== modelId); return <option key={a.id} value={a.id} disabled={!!other}>{a.slug} · @{a.of_username}{other ? " · assigned elsewhere" : ""}</option>; })}</select></Field>
           {directory.isPending && <p className="text-[12px] text-muted-foreground">Loading available accounts…</p>}{directory.isError && <Notice tone="red" icon={AlertTriangle}>{(directory.error as Error).message}</Notice>}
           <Btn onClick={connectAccount} disabled={!newAccount || !modelId || saving}><Link2/>Connect DAP account</Btn>
           <p className="text-[12px] text-muted-foreground">Only accounts available to the connected Creatorstaq key appear here. Set the model’s deal type and cut on the Revenue page.</p>
         </div>
-        <div className="space-y-2 border-t pt-4"><p className="text-[12px] font-medium">Current roster</p>{models.rows.map(m => <button key={m.id} type="button" onClick={() => setModelId(m.id)} className="flex w-full justify-between rounded-lg border px-3 py-2 text-left text-[13px] hover:bg-muted"><span>{label(m.fields.model)}</span><span className="text-muted-foreground">{map.rows.filter(r => r.fields.include !== false && linkIds(r.fields.model).includes(m.id)).length} DAP accounts</span></button>)}</div>
+        <div className="space-y-2 border-t pt-4"><p className="text-[12px] font-medium">Current roster</p>{models.rows.map(m => <button key={m.id} type="button" onClick={() => chooseModel(m.id)} className="flex w-full justify-between rounded-lg border px-3 py-2 text-left text-[13px] hover:bg-muted"><span>{label(m.fields.model)}</span><span className="text-muted-foreground">{map.rows.filter(r => r.fields.include !== false && linkIds(r.fields.model).includes(m.id)).length} DAP accounts</span></button>)}</div>
       </div>
     </Drawer>
   </div>;

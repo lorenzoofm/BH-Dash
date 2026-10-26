@@ -23,7 +23,7 @@ export default function PayHours() {
     if (range === "last-month") { const last = addDays(today.slice(0, 8) + "01", -1); return [last.slice(0, 8) + "01", last]; }
     return ["0000-00-00", "9999-99-99"];
   }, [today, range]);
-  const rows = useMemo(() => bounds ? pay.rows.filter(r => { const d = String(r.fields.workDate ?? "").slice(0, 10); return d >= bounds[0] && d <= bounds[1]; }) : [], [pay.rows, bounds]);
+  const rows = useMemo(() => bounds ? pay.rows.filter(r => { const d = String(r.fields.workDate ?? "").slice(0, 10); return range === "all" || (d >= bounds[0] && d <= bounds[1]); }) : [], [pay.rows, bounds, range]);
 
   if ([pay, staff].some(t => t.error)) return <TableError tables={[pay, staff]}/>;
   if (!today || pay.loading || staff.loading) return <PageSkeleton/>;
@@ -67,7 +67,7 @@ export default function PayHours() {
           ]}
           onUpdate={(id, key, value) => pay.update(id, {[key]: value})}
           onDelete={r => pay.remove(r.id)}
-          rowActions={r => label(r.fields.status) !== "Paid" ? <Btn size="sm" variant="ghost" className="opacity-0 group-hover:opacity-100" onClick={() => markPaid(r.id)}><Check/>Paid</Btn> : null}
+          rowActions={r => label(r.fields.status) !== "Paid" ? <Btn size="sm" variant="ghost" className="opacity-0 group-hover:opacity-100 focus-visible:opacity-100 [@media(hover:none)]:opacity-100" onClick={() => markPaid(r.id)}><Check/>Paid</Btn> : null}
           footer={rs => <><span>{rs.length} entries</span><span className="num">{sum(rs, "hours").toLocaleString()} h</span><span className="num font-medium text-foreground">{money(sum(rs, "totalPay"), 2)}</span></>}/>
       </div>
     </Panel>
@@ -94,7 +94,7 @@ function LogHours({open, onClose, staff, create, today}: {open: boolean; onClose
     } catch (e: any) { toast.error(e.message); } finally { setBusy(false); }
   }
   return <Drawer open={open} onClose={onClose} title="Log hours" subtitle="One day for one person. Their current hourly rate is saved onto the row."
-    footer={<><Btn variant="ghost" onClick={onClose}>Cancel</Btn><Btn variant="primary" onClick={submit} loading={busy} disabled={!f.staff || !f.date || f.hours === "" || !person?.fields.rate}>Save</Btn></>}>
+    footer={<><Btn variant="ghost" onClick={onClose}>Cancel</Btn><Btn variant="primary" onClick={submit} loading={busy} disabled={!f.staff || !f.date || f.hours === "" || !(Number(f.hours) >= 0 && Number(f.hours) <= 24) || Number(f.bonus) < 0 || Number(f.deductions) < 0 || !person?.fields.rate}>Save</Btn></>}>
     <Field label="Staff" hint={person && !person.fields.rate ? "This person has no hourly rate — set one on the Staff page first." : person ? `Rate ${money(rate, 2)}/h` : undefined}>
       <select className={inputClass} value={f.staff} onChange={set("staff")} autoFocus><option value="">Choose…</option>{staff.map(s => <option key={s.id} value={s.id}>{label(s.fields.name)}</option>)}</select>
     </Field>
