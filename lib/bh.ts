@@ -35,8 +35,14 @@ export function linkLabels(v: unknown): string[] {
 export function isoDay(d: Date) {
   return d.toISOString().slice(0, 10);
 }
+// The business runs on Philippines time (UTC+8, no daylight saving), whatever the viewer's timezone.
 export function todayIso() {
-  return isoDay(new Date());
+  return isoDay(new Date(Date.now() + 8 * 3600e3));
+}
+// Midnight of today's Philippines date as a local Date, for code that does local-calendar math.
+export function manilaNow() {
+  const [y, m, d] = todayIso().split("-").map(Number);
+  return new Date(y, m - 1, d);
 }
 export function addDays(day: string, count: number) {
   const d = new Date(day + "T00:00:00Z");

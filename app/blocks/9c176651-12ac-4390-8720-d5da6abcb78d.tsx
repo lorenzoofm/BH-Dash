@@ -1,4 +1,5 @@
 "use client";
+import {manilaNow} from "@/lib/bh";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   datasource,
@@ -243,7 +244,7 @@ function isoDay(d: Date | null): string {
 }
 
 function todayIso(): string {
-  return isoDay(new Date());
+  return isoDay(manilaNow());
 }
 
 function displayDate(v: any): string {
@@ -1371,7 +1372,7 @@ export default function Block() {
       toast.error("Amount must be a number");
       return;
     }
-    const when = toDate(form.expenseDate) ?? new Date();
+    const when = toDate(form.expenseDate) ?? manilaNow();
     // The primary field can never be blank: an existing row keeps its id, a new
     // one (or a legacy row that somehow has none) gets a freshly derived one.
     const expenseId =

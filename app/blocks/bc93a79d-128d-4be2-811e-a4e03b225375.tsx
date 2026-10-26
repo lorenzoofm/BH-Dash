@@ -1,4 +1,5 @@
 "use client";
+import {manilaNow} from "@/lib/bh";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { datasource, useRecords, useRecordCreate, useRecordUpdate, q } from "@/lib/datasource";
 import { Card, CardContent } from "@/components/ui/card";
@@ -227,7 +228,7 @@ function pageList(current: number, total: number): (number | string)[] {
 const STATUSES = ["Active", "Setup", "Inactive"];
 const PLATFORMS = ["X", "OnlyFans", "Fanvue", "Instagram", "Discord", "Threads", "Reddit", "VPS"];
 const PAY_TYPES = ["Hourly", "Salary", "Commission"];
-const CURRENCIES = ["USD", "GBP", "EUR", "AUD"];
+const CURRENCIES = ["USD"]; // all money is USD
 const NONE = "__none__";
 const PAGE_SIZES = [15, 25, 50, 100];
 
@@ -314,8 +315,8 @@ function Expectations({staff,buckets,sourceReady,sourceError,refreshSource}:any)
  const [form,setForm]=useState<any>(null),[editingId,setEditingId]=useState<string|null>(null),[error,setError]=useState(""),[busy,setBusy]=useState(false);
  const lock=useRef(false);
  let keys:string[]=[],rangeError="",cutoff="",monthLabel="";
- try{if(measure==="monthly"){const window=expectationMonth(monthPeriod,new Date(),month);keys=window.keys;cutoff=window.cutoff;monthLabel=window.label;}else{keys=expectationWeeks(period,new Date(),from,to);cutoff=keys[keys.length-1];}}catch(e:any){rangeError=e.message;}
- const currentWeek=isoDay(mondayOf(new Date()));
+ try{if(measure==="monthly"){const window=expectationMonth(monthPeriod,manilaNow(),month);keys=window.keys;cutoff=window.cutoff;monthLabel=window.label;}else{keys=expectationWeeks(period,manilaNow(),from,to);cutoff=keys[keys.length-1];}}catch(e:any){rangeError=e.message;}
+ const currentWeek=isoDay(mondayOf(manilaNow()));
  const people=staff.filter((s:any)=>[s.name,s.model,s.platform].join(" ").toLowerCase().includes(search.toLowerCase())).map((s:any)=>({...s,result:expectationResult(rows,s.id,keys,buckets.get(s.id),currentWeek,measure,cutoff)})).filter((s:any)=>resultFilter==="all"||s.result.status===resultFilter||(resultFilter==="met"&&["At target","Above target"].includes(s.result.status)));
  const display=(value:any)=>value==null?"—":typeof value==="number"?value.toLocaleString("en-US",{maximumFractionDigits:2}):value;
  const openNew=(staffId="")=>{setEditingId(null);setForm({staff:staffId,week:"",daily:"",weekly:"",monthly:""});setError("");};
@@ -403,7 +404,7 @@ export default function Block() {
     if (convQ.hasNextPage && !convQ.isFetching) convQ.fetchNextPage();
   }, [convQ.hasNextPage, convQ.isFetching, convQ.data]);
 
-  const thisWeekStart = mondayOf(new Date());
+  const thisWeekStart = mondayOf(manilaNow());
   const lastWeekKeys = [isoDay(addDays(thisWeekStart, -7))];
   const last4WeekKeys = [4, 3, 2, 1].map((i) => isoDay(addDays(thisWeekStart, -7 * i)));
   const lastWkRange = `w/c ${fmtWeek(addDays(thisWeekStart, -7))} – ${fmtWeek(addDays(thisWeekStart, -1))}`;

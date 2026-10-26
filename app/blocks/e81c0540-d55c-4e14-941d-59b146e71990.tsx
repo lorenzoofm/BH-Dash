@@ -1,4 +1,5 @@
 "use client";
+import {manilaNow} from "@/lib/bh";
 import { useEffect, useMemo, useState } from "react";
 import { datasource, useRecords, q } from "@/lib/datasource";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
@@ -199,7 +200,7 @@ const PERIODS = [
 ];
 
 function periodRange(period: string): { start: Date | null; end: Date | null } {
-  const now = new Date();
+  const now = manilaNow();
   const y = now.getFullYear();
   const m = now.getMonth();
   if (period === "this")

@@ -1,4 +1,5 @@
 "use client";
+import {manilaNow} from "@/lib/bh";
 import { useEffect, useMemo, useState } from "react";
 import { datasource, useRecords, q } from "@/lib/datasource";
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from "@/components/ui/card";
@@ -224,7 +225,7 @@ export default function Block() {
     models.truncated ? "Models" : null,
   ].filter(Boolean) as string[];
 
-  const today = startOfDay(new Date());
+  const today = startOfDay(manilaNow());
   const [conversionPeriod,setConversionPeriod]=useState("this");
   const [conversionStart,setConversionStart]=useState(isoDay(mondayOf(today)));
   const [conversionEnd,setConversionEnd]=useState(isoDay(addDays(mondayOf(today),6)));

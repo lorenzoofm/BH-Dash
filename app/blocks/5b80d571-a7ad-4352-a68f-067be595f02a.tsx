@@ -1,4 +1,5 @@
 "use client";
+import {manilaNow} from "@/lib/bh";
 import { useEffect, useMemo, useState } from "react";
 import { datasource, useRecords, useRecordCreate, useRecordUpdate, useRecordDelete, q } from "@/lib/datasource";
 import { useCurrentUser } from "@/lib/user";
@@ -147,7 +148,7 @@ function lastOfMonth(d: Date) { return new Date(d.getFullYear(), d.getMonth() + 
 // ---------- date presets ----------
 // Pay Log rows are DAILY, keyed on Work Date, so day-level presets are meaningful here (unlike the
 // weekly Conversions page, which deliberately offers none).
-// Every boundary below is built from a LOCAL `new Date()` and local Y/M/D constructors — the same
+// Every boundary below is built from a LOCAL `manilaNow()` and local Y/M/D constructors — the same
 // frame `toDate` parses rows into — so "Today" means the day the person at the screen is in.
 // The window is applied to the already-fetched rows. There is deliberately no q.date() query here:
 // it is untested against Airtable DATE fields and its failure mode (an empty result) is
@@ -191,7 +192,7 @@ function presetRange(p: DatePreset, now: Date): { from: Date; to: Date } | null 
 // "5 Sep" / "31 Aug – 6 Sep" / "1 – 30 Sep", with the year added only when the window is not in
 // the current year (or straddles two).
 function fmtSpan(from: Date, to: Date): string {
-  const cy = new Date().getFullYear();
+  const cy = manilaNow().getFullYear();
   const crossYear = from.getFullYear() !== to.getFullYear();
   const showYear = crossYear || from.getFullYear() !== cy || to.getFullYear() !== cy;
   const dm = (d: Date) => `${d.getDate()} ${MONTHS[d.getMonth()]}`;
@@ -237,7 +238,7 @@ type EditDraft = { id: string; label: string; staff: string; hours: string; bonu
 // `hoursTouched` keeps the Standard Daily Hours pre-fill from stomping on a number the user
 // already typed when they change their mind about who the row is for.
 type AddDraft = { staff: string; workDate: string; hours: string; hoursTouched: boolean; bonus: string; deductions: string; status: string; paymentDate: string; notes: string };
-function emptyAdd(): AddDraft { return { staff: "", workDate: isoDay(new Date()), hours: "", hoursTouched: false, bonus: "", deductions: "", status: "Unpaid", paymentDate: "", notes: "" }; }
+function emptyAdd(): AddDraft { return { staff: "", workDate: isoDay(manilaNow()), hours: "", hoursTouched: false, bonus: "", deductions: "", status: "Unpaid", paymentDate: "", notes: "" }; }
 
 // shared table styling (§4 of the table design spec)
 const HEAD = "sticky top-0 z-10 bg-muted/40 backdrop-blur h-9 px-3 text-xs font-medium text-muted-foreground whitespace-nowrap text-left";
@@ -251,7 +252,7 @@ const SECTION_LABEL = "text-xs font-semibold uppercase tracking-wide text-muted-
 
 // ---------- block ----------
 export default function Block() {
-  const today = new Date();
+  const today = manilaNow();
   const user = useCurrentUser();
 
   // ===== add record state =====
@@ -268,7 +269,7 @@ export default function Block() {
   const [fStatus, setFStatus] = useState<string>(ALL);
   // Resolved once per preset change, not per render, so it is a stable dependency for the filter
   // memo below.
-  const dateRange = useMemo(() => presetRange(fDate, new Date()), [fDate]);
+  const dateRange = useMemo(() => presetRange(fDate, manilaNow()), [fDate]);
   const dateLabel = presetLabel(fDate);
   const dateWindow = dateRange ? `${dateLabel} (${fmtSpan(dateRange.from, dateRange.to)})` : dateLabel;
 
@@ -498,7 +499,7 @@ export default function Block() {
   // Hourly Rate Snapshot is ever set on a new record.
   // ===================================================================================
   const openAdd = () => { setAdd(emptyAdd()); setAddOpen(true); };
-  const setAddStatus = (v: string) => setAdd((d) => ({ ...d, status: v, paymentDate: v === "Paid" ? (d.paymentDate || isoDay(new Date())) : "" }));
+  const setAddStatus = (v: string) => setAdd((d) => ({ ...d, status: v, paymentDate: v === "Paid" ? (d.paymentDate || isoDay(manilaNow())) : "" }));
   const addStaff = useMemo(() => (allStaff as any[]).find((s: any) => s.id === add.staff) ?? null, [allStaff, add.staff]);
   // Picking a person pre-fills Hours from their Standard Daily Hours (Staff page). No default set
   // leaves the box EMPTY — never 0, which would be a real zero-hour day. A number the user already

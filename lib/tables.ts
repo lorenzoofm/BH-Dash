@@ -50,7 +50,7 @@ export const CHOICES = {
   staffStatus: ["Active", "Setup", "Inactive"],
   platform: ["X", "OnlyFans", "Fanvue", "Instagram", "Discord", "Threads", "Reddit", "VPS"],
   payType: ["Hourly", "Salary", "Commission"],
-  currency: ["USD", "GBP", "EUR", "AUD"],
+  currency: ["USD"], // all money is USD
   payStatus: ["Unpaid", "Scheduled", "Paid"],
   expenseStatus: ["Planned", "Unpaid", "Paid"],
   billing: ["One-off", "Daily", "Weekly", "Monthly", "Annual"],

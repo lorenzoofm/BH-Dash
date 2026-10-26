@@ -1,4 +1,5 @@
 "use client";
+import {manilaNow} from "@/lib/bh";
 import { useCurrentUser } from "@/lib/user";
 import { useTextSetting, useNavigationSetting, useImageSetting } from "@/lib/editable-settings";
 import { NavigationAction } from "@/components/navigation-action";
@@ -104,13 +105,13 @@ export default function Block() {
     },
   ];
 
-  const now = new Date();
+  const now = manilaNow();
   const today = startOfDay(now);
   const weekStart = mondayOf(today);
   const weekEnd = new Date(weekStart);
   weekEnd.setDate(weekEnd.getDate() + 6);
   const period = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}`;
-  const hour = now.getHours();
+  const hour = new Date(Date.now() + 8 * 3600e3).getUTCHours(); // Philippines time
   const greeting = hour < 12 ? "Good morning" : hour < 18 ? "Good afternoon" : "Good evening";
   const name = user?.firstName || user?.fullName || "";
 

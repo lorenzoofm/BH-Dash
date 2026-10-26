@@ -1,4 +1,5 @@
 "use client";
+import {manilaNow} from "@/lib/bh";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { datasource, useRecords, useRecordCreate, useRecordUpdate, useRecordDelete, q } from "@/lib/datasource";
 import { Card, CardContent } from "@/components/ui/card";
@@ -122,7 +123,7 @@ function isoDay(d: Date) { return `${d.getFullYear()}-${String(d.getMonth() + 1)
 function mondayOf(d: Date) { const m = new Date(d.getFullYear(), d.getMonth(), d.getDate()); const day = (m.getDay() + 6) % 7; m.setDate(m.getDate() - day); return m; }
 function sundayOf(monday: Date) { const d = new Date(monday.getFullYear(), monday.getMonth(), monday.getDate()); d.setDate(d.getDate() + 6); return d; }
 function addDays(d: Date, n: number) { const x = new Date(d.getFullYear(), d.getMonth(), d.getDate()); x.setDate(x.getDate() + n); return x; }
-function thisMonday() { return mondayOf(new Date()); }
+function thisMonday() { return mondayOf(manilaNow()); }
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 // "31 Aug – 6 Sep 2026" / "7 – 13 Sep 2026" / "29 Dec 2025 – 4 Jan 2026".
 // A week is NEVER rendered as a bare date anywhere on this page: a bare date is exactly what made
@@ -190,7 +191,7 @@ const NONE = "__none";
 // Every row here is a WEEK (one per staff / model / Monday), so there is deliberately NO "Today"
 // or "Yesterday": a day preset on weekly rows would return nothing, every time. The Pay & Hours
 // page, whose rows are daily, does offer them.
-// All boundaries are computed from a LOCAL `new Date()` via mondayOf/addDays, the same frame the
+// All boundaries are computed from a LOCAL `manilaNow()` via mondayOf/addDays, the same frame the
 // rows are parsed into. There is no q.date() query anywhere in this block, by design.
 type WeekPreset = "this" | "last" | "4" | "8" | "12" | "all";
 const WEEK_DEFAULT: WeekPreset = "4";
@@ -503,7 +504,7 @@ export default function Block() {
 
   // Resolved once per preset change, not per render, so it is a stable dependency below.
   const weekRange = useMemo(() => {
-    const r = weekPresetRange(weekFilter, new Date());
+    const r = weekPresetRange(weekFilter, manilaNow());
     return r ? { fromMonday: r.fromMonday, toMonday: r.toMonday, fromIso: isoDay(r.fromMonday), toIso: isoDay(r.toMonday) } : null;
   }, [weekFilter]);
   const weekLabel = weekPresetLabel(weekFilter);

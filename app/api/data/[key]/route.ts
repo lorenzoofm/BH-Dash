@@ -47,6 +47,7 @@ async function save(req:Request,{params}:any){try{
  const text=await req.text();if(text.length>200000)throw new Error('413:Record is too large.');let body:any;try{body=JSON.parse(text);}catch{throw new Error('400:Invalid record.');}
  const id=body.recordId;if(req.method!=='POST'&&(typeof id!=='string'||!/^rec[A-Za-z0-9]{14}$/.test(id)))throw new Error('400:Invalid record.');
  const select=projection(s,body.select||{}),fields=req.method==='DELETE'?{}:validateFields(s,req.method,select,body.fields);
+ if(fields.Currency!=null&&fields.Currency!=='USD')throw new Error('400:All amounts must be in USD.');
  const existing=id?await airtable(s.tableId+'/'+id,{},false):undefined;
  if(existing){
   if(!body.expected||typeof body.expected!=='object'||Array.isArray(body.expected)||Object.keys(body.expected).length===0||Object.keys(body.expected).length>50)throw new Error('409:Refresh this record before saving.');
