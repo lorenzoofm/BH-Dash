@@ -5,7 +5,7 @@ export const datasource={define:<T,>(s:T):T=>s};
 export const q={select:<T,>(s:T):T=>s,asc:(field:string)=>({field,direction:'asc'}),desc:(field:string)=>({field,direction:'desc'})};
 async function json(url:string,init?:RequestInit):Promise<any>{
  try{
-  const signal=init?.signal??(init?.method?undefined:AbortSignal.timeout(20000));
+  const signal=init?.signal??(init?.method?undefined:AbortSignal.timeout(60000));
   const r=await fetch(url,{...init,signal});const d:any=await r.json();if(!r.ok)throw new Error(d.error||'Request failed.');return d;
  }catch(error){
   if(error instanceof Error&&(error.name==='TimeoutError'||error.name==='AbortError'))throw new Error('The data request timed out. Please retry loading.');
@@ -17,7 +17,7 @@ type RecordPage={items:{id:string;fields:Record<string,any>}[];nextCursor:string
 type MutationOptions={from:string;fields?:Record<string,string>;onSuccess?:(result:any)=>unknown;onError?:(error:Error)=>unknown};
 export function useRecords(o:any){
  const result=useInfiniteQuery({queryKey:['records',o.from,o.select,o.orderBy],initialPageParam:null as string|null,enabled:o.enabled!==false,staleTime:30000,retry:false,
- queryFn:({pageParam}):Promise<RecordPage>=>{const p=new URLSearchParams({select:JSON.stringify(o.select)});if(pageParam)p.set('offset',pageParam);if(o.orderBy){p.set('sort',o.orderBy.field);p.set('direction',o.orderBy.direction);}return json('/api/data/'+encodeURIComponent(o.from)+'?'+p);},getNextPageParam:(last)=>last.nextCursor||undefined});
+ queryFn:({pageParam}):Promise<RecordPage>=>{const p=new URLSearchParams({select:JSON.stringify(o.select),all:'1'});if(pageParam)p.set('offset',pageParam);if(o.orderBy){p.set('sort',o.orderBy.field);p.set('direction',o.orderBy.direction);}return json('/api/data/'+encodeURIComponent(o.from)+'?'+p);},getNextPageParam:(last)=>last.nextCursor||undefined});
  return result;
 }
 export function useFieldOptions(o:any):any{const r=useQuery({queryKey:['options',o.from,o.select[o.field]],queryFn:()=>json('/api/data/'+encodeURIComponent(o.from)+'?options='+encodeURIComponent(o.select[o.field])),staleTime:60000,retry:false});return {...r,options:r.data?.options??[]};}

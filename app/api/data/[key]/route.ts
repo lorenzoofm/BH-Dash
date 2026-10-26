@@ -1,4 +1,4 @@
-import {guard,source,projection,airtable,formatRecord,allRows,validateFields,clearCache,failure,config} from '@/lib/data-server';
+import {guard,source,projection,airtable,formatRecord,formatRecords,allRows,validateFields,clearCache,failure,config} from '@/lib/data-server';
 import {uniqueFields,sameValue} from '@/lib/data-rules';
 import {pagesFor,type Page} from '@/lib/page-access';
 export const dynamic='force-dynamic';
@@ -22,8 +22,8 @@ export async function GET(req:Request,{params}:any){try{
  [...new Set(Object.values(select))].forEach(f=>query.append('fields[]',f));
  const offset=url.searchParams.get('offset');if(offset){if(offset.length>1024)throw new Error('400:Invalid page.');query.set('offset',offset);}
  const sort=url.searchParams.get('sort');if(sort){if(!select[sort])throw new Error('400:Unknown sort field.');query.set('sort[0][field]',select[sort]);query.set('sort[0][direction]',url.searchParams.get('direction')==='desc'?'desc':'asc');}
- const result=await airtable(s.tableId+'?'+query);
- return response({items:await Promise.all(result.records.map((r:any)=>formatRecord(s,r,select))),nextCursor:result.offset??null});
+ const result=url.searchParams.get('all')==='1'&&!offset?{records:await allRows(s,false,query),offset:null}:await airtable(s.tableId+'?'+query);
+ return response({items:await formatRecords(s,result.records,select),nextCursor:result.offset??null});
  }catch(e){return failure(e);}}
 // ponytail: serialises this worker's writes; Airtable has no cross-client conditional-write transaction.
 // Softr/external writers can still race. Keep a pre-write conflict check and retain backups during overlap.

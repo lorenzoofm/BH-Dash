@@ -29,19 +29,34 @@ export async function airtable(path:string,init:RequestInit={},cached=true):Prom
  return result;
 }
 export function source(key:string){const s=Object.hasOwn(config.sources,key)?config.sources[key]:null;if(!s)throw new Error('404:Unknown data source.');return s;}
-export async function allRows(s:any,fresh=false){const result=[];let offset='';do{const p=await airtable(s.tableId+'?pageSize=100'+(offset?'&offset='+encodeURIComponent(offset):''),{},!fresh);result.push(...p.records);offset=p.offset||'';}while(offset);return result;}
-export async function formatRecord(s:any,row:any,select:Record<string,string>){
- const fields:Record<string,any>={};
- for(const [alias,name] of Object.entries(select)){
-  let value=row.fields[name]??null;const field=s.fields.find((f:any)=>f.name===name);
-  if(value!==null&&field.type==='PERCENT')value=Number(value)*100;
-  if(value&&field.type==='LINKED_RECORD'){
-   const target=Object.values(config.sources).find((t:any)=>t.table===field.options.linkedTableId) as any;
-   const referenced=target&&['Staff','Models','Instagram Accounts'].includes(target.table)?await allRows(target):[];
-   value=value.map((id:string)=>({id,label:referenced.find((r:any)=>r.id===id)?.fields[target?.primaryField]??id}));
-  }
-  fields[alias]=value;
- }
- return {id:row.id,fields};
+export async function allRows(s:any,fresh=false,query=new URLSearchParams()) {
+ const result=[];let offset='';
+ do {
+  const params=new URLSearchParams(query);params.set('pageSize','100');if(offset)params.set('offset',offset);
+  const p=await airtable(s.tableId+'?'+params,{},!fresh);result.push(...p.records);offset=p.offset||'';
+ }while(offset);
+ return result;
 }
+export async function formatRecords(s:any,rows:any[],select:Record<string,string>) {
+ const labels=new Map<string,Map<string,string>>();
+ await Promise.all([...new Set(Object.values(select))].map(async name=>{
+  const field=s.fields.find((f:any)=>f.name===name);
+  if(field?.type!=='LINKED_RECORD'||!rows.some(row=>row.fields[name]?.length))return;
+  const target=Object.values(config.sources).find((t:any)=>t.table===field.options.linkedTableId) as any;
+  if(!target||!['Staff','Models','Instagram Accounts'].includes(target.table))return;
+  const referenced=await allRows(target,false,new URLSearchParams({'fields[]':target.primaryField}));
+  labels.set(name,new Map(referenced.map((r:any)=>[r.id,r.fields[target.primaryField]??r.id])));
+ }));
+ return rows.map(row=>{
+  const fields:Record<string,any>={};
+  for(const [alias,name] of Object.entries(select)){
+   let value=row.fields[name]??null;const field=s.fields.find((f:any)=>f.name===name);
+   if(value!==null&&field.type==='PERCENT')value=Number(value)*100;
+   if(value&&field.type==='LINKED_RECORD')value=value.map((id:string)=>({id,label:labels.get(name)?.get(id)??id}));
+   fields[alias]=value;
+  }
+  return {id:row.id,fields};
+ });
+}
+export async function formatRecord(s:any,row:any,select:Record<string,string>){return (await formatRecords(s,[row],select))[0];}
 export function failure(e:any){const message=String(e?.message||'The request failed. Try again.');const match=message.match(/^(\d{3}):(.*)$/);return Response.json({error:match?match[2]:'The connection failed. Your changes have not been confirmed.'},{status:match?Number(match[1]):502});}
