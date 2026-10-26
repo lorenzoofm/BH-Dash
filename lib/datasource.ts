@@ -5,7 +5,7 @@ export const datasource={define:<T,>(s:T):T=>s};
 export const q={select:<T,>(s:T):T=>s,asc:(field:string)=>({field,direction:'asc'}),desc:(field:string)=>({field,direction:'desc'})};
 async function json(url:string,init?:RequestInit):Promise<any>{
  try{
-  const signal=init?.signal??(init?.method?undefined:AbortSignal.timeout(60000));
+  const signal=init?.signal??(init?.method?undefined:AbortSignal.timeout(90000));
   const r=await fetch(url,{...init,signal});const d:any=await r.json();if(!r.ok)throw new Error(d.error||'Request failed.');return d;
  }catch(error){
   if(error instanceof Error&&(error.name==='TimeoutError'||error.name==='AbortError'))throw new Error('The data request timed out. Please retry loading.');

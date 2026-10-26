@@ -13,7 +13,7 @@ const ctx = vm.createContext({
 });
 vm.runInContext(stripTypeScriptTypes(code), ctx);
 const model = {id: 'm1', fields: {model: 'April', dealType: 'Managed', modelCut: 25}};
-const base = {staff: [], paylog: [], map: [{fields: {model: [{id: 'm1'}], accountId: 1, include: true}}], creators: [{id: '1', net: 100}], start: '2026-09-24', end: '2026-09-24', revenueKnown: true};
+const base = {staff: [], paylog: [], map: [{fields: {model: [{id: 'm1'}], accountId: 1, include: true}}], creators: [{id: '1', name: 'April', net: 100}], accountRevenue: 100, start: '2026-09-24', end: '2026-09-24', revenueKnown: true};
 const expenses = [{fields: {date: '2026-09-24', amount: 40, status: 'Paid', model: []}}];
 let result = ctx.modelPnL(model, {...base, expenses});
 assert.equal(result.expenses, 0, 'unassigned expense must not be duplicated across models');

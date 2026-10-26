@@ -11,31 +11,42 @@ export async function guard(write=false){const s=await session();if((write||conf
 let generation=0;
 export const dataGeneration=()=>generation;
 export function clearCache(){cache.clear();generation++;}
+// Caches a GET for 60s per isolate; a failed run is forgotten unless a newer run already replaced it.
+function remember(key:string,run:()=>Promise<any>){
+ const old=cache.get(key);if(old&&old.until>Date.now())return old.value;
+ const value=run();cache.set(key,{until:Date.now()+60000,value});
+ value.catch(()=>{if(cache.get(key)?.value===value)cache.delete(key);});
+ if(cache.size>250)cache.delete(cache.keys().next().value!);
+ return value;
+}
 export async function airtable(path:string,init:RequestInit={},cached=true):Promise<any>{
  if(!process.env.AIRTABLE_TOKEN)throw new Error('503:The Airtable connection has not been configured.');
- const method=init.method||'GET',key=path;
- if(method==='GET'&&cached){const old=cache.get(key);if(old&&old.until>Date.now())return old.value;}
+ const method=init.method||'GET';
+ // ponytail: one 429 retry keeps the worst case (25s+30s+25s) inside the browser's 90s timeout.
  const run=async()=>{
-  for(let attempt=0;attempt<4;attempt++){
+  for(let attempt=0;attempt<2;attempt++){
    const slot=Math.max(Date.now(),nextRequest);nextRequest=slot+275;await pause(slot-Date.now());
-   const r=await fetch('https://api.airtable.com/v0/'+config.baseId+'/'+path,{...init,headers:{Authorization:'Bearer '+process.env.AIRTABLE_TOKEN,'Content-Type':'application/json'},signal:AbortSignal.timeout(45000)});
-   if(r.status===429&&attempt<3){await pause(30000);continue;}
+   const r=await fetch('https://api.airtable.com/v0/'+config.baseId+'/'+path,{...init,headers:{Authorization:'Bearer '+process.env.AIRTABLE_TOKEN,'Content-Type':'application/json'},signal:AbortSignal.timeout(25000)});
+   if(r.status===429&&attempt<1){await pause(30000);continue;}
+   if(r.status===429)throw new Error('503:Airtable is busy. Wait 30 seconds and try again.');
    if(!r.ok){console.error('Airtable request failed',r.status,path.split('?')[0]);throw new Error((r.status===403?'503:':'502:')+'Airtable request failed ('+r.status+'). Your changes have not been confirmed.');}
    return r.json();
   }
  };
- const result=run();
- if(method==='GET'&&cached){cache.set(key,{until:Date.now()+60000,value:result});result.catch(()=>cache.delete(key));if(cache.size>250)cache.delete(cache.keys().next().value!);}
- return result;
+ return method==='GET'&&cached?remember(path,run):run();
 }
 export function source(key:string){const s=Object.hasOwn(config.sources,key)?config.sources[key]:null;if(!s)throw new Error('404:Unknown data source.');return s;}
-export async function allRows(s:any,fresh=false,query=new URLSearchParams()) {
- const result=[];let offset='';
- do {
-  const params=new URLSearchParams(query);params.set('pageSize','100');if(offset)params.set('offset',offset);
-  const p=await airtable(s.tableId+'?'+params,{},!fresh);result.push(...p.records);offset=p.offset||'';
- }while(offset);
- return result;
+// Pages are fetched fresh and cached as one list, so a table is never stitched from pages of different ages.
+export function allRows(s:any,fresh=false,query=new URLSearchParams()):Promise<any[]> {
+ const run=async()=>{
+  const result=[];let offset='';
+  do {
+   const params=new URLSearchParams(query);params.set('pageSize','100');if(offset)params.set('offset',offset);
+   const p=await airtable(s.tableId+'?'+params,{},false);result.push(...p.records);offset=p.offset||'';
+  }while(offset);
+  return result;
+ };
+ return fresh?run():remember('all:'+s.tableId+'?'+query,run);
 }
 export async function formatRecords(s:any,rows:any[],select:Record<string,string>) {
  const labels=new Map<string,Map<string,string>>();
@@ -51,7 +62,7 @@ export async function formatRecords(s:any,rows:any[],select:Record<string,string
   const fields:Record<string,any>={};
   for(const [alias,name] of Object.entries(select)){
    let value=row.fields[name]??null;const field=s.fields.find((f:any)=>f.name===name);
-   if(value!==null&&field.type==='PERCENT')value=Number(value)*100;
+   if(value!==null&&field.type==='PERCENT')value=Math.round(Number(value)*1e8)/1e6;
    if(value&&field.type==='LINKED_RECORD')value=value.map((id:string)=>({id,label:labels.get(name)?.get(id)??id}));
    fields[alias]=value;
   }
