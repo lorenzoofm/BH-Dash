@@ -12,7 +12,7 @@ This document describes the **implemented code in this repository**, not an offi
 | Validation, required and unique fields | `lib/data-rules.ts` |
 | Permitted Creatorstaq requests | `lib/revenue-request.ts` |
 | Client calls | `lib/datasource.ts` and `app/blocks/*.tsx` |
-| Cloudflare Access verification and policy management | `lib/cloudflare-access.ts`, `lib/access-policy.ts`, `worker.ts`, `app/auth.ts` |
+| Clerk sign-in verification and the manager list | `lib/clerk-auth.ts`, `lib/clerk-pages.ts`, `lib/page-access.ts`, `worker.ts`, `app/auth.ts` |
 | Worker configuration and deployment | `wrangler.json`, `CLOUDFLARE.md` |
 
 ## Configuration and access
@@ -40,7 +40,7 @@ All responses are JSON. Error responses have `{ "error": "message" }`. Data and 
 | Route | Methods | Purpose |
 | --- | --- | --- |
 | `/api/session` | GET | Current signed-in user, `canEdit` and `isAdmin` flags |
-| `/api/users` | GET, POST, DELETE | Admin-only list, add or remove manager emails in the Cloudflare Access policy |
+| `/api/users` | GET, POST, DELETE | Admin-only list, add or remove manager emails in the D1 managers table |
 | `/api/data/:key` | GET, POST, PATCH, DELETE where allowed | Read, create, edit or delete records in an allowlisted Airtable table |
 | `/api/revenue?url=...` | GET | Server-side proxy for two specifically allowed Creatorstaq revenue endpoints |
 

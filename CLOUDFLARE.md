@@ -4,15 +4,16 @@ The BH dashboard is a Cloudflare Worker. It does not need the DigitalOcean dropl
 
 ## Required configuration before enabling a URL
 
-1. Create a Cloudflare Access self-hosted application for the exact BH Worker hostname. Protect every path (`/*`) and enable one-time PIN (or the account's trusted identity provider). Do not create an Everyone, Bypass, email-domain, or login-method-wide Allow rule.
-2. Create one application-specific Allow policy consisting only of exact email rules. Include `massi@20mg.co` initially. Record its Access application UUID, policy UUID, application audience tag, and team domain.
-3. Set `ACCESS_APP_ID`, `ACCESS_POLICY_ID`, `ACCESS_AUD`, and `ACCESS_TEAM_DOMAIN` in `wrangler.json` vars. `ACCESS_TEAM_DOMAIN` must be the full `https://<team>.cloudflareaccess.com` issuer. `ACCESS_ACCOUNT_ID` and `ADMIN_EMAILS` are already set. `ADMIN_EMAILS` determines who can manage dashboard access, independent of manager access.
-4. Create an API token scoped to **Access: Apps and Policies Read + Write** for this Cloudflare account. Store it as encrypted Worker secret `ACCESS_API_TOKEN`, never a public or build variable. Also set encrypted `AIRTABLE_TOKEN` and `CREATORSTAQ_AUTH` secrets; the latter is the full Bearer authorization value.
-5. Set `workers_dev: true` only after Access and the secrets are in place. Run `npm run deploy`, then `npm run check:access`. Visit the Worker URL signed out: it should show Cloudflare Access. After one-time PIN login, the dashboard should open only for emails in the exact Allow policy.
+Sign-in is Clerk (Google only). Cloudflare Access is no longer used; delete the Access application for this hostname once Clerk sign-in works, or visitors get two logins.
 
-The Worker verifies the signed Access JWT and checks the dedicated Access policy email list. If the policy API is unavailable, it denies the request. Managers can be invited/deactivated at `/account/users` by an admin. The dashboard changes the exact email list in Cloudflare; after adding an email, share the dashboard URL. Cloudflare handles the login code. Removing an email takes up to 15 seconds per Worker isolate to take effect due to the short policy cache. Keep the Access application limited to the exact BH hostname. No custom `/login` bypass is needed.
+1. In Clerk, create an application. Under **User & authentication**, enable **Google** only and turn off email, phone and username sign-in. Set sign-up mode to **Restricted** so only people you add can create accounts.
+2. Under **Sessions → Customize session token**, add the claim `{"email": "{{user.primary_email_address}}"}`. The Worker rejects sessions without it.
+3. Copy the **publishable key** (`pk_test_…` or `pk_live_…`) into `CLERK_PUBLISHABLE_KEY` in `wrangler.json` vars. It is public; no Clerk secret key is needed, because sessions are verified against Clerk's published keys.
+4. A Clerk **production** instance (`pk_live_`) needs a domain you control (for example `bh.20mg.co`) with Clerk's DNS records; it cannot run on `workers.dev`. A development instance (`pk_test_`) works on `workers.dev` for review but shows a development banner.
+5. Apply the permissions migration: `npx wrangler d1 migrations apply bh-dashboard-permissions --remote`. It creates the `managers` table and keeps everyone who already had page permissions.
+6. Run `npm run deploy`, then `npm run check:clerk`. Signed out, the Worker URL should show the 20MG sign-in page; a Google account not on the manager list sees "Not approved yet".
 
-Before retiring Softr, compare actual Airtable, Creatorstaq Revenue and P&L values for matching date ranges, and check all write flows. The scraper is separate and unchanged.
+The Worker verifies the Clerk session JWT (issuer, expiry, the `azp` origin and the email claim), then checks `ADMIN_EMAILS` and the D1 `managers` table, cached for 30 seconds per isolate. Admins add and remove managers at `/account/users`; removing someone takes up to 30 seconds per isolate, and their Clerk session token expires within a minute. Data requests with an expired token get a 401, which the browser answers by refreshing the Clerk session and retrying once.
 
 ## Page permissions
 

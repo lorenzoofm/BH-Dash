@@ -73,7 +73,7 @@ export default function Shell({children, email, otherUrl, isAdmin, pages}: {chil
       <div className="mt-2 flex items-center gap-2.5 rounded-[var(--radius-row)] bg-muted px-3 py-2.5">
         <span className="grid size-8 shrink-0 place-items-center rounded-full bg-surface-inverse text-[11px] font-bold uppercase text-text-inverse">{email[0]}</span>
         <span className="min-w-0 flex-1 truncate text-[12px] text-muted-foreground">{email}</span>
-        <a href="/cdn-cgi/access/logout" target="_top" aria-label="Sign out" className="text-muted-foreground hover:text-signal"><LogOut className="size-4"/></a>
+        <a href="/sign-out" aria-label="Sign out" className="text-muted-foreground hover:text-signal"><LogOut className="size-4"/></a>
       </div>
     </div>
   </nav>;

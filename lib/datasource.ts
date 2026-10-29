@@ -3,10 +3,17 @@ import {useCallback} from 'react';
 import {useInfiniteQuery,useMutation,useQuery,useQueryClient} from '@tanstack/react-query';
 export const datasource={define:<T,>(s:T):T=>s};
 export const q={select:<T,>(s:T):T=>s,asc:(field:string)=>({field,direction:'asc'}),desc:(field:string)=>({field,direction:'desc'})};
-async function json(url:string,init?:RequestInit):Promise<any>{
+// A 401 means the ~60s Clerk session token lapsed (e.g. the tab slept): refresh it once and retry.
+async function refreshSession(){
+ const clerk=(window as any).Clerk;
+ try{if(clerk&&!clerk.loaded)await clerk.load();const token=await clerk?.session?.getToken({skipCache:true});return !!token;}catch{return false;}
+}
+async function json(url:string,init?:RequestInit,retried=false):Promise<any>{
  try{
   const signal=init?.signal??(init?.method?undefined:AbortSignal.timeout(90000));
-  const r=await fetch(url,{...init,signal});const d:any=await r.json();if(!r.ok)throw new Error(d.error||'Request failed.');return d;
+  const r=await fetch(url,{...init,signal});
+  if(r.status===401&&!retried){if(await refreshSession())return json(url,init,true);location.assign('/sign-in?redirect_url='+encodeURIComponent(location.pathname+location.search));}
+  const d:any=await r.json();if(!r.ok)throw new Error(d.error||'Request failed.');return d;
  }catch(error){
   if(error instanceof Error&&(error.name==='TimeoutError'||error.name==='AbortError'))throw new Error('The data request timed out. Please retry loading.');
   throw error;

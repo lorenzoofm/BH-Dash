@@ -24,9 +24,9 @@ export default function UsersPage(){
  };
  const link=typeof window==='undefined'?'':window.location.origin;
  return <div className="mx-auto max-w-3xl space-y-6">
-  <div><h1 className="text-3xl font-semibold">Dashboard users</h1><p className="mt-2 text-sm text-muted-foreground">Invite people through Cloudflare Access, then choose exactly which dashboard pages each manager may open.</p></div>
-  <form onSubmit={e=>{e.preventDefault();void change('POST',email);}} className="flex gap-2"><input type="email" required value={email} onChange={e=>setEmail(e.target.value)} placeholder="manager@example.com" className="min-w-0 flex-1 rounded-md border px-3 py-2"/><button disabled={!!busy} className="rounded-md bg-blue-600 px-4 py-2 text-white disabled:opacity-50">Add manager</button></form>
-  {invited&&<p className="rounded-md border border-green-300 p-3 text-green-800">{invited} can now sign in. <a className="underline" href={`mailto:${invited}?subject=${encodeURIComponent('Your 20MG BH dashboard access')}&body=${encodeURIComponent(`Open ${link} and sign in with this email address.`)}`}>Send invitation email</a></p>}
+  <div><h1 className="text-3xl font-semibold">Dashboard users</h1><p className="mt-2 text-sm text-muted-foreground">Add a manager’s Google email so they can sign in, then choose exactly which dashboard pages they may open.</p></div>
+  <form onSubmit={e=>{e.preventDefault();void change('POST',email);}} className="flex gap-2"><input type="email" required value={email} onChange={e=>setEmail(e.target.value)} placeholder="manager@example.com" className="min-w-0 flex-1 rounded-md border px-3 py-2"/><button disabled={!!busy} className="rounded-full bg-foreground px-5 py-2 font-semibold text-background disabled:opacity-50">Add manager</button></form>
+  {invited&&<p className="rounded-md border border-green-300 p-3 text-green-800">{invited} can now sign in. <a className="underline" href={`mailto:${invited}?subject=${encodeURIComponent('Your 20MG BH dashboard access')}&body=${encodeURIComponent(`Open ${link} and sign in with Google using this email address.`)}`}>Send invitation email</a></p>}
   {error&&<p role="alert" className="rounded-md border border-red-300 p-3 text-red-700">{error}</p>}
   {ready&&!users.editable&&<p role="status" className="rounded-md border border-amber-300 p-3 text-sm">Page controls are pending the Cloudflare permissions database. Current manager defaults remain active.</p>}
   <div className="space-y-3">{!ready?<p>Loading…</p>:users.emails.length?users.emails.map(value=>{

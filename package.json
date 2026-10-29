@@ -13,7 +13,7 @@
     "lint": "eslint . --ignore-pattern dist --ignore-pattern .next",
     "db:generate": "drizzle-kit generate",
     "deploy": "npm run build && node scripts/deploy-cloudflare.mjs",
-    "check:access": "node --experimental-strip-types scripts/check-access.mjs"
+    "check:clerk": "node --experimental-strip-types scripts/check-clerk.mjs"
   },
   "dependencies": {
     "@base-ui/react": "^1.7.0",
