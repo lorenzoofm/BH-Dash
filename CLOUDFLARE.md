@@ -2,6 +2,15 @@
 
 The BH dashboard is a Cloudflare Worker. It does not need the DigitalOcean droplet. The existing Softr site remains in service until a private review passes.
 
+## Where production runs (read first)
+
+Production is **https://blackhat.20mg.co**, the `20mg-bh` Worker in the Cloudflare account **Kyle@lgm.solutions's Account** (`c89cdf4579c8d19674d892d5be38e2c0`). Workers Builds deploys it from GitHub on every push to `main`.
+
+- The build **ignores the repo's `wrangler.json`**. Its build command overwrites `wrangler.json` with the base64 build variable `BH_DEPLOY_CONFIG` (Workers & Pages → `20mg-bh` → Settings → Build → Variables), then runs `npm run build` and `node scripts/deploy-cloudflare.mjs`.
+- `BH_DEPLOY_CONFIG` holds the production account, the `blackhat.20mg.co` custom domain, `CLERK_PUBLISHABLE_KEY`, and the D1 bindings `PERMISSIONS_DB` (`bh-dashboard-permissions`, `d73f3c29-…`) and `BH_DATA` (`bh-data`, `203b118d-…`) in that account. A new var or binding must be added there, not only in `wrangler.json`.
+- The repo's `wrangler.json` targets a separate copy in `Massi@20mg.co's Account` (`20mg-bh.twentymg-automation.workers.dev`, its own `bh-data`). It is for testing only and does not receive production edits.
+- Schema changes need applying to the production databases too: `npx wrangler d1 migrations apply …` with a config whose `account_id` is the production account.
+
 ## Required configuration before enabling a URL
 
 Sign-in is Clerk (Google only). Cloudflare Access is no longer used; delete the Access application for this hostname once Clerk sign-in works, or visitors get two logins.

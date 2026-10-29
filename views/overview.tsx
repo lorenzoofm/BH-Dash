@@ -1,5 +1,6 @@
 "use client";
 import {useEffect, useMemo, useState} from "react";
+import Link from "next/link";
 import {Bar, BarChart, CartesianGrid, LabelList, XAxis, YAxis} from "recharts";
 import {AlertTriangle, ArrowRight, Banknote, CheckCircle2, Target, Trophy, Wallet} from "lucide-react";
 import {ChartConfig, ChartContainer, ChartTooltip, ChartTooltipContent} from "@/components/ui/chart";
@@ -115,7 +116,7 @@ export default function Overview({isAdmin}: {isAdmin: boolean}) {
 
     <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
       {isAdmin && <><Stat accent label="Profit · this month" icon={Wallet} value={d.profit === null ? "—" : money(d.profit)} tone={d.profit === null ? "" : d.profit >= 0 ? "positive" : "negative"}
-        sub={<a href="/pnl" className="inline-flex items-center gap-1 hover:text-signal">Open P&amp;L <ArrowRight className="size-3"/></a>}/>
+        sub={<Link href="/pnl" className="inline-flex items-center gap-1 hover:text-signal">Open P&amp;L <ArrowRight className="size-3"/></Link>}/>
       <Stat label="Earnings · this month" icon={Banknote} value={d.income === null ? "—" : money(d.income)}
         sub={dap.isError || accounts.isError ? "Creator Staq unavailable" : dap.isPending || (dapRows.length > 0 && accounts.isPending) ? "Loading DAP revenue…" : d.income === null ? `DAP revenue couldn’t be read for ${d.missingRevenue.join(", ") || "every model"}` : `${d.dapCount} DAP account${d.dapCount === 1 ? "" : "s"}${d.payout ? ` · ${money(d.payout)} to models` : ""}`}/>
       <Stat label="Costs · this month" icon={Wallet} value={money(d.wages + d.exp)} sub={`${money(d.wages)} wages · ${money(d.exp)} expenses`}/></>}
@@ -164,11 +165,11 @@ export default function Overview({isAdmin}: {isAdmin: boolean}) {
     <div className="grid gap-6 lg:grid-cols-2">
       <Panel title="Needs attention" icon={AlertTriangle} subtitle={d.alerts.length ? `${d.alerts.length} item${d.alerts.length === 1 ? "" : "s"}` : undefined} bodyClass="pt-3">
         {d.alerts.length ? <ul className="divide-y">{d.alerts.slice(0, 8).map((a, i) => <li key={i}>
-          <a href={a.href} className="group flex items-center gap-3 py-2.5 text-[13px]">
+          <Link href={a.href} className="group flex items-center gap-3 py-2.5 text-[13px]">
             <span className={"size-1.5 shrink-0 rounded-full " + (a.tone === "red" ? "bg-negative" : "bg-warning")}/>
             <span className="flex-1">{a.text}</span>
             <ArrowRight className="size-3.5 text-muted-foreground opacity-0 transition group-hover:opacity-100"/>
-          </a></li>)}</ul>
+          </Link></li>)}</ul>
         : <div className="flex items-center gap-2 py-6 text-[13px] text-muted-foreground"><CheckCircle2 className="size-4 text-positive"/>Everything is up to date.</div>}
       </Panel>
       {isAdmin && <Panel title="Month to date" subtitle="How this month’s money breaks down" bodyClass="pt-3">
