@@ -101,10 +101,10 @@ export function revenueRanges(start: string, end: string) {
 
 export type Creator = {id: string; name: string; net: number};
 
-// Sum by_creator across the sub-ranges of [start, end].
+// Sum by_creator across the sub-ranges of [start, end], fetched in parallel.
 export async function fetchCreators(proxyFetch: (url: string) => Promise<Response>, start: string, end: string): Promise<Creator[]> {
   const byId = new Map<string, Creator>();
-  for (const r of revenueRanges(start, end)) {
+  const pages = await Promise.all(revenueRanges(start, end).map(async r => {
     const res = await proxyFetch(`${CREATORSTAQ_RANGED}?start=${r.start}&end=${r.end}`);
     if (!res.ok) {
       const body: any = await res.json().catch(() => ({}));
@@ -112,7 +112,10 @@ export async function fetchCreators(proxyFetch: (url: string) => Promise<Respons
     }
     const data: any = await res.json();
     if (!Array.isArray(data.by_creator)) throw new Error("Creator Staq returned an incomplete response");
-    for (const c of data.by_creator) {
+    return data.by_creator;
+  }));
+  for (const page of pages) {
+    for (const c of page) {
       const id = String(c.creator_id ?? c.account_id ?? c.name);
       const prev = byId.get(id);
       byId.set(id, {id, name: String(c.name ?? c.slug ?? id), net: num(c.net_revenue) + (prev?.net ?? 0)});

@@ -61,10 +61,11 @@ export const CHOICES = {
 } as const;
 
 // Creator Staq earnings by page for a date range (inclusive).
+// The server keeps Creatorstaq results for 5 min, so polling faster only re-reads its cache.
 export function useCreators(start: string | null, end: string | null, enabled = true) {
   const proxyFetch = useProxyFetch("live");
   return useQuery({
-    queryKey: ["bh-creators", start, end], enabled: enabled && !!start && !!end && start <= end, staleTime: 60000, refetchInterval: 120000, retry: 1,
+    queryKey: ["bh-creators", start, end], enabled: enabled && !!start && !!end && start <= end, staleTime: 60000, refetchInterval: 300000, retry: 1,
     queryFn: () => fetchCreators(proxyFetch, start!, end!),
   });
 }
@@ -85,8 +86,7 @@ export function useAccountRevenues(slugs: string[], start: string | null, end: s
       const result: Record<string, {net: number | null; error?: string}> = {};
       for (let i = 0; i < accounts.length; i += 5) await Promise.all(accounts.slice(i, i + 5).map(async slug => {
         try {
-          let total = 0;
-          for (const range of revenueRanges(start!, end!)) {
+          const amounts = await Promise.all(revenueRanges(start!, end!).map(async range => {
             const url = `https://api.creatorstaq.com/v1/computed/${encodeURIComponent(slug)}/revenue/ranged?start=${range.start}&end=${range.end}`;
             const response = await proxyFetch(url);
             if (!response.ok) {
@@ -96,9 +96,9 @@ export function useAccountRevenues(slugs: string[], start: string | null, end: s
             const body: any = await response.json();
             const amount = Number(body.kpis?.total_net);
             if (!Number.isFinite(amount)) throw new Error("Incomplete account revenue");
-            total += amount;
-          }
-          result[slug] = {net: total};
+            return amount;
+          }));
+          result[slug] = {net: amounts.reduce((a, b) => a + b, 0)};
         } catch (e) { result[slug] = {net: null, error: e instanceof Error ? e.message : "Connection failed"}; }
       }));
       return result;
