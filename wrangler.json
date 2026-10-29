@@ -30,6 +30,12 @@
       "binding": "PERMISSIONS_DB",
       "database_name": "bh-dashboard-permissions",
       "database_id": "6cdb0a1d-81fe-403b-b1d8-7ed1ec4f482a"
+    },
+    {
+      "binding": "BH_DATA",
+      "database_name": "bh-data",
+      "database_id": "82bc6c8f-7e6e-49e5-be7c-17997d88e1bd",
+      "migrations_dir": "data-migrations"
     }
   ]
 }

@@ -1,10 +1,9 @@
 import { getUser } from '@/app/auth';
+import { d1Request } from './d1-store';
 export {projection,validateFields} from './data-rules';
 import rawConfig from './data-config.json';
 export const config:any=rawConfig;
 const cache=new Map<string,{until:number,value:Promise<any>}>();
-let nextRequest=0;
-const pause=(ms:number)=>new Promise(r=>setTimeout(r,Math.max(0,ms)));
 export function adminEmails(){return (process.env.ADMIN_EMAILS||'massi@20mg.co').split(',').map(s=>s.trim().toLowerCase()).filter(Boolean);}
 export async function session(){const user=await getUser();return {user,canEdit:!!user,isAdmin:!!user&&adminEmails().includes(user.email.toLowerCase())};}
 export async function guard(write=false){const s=await session();if((write||config.kind==='bh')&&!s.canEdit)throw new Error('403:Sign in with an authorised manager account.');return s;}
@@ -19,20 +18,10 @@ function remember(key:string,run:()=>Promise<any>){
  if(cache.size>250)cache.delete(cache.keys().next().value!);
  return value;
 }
-export async function airtable(path:string,init:RequestInit={},cached=true):Promise<any>{
- if(!process.env.AIRTABLE_TOKEN)throw new Error('503:The Airtable connection has not been configured.');
+// All BH data lives in the BH_DATA D1 database (see lib/d1-store.ts and data-migrations/).
+export async function store(path:string,init:RequestInit={},cached=true):Promise<any>{
  const method=init.method||'GET';
- // ponytail: one 429 retry keeps the worst case (25s+30s+25s) inside the browser's 90s timeout.
- const run=async()=>{
-  for(let attempt=0;attempt<2;attempt++){
-   const slot=Math.max(Date.now(),nextRequest);nextRequest=slot+275;await pause(slot-Date.now());
-   const r=await fetch('https://api.airtable.com/v0/'+config.baseId+'/'+path,{...init,headers:{Authorization:'Bearer '+process.env.AIRTABLE_TOKEN,'Content-Type':'application/json'},signal:AbortSignal.timeout(25000)});
-   if(r.status===429&&attempt<1){await pause(30000);continue;}
-   if(r.status===429)throw new Error('503:Airtable is busy. Wait 30 seconds and try again.');
-   if(!r.ok){console.error('Airtable request failed',r.status,path.split('?')[0]);throw new Error((r.status===403?'503:':'502:')+'Airtable request failed ('+r.status+'). Your changes have not been confirmed.');}
-   return r.json();
-  }
- };
+ const run=async()=>d1Request(config.sources,path,init,method==='GET'?null:(await getUser())?.email??null);
  return method==='GET'&&cached?remember(path,run):run();
 }
 export function source(key:string){const s=Object.hasOwn(config.sources,key)?config.sources[key]:null;if(!s)throw new Error('404:Unknown data source.');return s;}
@@ -42,7 +31,7 @@ export function allRows(s:any,fresh=false,query=new URLSearchParams()):Promise<a
   const result=[];let offset='';
   do {
    const params=new URLSearchParams(query);params.set('pageSize','100');if(offset)params.set('offset',offset);
-   const p=await airtable(s.tableId+'?'+params,{},false);result.push(...p.records);offset=p.offset||'';
+   const p=await store(s.tableId+'?'+params,{},false);result.push(...p.records);offset=p.offset||'';
   }while(offset);
   return result;
  };

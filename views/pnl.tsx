@@ -162,7 +162,7 @@ export default function PnL() {
     </Panel>
 
     {!valid ? <Notice icon={AlertTriangle}>Choose valid dates, ending no later than today.</Notice>
-    : [models, map, expenses, pay, staff].some(t => t.error) ? <Notice tone="red" icon={AlertTriangle}>Couldn’t load costs from Airtable. Refresh to try again.</Notice>
+    : [models, map, expenses, pay, staff].some(t => t.error) ? <Notice tone="red" icon={AlertTriangle}>Couldn’t load costs from the BH database. Refresh to try again.</Notice>
     : combined ? <>
       {accountErrors.length > 0 && <Notice tone="red" icon={AlertTriangle}>Some selected DAP accounts could not be read: {accountErrors.join(" · ")}. Combined earnings and profit remain blank.</Notice>}
       {reports.some(r => r.pageRevenue === null) && <Notice icon={AlertTriangle}>A selected model has no verified DAP revenue. Connect its account and confirm API access before using the combined earnings or profit.</Notice>}
@@ -198,7 +198,7 @@ export default function PnL() {
 
       {company && <Panel title="Company summary" icon={Wallet}>
         <p className="mb-3 text-[12px] text-muted-foreground">Managed models and chatting clients are separate. Unassigned paid expenses stay outside both until linked to a model.</p>
-        {company.unmatched > 0 && <Notice icon={AlertTriangle}>{company.unmatched} Creator Staq creator{company.unmatched === 1 ? " is" : "s are"} not matched to an Airtable model. Aggregate revenue and profit are unavailable until reconciled.</Notice>}
+        {company.unmatched > 0 && <Notice icon={AlertTriangle}>{company.unmatched} Creator Staq creator{company.unmatched === 1 ? " is" : "s are"} not matched to a model. Aggregate revenue and profit are unavailable until reconciled.</Notice>}
         {company.missing.length > 0 && <Notice icon={AlertTriangle}>Creator Staq returned no revenue record for {company.missing.join(", ")}. Confirm whether those models had zero revenue or are outside this key’s access; company totals remain unavailable.</Notice>}
         {company.unknownDeals > 0 && <Notice icon={AlertTriangle}>{company.unknownDeals} model{company.unknownDeals === 1 ? " has" : "s have"} an unknown deal type and are excluded from these sections.</Notice>}
         <div className="mt-3 grid gap-3 lg:grid-cols-2">

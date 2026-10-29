@@ -36,6 +36,6 @@ export default function UsersPage(){
     {admin&&<p className="mt-2 text-xs text-muted-foreground">Administrators always have all pages.</p>}
    </section>;
   }):<p>No users configured.</p>}</div>
-  <div className="space-y-2 text-sm"><p>Changes to page access take effect on the next request. The same Airtable records continue to power both dashboards.</p><div className="flex gap-2"><input readOnly value={link} aria-label="Dashboard URL" className="min-w-0 flex-1 rounded-md border px-3 py-2"/><button onClick={()=>void navigator.clipboard.writeText(link)} className="rounded-md border px-4 py-2">Copy link</button></div></div>
+  <div className="space-y-2 text-sm"><p>Changes to page access take effect on the next request. BH data is stored in the dashboard’s own Cloudflare D1 database.</p><div className="flex gap-2"><input readOnly value={link} aria-label="Dashboard URL" className="min-w-0 flex-1 rounded-md border px-3 py-2"/><button onClick={()=>void navigator.clipboard.writeText(link)} className="rounded-md border px-4 py-2">Copy link</button></div></div>
  </div>;
 }

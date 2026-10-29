@@ -831,7 +831,7 @@ function CategoryCombobox({
 
         <div className="border-t px-2 py-1.5">
           <p className="text-[11px] text-muted-foreground">
-            Categories are renamed or removed in Airtable.
+            Categories are renamed or removed in the data sheet.
           </p>
         </div>
       </PopoverContent>
@@ -1477,7 +1477,7 @@ export default function Block() {
     const ok = await commitCell(row, "category", { category: name || null }, name);
     if (ok && isNew) {
       toast.success(
-        `New category “${name}” created — it is now a real Airtable choice and shows up in the filter and the spend-by-category breakdown.`,
+        `New category “${name}” created — it is now a saved category and shows up in the filter and the spend-by-category breakdown.`,
       );
     }
   }
@@ -1779,7 +1779,7 @@ export default function Block() {
                 <span>
                   {unsavedCount} inline edit{unsavedCount === 1 ? "" : "s"} did not
                   save. The cell keeps the value you typed and is marked in red —
-                  click it to retry. Nothing was written to Airtable for those.
+                  click it to retry. Nothing was saved for those.
                 </span>
               </div>
             )}
@@ -2456,14 +2456,14 @@ export default function Block() {
                   <Check className="mt-0.5 h-3 w-3 shrink-0" />
                   <span>
                     New category “{formNewCat}” — saving this expense adds it as a
-                    real Airtable choice, and it then appears in the category
+                    saved category, and it then appears in the category
                     filter and the spend-by-category breakdown.
                   </span>
                 </p>
               ) : (
                 <p className="text-xs text-muted-foreground">
                   Type to filter, or add a category of your own. Renaming or
-                  removing one is done in Airtable.
+                  removing one is done in the data sheet.
                 </p>
               )}
             </div>

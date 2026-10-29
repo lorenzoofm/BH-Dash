@@ -948,7 +948,7 @@ export default function Block() {
               </span>
               {perModel.map(([m, n]) => <Badge key={m} variant="outline" className="rounded-md font-normal tabular-nums">{m}: {n}</Badge>)}
               <span className="ml-auto flex items-center gap-2 text-xs">
-                <span className="tabular-nums">{loadedCount} row{loadedCount === 1 ? "" : "s"} loaded from Airtable{convQ.hasNextPage ? "" : " (all)"}</span>
+                <span className="tabular-nums">{loadedCount} row{loadedCount === 1 ? "" : "s"} loaded{convQ.hasNextPage ? "" : " (all)"}</span>
                 {convQ.hasNextPage && (
                   <Button variant="outline" size="sm" className="h-7 px-2 text-xs" onClick={() => convQ.fetchNextPage()} disabled={convQ.isFetchingNextPage}>
                     {convQ.isFetchingNextPage ? "Loading…" : "Load more"}

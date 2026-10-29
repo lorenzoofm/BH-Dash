@@ -685,7 +685,7 @@ export default function Block() {
                 Every hours-and-pay row for every staff member. Use <span className="font-medium text-foreground">Add record</span> to log one day for one person, then edit, delete or pay the rows here.
               </p>
               <p className="text-sm text-muted-foreground">
-                Adding a row records that person's hourly rate onto it as it saves, so a later rate change never rewrites old pay. Hours pre-fill from their <span className="font-medium text-foreground">Standard Daily Hours</span> on the Staff page when one is set — change it before saving if the day was different. Base pay, total and pay period are calculated by Airtable.
+                Adding a row records that person's hourly rate onto it as it saves, so a later rate change never rewrites old pay. Hours pre-fill from their <span className="font-medium text-foreground">Standard Daily Hours</span> on the Staff page when one is set — change it before saving if the day was different. Base pay, total and pay period are calculated automatically.
               </p>
             </div>
             <Button size="sm" onClick={openAdd} disabled={!canCreate || running || !staffLoaded} className="h-8 shrink-0 gap-1.5">
@@ -959,7 +959,7 @@ export default function Block() {
             <div className={SECTION_BAR}>
               <div className="flex flex-wrap items-center gap-2">
                 <span className={SECTION_LABEL}><BadgeDollarSign className="mr-1 inline h-3.5 w-3.5 opacity-60" />Pay run</span>
-                <span className="text-xs text-muted-foreground">Mark every unpaid or scheduled row in a date range as paid, in one go. Base pay and totals are calculated by Airtable and are not changed.</span>
+                <span className="text-xs text-muted-foreground">Mark every unpaid or scheduled row in a date range as paid, in one go. Base pay and totals are calculated automatically and are not changed.</span>
               </div>
             </div>
 
@@ -1010,7 +1010,7 @@ export default function Block() {
           <DialogContent className="sm:max-w-lg">
             <DialogHeader>
               <DialogTitle>Add pay record</DialogTitle>
-              <DialogDescription>One row: one person, one day. The hourly rate below is written onto the row as it saves; base pay, pay period and total are calculated by Airtable.</DialogDescription>
+              <DialogDescription>One row: one person, one day. The hourly rate below is written onto the row as it saves; base pay, pay period and total are calculated automatically.</DialogDescription>
             </DialogHeader>
             <div className="grid gap-3 sm:grid-cols-2">
               <div className="space-y-1.5 sm:col-span-2">

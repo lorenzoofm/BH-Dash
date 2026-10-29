@@ -4,16 +4,16 @@ const ts = require('typescript');
 (async () => {
   let source = fs.readFileSync('lib/data-server.ts', 'utf8')
     .replace("import { getUser } from '@/app/auth';", 'const getUser=async()=>null;')
+    .replace("import { d1Request } from './d1-store';", 'const d1Request=(_sources,path)=>globalThis.storeStub(path);')
     .replace("export {projection,validateFields} from './data-rules';", '')
     .replace("import rawConfig from './data-config.json';", `const rawConfig=${fs.readFileSync('lib/data-config.json','utf8')};`);
   const js=ts.transpileModule(source,{compilerOptions:{module:ts.ModuleKind.ESNext,target:ts.ScriptTarget.ES2022}}).outputText;
-  const originalFetch=global.fetch;process.env.AIRTABLE_TOKEN='check-token';
   const requests=[];
-  global.fetch=async url=>{
-    const u=new URL(url);requests.push(u);
-    if(u.pathname.endsWith('/staff'))return Response.json({records:[{id:'staff1',fields:{Name:'Alice'}}]});
-    if(u.pathname.endsWith('/models'))return Response.json({records:[{id:'model1',fields:{Name:'April'}}]});
-    return Response.json({records:[{id:u.searchParams.has('offset')?'page2':'page1',fields:{}}],...(!u.searchParams.has('offset')?{offset:'next'}:{})});
+  globalThis.storeStub=async path=>{
+    const u=new URL(path,'https://store.local/');requests.push(u);
+    if(u.pathname.endsWith('/staff'))return {records:[{id:'staff1',fields:{Name:'Alice'}}]};
+    if(u.pathname.endsWith('/models'))return {records:[{id:'model1',fields:{Name:'April'}}]};
+    return {records:[{id:u.searchParams.has('offset')?'page2':'page1',fields:{}}],...(!u.searchParams.has('offset')?{offset:'next'}:{})};
   };
   try {
     const mod=await import('data:text/javascript;base64,'+Buffer.from(js).toString('base64'));
@@ -29,5 +29,5 @@ const ts = require('typescript');
     assert.ok(requests.slice(2).every(u=>u.searchParams.get('fields[]')==='Hours'));
     assert.equal(requests[3].searchParams.get('offset'),'next');
     console.log('Data loading checks passed: batched labels, minimal fields, complete pagination.');
-  } finally {global.fetch=originalFetch;}
+  } finally {delete globalThis.storeStub;}
 })().catch(e=>{console.error(e);process.exitCode=1;});

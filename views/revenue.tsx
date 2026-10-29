@@ -115,7 +115,7 @@ export default function Revenue() {
           ]}
           onUpdate={(id, key, value) => map.update(id, {[key]: value})}/>
         {d.unlinked.length > 0 && <div className="border-t px-5 py-3 text-[12.5px] text-muted-foreground">
-          Creator Staq names not matched to an Airtable model this month: {d.unlinked.map(c => `${c.name} (${money(c.net)})`).join(" · ")}
+          Creator Staq names not matched to a model this month: {d.unlinked.map(c => `${c.name} (${money(c.net)})`).join(" · ")}
         </div>}
       </div>
     </Panel>

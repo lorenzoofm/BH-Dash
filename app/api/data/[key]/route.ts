@@ -1,4 +1,4 @@
-import {guard,source,projection,airtable,formatRecord,formatRecords,allRows,validateFields,clearCache,failure,config} from '@/lib/data-server';
+import {guard,source,projection,store,formatRecord,formatRecords,allRows,validateFields,clearCache,failure,config} from '@/lib/data-server';
 import {uniqueFields,sameValue} from '@/lib/data-rules';
 import {pagesFor,type Page} from '@/lib/page-access';
 export const dynamic='force-dynamic';
@@ -30,11 +30,10 @@ export async function GET(req:Request,{params}:any){try{
  [...new Set(Object.values(select))].forEach(f=>query.append('fields[]',f));
  const offset=url.searchParams.get('offset');if(offset){if(offset.length>1024)throw new Error('400:Invalid page.');query.set('offset',offset);}
  const sort=url.searchParams.get('sort');if(sort){if(!select[sort])throw new Error('400:Unknown sort field.');query.set('sort[0][field]',select[sort]);query.set('sort[0][direction]',url.searchParams.get('direction')==='desc'?'desc':'asc');}
- const result=url.searchParams.get('all')==='1'&&!offset?{records:await allRows(s,false,query),offset:null}:await airtable(s.tableId+'?'+query);
+ const result=url.searchParams.get('all')==='1'&&!offset?{records:await allRows(s,false,query),offset:null}:await store(s.tableId+'?'+query);
  return response({items:await formatRecords(s,result.records,select),nextCursor:result.offset??null});
  }catch(e){return failure(e);}}
-// ponytail: serialises this worker's writes; Airtable has no cross-client conditional-write transaction.
-// Softr/external writers can still race. Keep a pre-write conflict check and retain backups during overlap.
+// ponytail: serialises this worker's writes so the conflict and uniqueness checks below see a stable table.
 let writeQueue:Promise<unknown>=Promise.resolve();
 async function mutate(req:Request,context:any){
  try{await guard(true);if(req.headers.get('origin')!==new URL(req.url).origin)throw new Error('403:Invalid request origin.');}catch(e){return failure(e);}
@@ -48,7 +47,7 @@ async function save(req:Request,{params}:any){try{
  const id=body.recordId;if(req.method!=='POST'&&(typeof id!=='string'||!/^rec[A-Za-z0-9]{14}$/.test(id)))throw new Error('400:Invalid record.');
  const select=projection(s,body.select||{}),fields=req.method==='DELETE'?{}:validateFields(s,req.method,select,body.fields);
  if(fields.Currency!=null&&fields.Currency!=='USD')throw new Error('400:All amounts must be in USD.');
- const existing=id?await airtable(s.tableId+'/'+id,{},false):undefined;
+ const existing=id?await store(s.tableId+'/'+id,{},false):undefined;
  if(existing){
   if(!body.expected||typeof body.expected!=='object'||Array.isArray(body.expected)||Object.keys(body.expected).length===0||Object.keys(body.expected).length>50)throw new Error('409:Refresh this record before saving.');
   for(const [name,value] of Object.entries(body.expected)){
@@ -62,7 +61,7 @@ async function save(req:Request,{params}:any){try{
    const f=s.fields.find((f:any)=>f.name===name);if(f.type!=='LINKED_RECORD'||!Array.isArray(value))continue;
    const target=Object.values(config.sources).find((t:any)=>t.tableId===f.rawOptions?.linkedTableId||t.table===f.options?.linkedTableId) as any;
    if(!target)throw new Error('400:Unknown linked table.');
-   for(const linkedId of value)await airtable(target.tableId+'/'+linkedId);
+   for(const linkedId of value)await store(target.tableId+'/'+linkedId);
   }
   const merged={...existing?.fields,...fields},keys=uniqueFields[s.table];
   if(keys&&keys.every(k=>merged[k]!=null&&merged[k]!=='')){
@@ -74,7 +73,7 @@ async function save(req:Request,{params}:any){try{
    if(s.table==='Expense Log')fields['Created By']=actor.user!.email;
   }else{delete fields['Submitted By'];delete fields['Created By'];}
  }
- const result=await airtable(s.tableId+(id?'/'+id:''),{method:req.method,...(req.method!=='DELETE'?{body:JSON.stringify({fields,...(s.table==='Expense Log'&&fields.Category?{typecast:true}:{})})}:{})},false);clearCache();
+ const result=await store(s.tableId+(id?'/'+id:''),{method:req.method,...(req.method!=='DELETE'?{body:JSON.stringify({fields})}:{})},false);clearCache();
  return response(req.method==='DELETE'?result:await formatRecord(s,result,select));
  }catch(e){return failure(e);}}
 export const POST=mutate;export const PATCH=mutate;export const DELETE=mutate;
