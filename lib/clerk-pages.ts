@@ -30,12 +30,13 @@ p{color:var(--muted);margin:0 0 28px}
 <div class="brand"><span class="mark">20</span><span class="name">BH Operations</span></div>
 ${body}
 </main>
-<script async crossorigin="anonymous" data-clerk-publishable-key="${esc(key)}" src="https://${esc(host)}/npm/@clerk/clerk-js@5/dist/clerk.browser.js" onload="start()"></script>
 <script>${script}</script>
+<!-- After the inline script, so start() exists however fast this loads from cache. -->
+<script async crossorigin="anonymous" data-clerk-publishable-key="${esc(key)}" src="https://${esc(host)}/npm/@clerk/clerk-js@5/dist/clerk.browser.js" onload="start()"></script>
 </body></html>`;
 }
 
-const appearance = `{variables:{colorPrimary:'#0a0a0a',colorText:'#0a0a0a',colorTextSecondary:'#69655e',colorBackground:'#fbf9f5',colorInputBackground:'#fbf9f5',fontFamily:'Archivo, system-ui, sans-serif',borderRadius:'10px'},elements:{card:{boxShadow:'0 1px 2px #0a0a0a0a, 0 8px 24px -12px #0a0a0a14',border:'1px solid #e7e3dc',borderRadius:'20px'},formButtonPrimary:{borderRadius:'999px'},socialButtonsBlockButton:{borderRadius:'999px',height:'44px'},footer:{display:'none'}}}`;
+const appearance = `{variables:{colorPrimary:'#0a0a0a',colorText:'#0a0a0a',colorTextSecondary:'#69655e',colorBackground:'#fbf9f5',colorInputBackground:'#fbf9f5',fontFamily:'Archivo, system-ui, sans-serif',borderRadius:'10px'},elements:{card:{boxShadow:'0 1px 2px #0a0a0a0a, 0 8px 24px -12px #0a0a0a14',border:'1px solid #e7e3dc',borderRadius:'20px'},formButtonPrimary:{borderRadius:'999px'},socialButtonsBlockButton:{borderRadius:'999px',height:'44px'},footer:{display:'none'},header:{display:'none'}}}`;
 
 export function signInPage(host: string, key: string, target: string) {
   return page('Sign in',
