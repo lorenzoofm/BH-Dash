@@ -75,9 +75,9 @@ export function statusTone(value: string) {
 }
 
 export function Segmented<T extends string>({value, options, onChange, size = "md"}: {value: T; options: readonly (readonly [T, string])[]; onChange: (v: T) => void; size?: "sm" | "md"}) {
-  return <div className="inline-flex gap-0.5 rounded-full border border-[var(--border-subtle)] bg-muted p-1">
+  return <div className="inline-flex max-w-full flex-wrap gap-0.5 rounded-2xl border border-[var(--border-subtle)] bg-muted p-1">
     {options.map(([v, text]) => <button key={v} type="button" onClick={() => onChange(v)} aria-pressed={value === v}
-      className={cn("rounded-full font-semibold transition-colors duration-[var(--dur-fast)]", size === "sm" ? "h-7 px-3 text-[12px]" : "h-8 px-4 text-[13px]", value === v ? "bg-surface-inverse text-text-inverse" : "text-muted-foreground hover:text-foreground")}>{text}</button>)}
+      className={cn("whitespace-nowrap rounded-full font-semibold transition-colors duration-[var(--dur-fast)]", size === "sm" ? "h-7 px-3 text-[12px]" : "h-8 px-4 text-[13px]", value === v ? "bg-surface-inverse text-text-inverse" : "text-muted-foreground hover:text-foreground")}>{text}</button>)}
   </div>;
 }
 

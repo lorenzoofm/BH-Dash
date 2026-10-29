@@ -27,6 +27,15 @@ const inRange = (d: any, start: string, end: string) => {
   return s !== "" && s >= start && s <= end;
 };
 
+// No included DAP accounts means zero; unavailable or shared account revenue is unknown.
+export function dapRevenueFor(modelId: string, rows: Rec[], modelIds: string[], ready: boolean, amounts: Record<string, {net: number | null}> | undefined): number | null {
+  if (!ready) return null;
+  const own = rows.filter(r => linkIds(r.fields.model).includes(modelId));
+  if (own.some(r => linkIds(r.fields.model).filter(id => modelIds.includes(id)).length > 1)) return null;
+  const values = own.map(r => amounts?.[label(r.fields.slug).toLowerCase()]?.net ?? null);
+  return values.some(v => v === null) ? null : values.reduce<number>((sum, v) => sum + v!, 0);
+}
+
 /*
   One model's P&L for [start, end]:
   - Revenue: selected Creator Staq account-level ranged net, before chargebacks.

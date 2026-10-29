@@ -5,9 +5,9 @@ import {toast} from "sonner";
 import {AlertTriangle, Banknote, Link2, Plus, Receipt, RefreshCw, Store, TrendingUp, Users, Wallet} from "lucide-react";
 import {Bar, Btn, Drawer, Empty, Field, Notice, PageHeader, PageSkeleton, Panel, Segmented, Stat, inputClass} from "@/components/bh/ui";
 import {addDays, label, linkIds, money, num, todayIso, validDay} from "@/lib/bh";
-import {useAccountRevenues, useCreators, useTable} from "@/lib/tables";
+import {useAccountRevenues, useCreators, useDapAccounts, useTable} from "@/lib/tables";
 import {useProxyFetch} from "@/lib/datasource";
-import {modelPnL, type ModelPnL} from "@/lib/finance";
+import {dapRevenueFor, modelPnL, type ModelPnL} from "@/lib/finance";
 
 type Preset = "month" | "last-month" | "7d" | "30d" | "custom";
 const MODEL_KEY = "bh-pnl-model";
@@ -54,37 +54,34 @@ export default function PnL() {
   useEffect(() => { if (modelId && !selectedIds.length) setSelectedIds([modelId]); }, [modelId, selectedIds.length]);
 
   const model = models.rows.find(m => m.id === modelId);
-  const mappedCount = models.rows.filter(m => map.rows.some(r => r.fields.include !== false && linkIds(r.fields.model).includes(m.id))).length;
-  const accountRows = map.rows.filter(r => r.fields.include !== false && linkIds(r.fields.model).includes(modelId));
-  const accountSlugs = accountRows.map(r => label(r.fields.slug)).filter(Boolean);
+  const dap = useDapAccounts();
+  const inKey = new Set((dap.data ?? []).map(a => a.slug.toLowerCase()));
+  const dapRows = map.rows.filter(r => r.fields.include !== false && inKey.has(label(r.fields.slug).toLowerCase()));
+  const mappedCount = models.rows.filter(m => dapRows.some(r => linkIds(r.fields.model).includes(m.id))).length;
+  const accountRows = dapRows.filter(r => linkIds(r.fields.model).includes(modelId));
+  const accountSlugs = accountRows.map(r => label(r.fields.slug).toLowerCase());
   const selectedModels = models.rows.filter(m => selectedIds.includes(m.id));
-  const selectedSlugs = map.rows.filter(r => r.fields.include !== false && linkIds(r.fields.model).some(id => selectedIds.includes(id))).map(r => label(r.fields.slug)).filter(Boolean);
+  const relevantIds = models.rows.filter(m => label(m.fields.status) !== "Ended" || selectedIds.includes(m.id)).map(m => m.id);
+  const revenueRows = dapRows.filter(r => linkIds(r.fields.model).some(id => relevantIds.includes(id)));
+  const selectedSlugs = revenueRows.map(r => label(r.fields.slug).toLowerCase());
   const accountRevenue = useAccountRevenues(selectedSlugs, valid ? start : null, valid ? end : null);
-  const reports = useMemo(() => selectedModels.map(m => {
-    const rows = map.rows.filter(r => r.fields.include !== false && linkIds(r.fields.model).includes(m.id));
-    const slugs = rows.map(r => label(r.fields.slug));
-    const known = rows.length > 0 && slugs.every(slug => slug && accountRevenue.data?.[slug]?.net !== null && accountRevenue.data?.[slug]?.net !== undefined);
-    const overlap = rows.some(r => linkIds(r.fields.model).filter(id => selectedIds.includes(id)).length > 1);
-    return modelPnL(m, {staff: staff.rows, paylog: pay.rows, expenses: expenses.rows, map: map.rows, creators: creators.data ?? [], start, end, revenueKnown: creators.isSuccess,
-      accountRevenue: known && !overlap ? slugs.reduce((n, slug) => n + (accountRevenue.data![slug].net ?? 0), 0) : null});
-  }), [selectedModels, map.rows, selectedIds, accountRevenue.data, staff.rows, pay.rows, expenses.rows, creators.data, creators.isSuccess, start, end]);
+  const revenueOf = (id: string) => dapRevenueFor(id, revenueRows, relevantIds, dap.isSuccess && (revenueRows.length === 0 || accountRevenue.isSuccess), accountRevenue.data);
+  const reports = selectedModels.map(m => modelPnL(m, {staff: staff.rows, paylog: pay.rows, expenses: expenses.rows, map: map.rows, creators: creators.data ?? [], start, end, revenueKnown: creators.isSuccess, accountRevenue: revenueOf(m.id)}));
   const p = reports.find(r => r.modelId === modelId) ?? null;
   const company = useMemo(() => {
-    if (!valid || !creators.isSuccess) return null;
-    const active = models.rows.filter(m => label(m.fields.status) !== "Ended").map(m => modelPnL(m, {staff: staff.rows, paylog: pay.rows, expenses: expenses.rows, map: map.rows, creators: creators.data ?? [], start, end, revenueKnown: true}));
-    const missing = active.filter(r => !r.linked).map(r => r.name);
-    const names = new Set(models.rows.map(r => label(r.fields.model).trim().toLowerCase()));
-    const unmatched = (creators.data ?? []).filter(c => c.net !== 0 && !names.has(c.name.trim().toLowerCase()));
+    if (!valid) return null;
+    const active = models.rows.filter(m => label(m.fields.status) !== "Ended").map(m => modelPnL(m, {staff: staff.rows, paylog: pay.rows, expenses: expenses.rows, map: map.rows, creators: creators.data ?? [], start, end, revenueKnown: creators.isSuccess, accountRevenue: revenueOf(m.id)}));
+    const missing = active.filter(r => r.pageRevenue === null).map(r => r.name);
     const unassigned = expenses.rows.filter(r => !linkIds(r.fields.model).length && label(r.fields.status) === "Paid" && String(r.fields.date ?? "").slice(0, 10) >= start && String(r.fields.date ?? "").slice(0, 10) <= end)
       .reduce((sum, r) => sum + num(r.fields.amount), 0);
-    const unresolved = unmatched.length > 0 || missing.length > 0 || active.some(r => r.dealType !== "Managed" && r.dealType !== "Chat-only");
+    const unresolved = missing.length > 0 || active.some(r => r.dealType !== "Managed" && r.dealType !== "Chat-only");
     const sum = (rows: typeof active, key: "income" | "payout" | "profit") => rows.some(r => r[key] === null) || unresolved || (key === "profit" && unassigned > 0) ? null : rows.reduce((n, r) => n + (r[key] ?? 0), 0);
     const section = (deal: string) => {
       const rows = active.filter(r => r.dealType === deal);
       return {count: rows.length, income: sum(rows, "income"), payout: sum(rows, "payout"), profit: sum(rows, "profit"), wages: rows.reduce((n, r) => n + r.wages, 0), expenses: rows.reduce((n, r) => n + r.expenses, 0)};
     };
-    return {managed: section("Managed"), chat: section("Chat-only"), unassigned, unmatched: unmatched.length, missing, unknownDeals: active.filter(r => r.dealType !== "Managed" && r.dealType !== "Chat-only").length};
-  }, [valid, creators.data, creators.isSuccess, models.rows, staff.rows, pay.rows, expenses.rows, map.rows, start, end]);
+    return {managed: section("Managed"), chat: section("Chat-only"), unassigned, missing, unknownDeals: active.filter(r => r.dealType !== "Managed" && r.dealType !== "Chat-only").length};
+  }, [valid, creators.data, creators.isSuccess, models.rows, staff.rows, pay.rows, expenses.rows, map.rows, start, end, dap.data, dap.isSuccess, accountRevenue.data, accountRevenue.isSuccess, selectedIds]);
 
   if (!today || !range || [models, map, expenses, pay, staff].some(t => t.loading)) return <PageSkeleton/>;
   const creator = creators.data?.find(c => c.name.trim().toLowerCase() === label(model?.fields.model).trim().toLowerCase());
@@ -97,7 +94,7 @@ export default function PnL() {
     profit: reports.every(r => r.profit !== null) ? reports.reduce((n, r) => n + (r.profit ?? 0), 0) : null,
     wages: reports.reduce((n, r) => n + r.wages, 0), expenses: reports.reduce((n, r) => n + r.expenses, 0),
   } : null;
-  const accountErrors = selectedSlugs.flatMap(slug => accountRevenue.data?.[slug]?.error ? [`${slug}: ${accountRevenue.data[slug].error}`] : []);
+  const accountErrors = dapRows.filter(r => linkIds(r.fields.model).some(id => selectedIds.includes(id))).map(r => label(r.fields.slug).toLowerCase()).flatMap(slug => accountRevenue.data?.[slug]?.error ? [`${slug}: ${accountRevenue.data[slug].error}`] : []);
 
   // Picking a model in the drawer also adds it to the report, so it never vanishes behind "Choose a model".
   const chooseModel = (id: string) => selectedIds.includes(id) ? setModelId(id) : toggleModel(id);
@@ -179,11 +176,11 @@ export default function PnL() {
       <Notice>Wages and paid expenses linked to several models are split between them. Unassigned expenses are excluded. Revenue is transaction net before chargebacks.</Notice>
     </> : !p ? <Empty title="Choose a model"/> : <>
       <div className="space-y-2">
-        {creators.isError && <Notice tone="red" icon={AlertTriangle}>Creator Staq revenue is unavailable: {(creators.error as Error).message}. Costs are shown; profit can’t be calculated.</Notice>}
+        {dap.isError && <Notice tone="red" icon={AlertTriangle}>The DAP account list could not be loaded. Revenue remains unavailable.</Notice>}
+        {creators.isError && <Notice tone="red" icon={AlertTriangle}>Creator-wide reference is unavailable: {(creators.error as Error).message}.</Notice>}
         {accountErrors.length > 0 && <Notice tone="red" icon={AlertTriangle}>DAP account revenue is unavailable: {accountErrors.join(" · ")}. Check the mapped account and Creator Staq access.</Notice>}
-        {!accountRows.length && <Notice icon={Link2}>No DAP account is mapped to {p.name}. Select its account under Revenue → Model deals.</Notice>}
-        {accountRows.length !== accountSlugs.length && <Notice icon={AlertTriangle}>A mapped account has no slug. Earnings and profit remain unavailable until all mapped accounts are identified.</Notice>}
-        {p.pageRevenue !== null && <Notice>Revenue for {accountSlugs.join(", ")} is transaction net before chargebacks. The monthly ledger may differ after chargebacks.</Notice>}
+        {!accountRows.length && dap.isSuccess && <Notice icon={Link2}>No DAP account is mapped to {p.name}; DAP revenue is $0.</Notice>}
+        {p.pageRevenue !== null && accountSlugs.length > 0 && <Notice>Revenue for {accountSlugs.join(", ")} is transaction net before chargebacks. The monthly ledger may differ after chargebacks.</Notice>}
         {p.linked && p.dealType !== "Managed" && p.dealType !== "Chat-only" && <Notice icon={AlertTriangle}>{p.name} has no recognised deal type. Set it under Revenue → Model deals before profit can be calculated.</Notice>}
         {p.linked && p.income !== null && p.payout === null && <Notice icon={AlertTriangle}>{p.name} has no Model’s Cut % set, so her payout and profit can’t be calculated.</Notice>}
       </div>
@@ -198,8 +195,7 @@ export default function PnL() {
 
       {company && <Panel title="Company summary" icon={Wallet}>
         <p className="mb-3 text-[12px] text-muted-foreground">Managed models and chatting clients are separate. Unassigned paid expenses stay outside both until linked to a model.</p>
-        {company.unmatched > 0 && <Notice icon={AlertTriangle}>{company.unmatched} Creator Staq creator{company.unmatched === 1 ? " is" : "s are"} not matched to a model. Aggregate revenue and profit are unavailable until reconciled.</Notice>}
-        {company.missing.length > 0 && <Notice icon={AlertTriangle}>Creator Staq returned no revenue record for {company.missing.join(", ")}. Confirm whether those models had zero revenue or are outside this key’s access; company totals remain unavailable.</Notice>}
+        {company.missing.length > 0 && <Notice icon={AlertTriangle}>DAP revenue could not be verified for {company.missing.join(", ")}; company totals remain unavailable.</Notice>}
         {company.unknownDeals > 0 && <Notice icon={AlertTriangle}>{company.unknownDeals} model{company.unknownDeals === 1 ? " has" : "s have"} an unknown deal type and are excluded from these sections.</Notice>}
         <div className="mt-3 grid gap-3 lg:grid-cols-2">
           {([["Managed models", company.managed], ["Chatting agency", company.chat]] as const).map(([title, section]) => <div key={title} className="rounded-lg border p-4 text-[13px]">

@@ -108,7 +108,8 @@ export function useAccountRevenues(slugs: string[], start: string | null, end: s
               throw new Error(body.error || `Creator Staq returned ${response.status}`);
             }
             const body: any = await response.json();
-            const amount = Number(body.kpis?.total_net);
+            const raw = body.kpis?.total_net;
+            const amount = raw == null || raw === "" ? NaN : Number(raw);
             if (!Number.isFinite(amount)) throw new Error("Incomplete account revenue");
             return amount;
           }));

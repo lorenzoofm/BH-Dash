@@ -5,7 +5,7 @@ const {stripTypeScriptTypes} = require('node:module');
 
 const source = fs.readFileSync(__dirname + '/../lib/finance.ts', 'utf8');
 const code = source.slice(source.indexOf('const inRange'))
-  .replace('export function modelPnL', 'function modelPnL');
+  .replaceAll('export function ', 'function ');
 const ctx = vm.createContext({
   label: v => typeof v === 'object' ? v?.label ?? '' : String(v ?? ''),
   linkIds: v => (Array.isArray(v) ? v : v ? [v] : []).map(x => String(x?.id ?? x)),
@@ -22,3 +22,10 @@ result = ctx.modelPnL({...model, fields: {...model.fields, dealType: ''}}, {...b
 assert.equal(result.income, null, 'unknown deal cannot become Managed revenue');
 assert.equal(result.profit, null);
 console.log('PASS: unassigned expenses excluded; unknown deal blocks profit');
+
+const dapRow = {fields: {model: ['m1'], slug: 'Dap'}};
+assert.equal(ctx.dapRevenueFor('m1', [], ['m1'], true, {}), 0, 'no DAP account means zero');
+assert.equal(ctx.dapRevenueFor('m1', [dapRow], ['m1'], true, {dap: {net: null}}), null, 'failed DAP account remains unknown');
+assert.equal(ctx.dapRevenueFor('m1', [dapRow], ['m1'], true, {dap: {net: 42}}), 42);
+assert.equal(ctx.dapRevenueFor('m1', [dapRow], ['m1'], false, {}), null, 'unavailable directory remains unknown');
+assert.equal(ctx.dapRevenueFor('m1', [{fields:{model:['m1','m2'], slug:'dap'}}], ['m1','m2'], true, {dap:{net:42}}), null, 'shared account is not double counted');

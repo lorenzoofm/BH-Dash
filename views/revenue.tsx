@@ -9,7 +9,7 @@ import {TableError, Btn, Drawer, Field, Notice, PageHeader, PageSkeleton, Panel,
 import {DataGrid} from "@/components/bh/grid";
 import {label, linkIds, money, num, todayIso} from "@/lib/bh";
 import {useProxyFetch} from "@/lib/datasource";
-import {CHOICES, linkOptions, opts, useCreators, useTable} from "@/lib/tables";
+import {CHOICES, linkOptions, opts, useAccountRevenues, useCreators, useDapAccounts, useTable} from "@/lib/tables";
 
 const MONTHLY = "https://api.creatorstaq.com/v1/computed/revenue/monthly?months=12";
 const COLORS = ["var(--chart-1)", "var(--chart-2)", "var(--chart-3)", "var(--chart-5)", "var(--chart-6)", "var(--chart-7)", "var(--chart-8)", "var(--chart-4)"];
@@ -26,11 +26,18 @@ export default function Revenue() {
     return (body.monthly_by_account ?? []) as {month: string; accounts: {account_id: number; name: string; net: number | string}[]}[];
   }});
   const mtd = useCreators(today ? today.slice(0, 8) + "01" : null, today);
+  const dap = useDapAccounts();
+  const inKey = new Set((dap.data ?? []).map(a => a.slug.toLowerCase()));
+  const liveIds = new Set(models.rows.filter(m => label(m.fields.status) !== "Ended").map(m => m.id));
+  const dapRows = map.rows.filter(r => r.fields.include !== false && inKey.has(label(r.fields.slug).toLowerCase()) && linkIds(r.fields.model).some(id => liveIds.has(id)));
+  const dapSlugs = [...new Set(dapRows.map(r => label(r.fields.slug).toLowerCase()))];
+  const accountRevenue = useAccountRevenues(dapSlugs, today ? today.slice(0, 8) + "01" : null, today);
+  const revenue = !dap.isSuccess || (dapSlugs.length > 0 && !accountRevenue.isSuccess) || dapSlugs.some(slug => accountRevenue.data?.[slug]?.net == null) ? null : dapSlugs.reduce((sum, slug) => sum + accountRevenue.data![slug].net!, 0);
   const [adding, setAdding] = useState(false);
   const [addingAccount, setAddingAccount] = useState(false);
 
   const d = useMemo(() => {
-    const pageModel = new Map(map.rows.filter(r => r.fields.include !== false).map(r => [String(r.fields.accountId), linkIds(r.fields.model)[0]]));
+    const pageModel = new Map(dapRows.map(r => [String(r.fields.accountId), linkIds(r.fields.model)[0]]));
     const modelName = new Map(models.rows.map(m => [m.id, label(m.fields.model)]));
     const shown = [...new Set([...pageModel.values()].filter(Boolean))] as string[];
     const chart = (monthly.data ?? []).map(m => {
@@ -53,7 +60,7 @@ export default function Revenue() {
     const missing = activeNames.filter(name => !matched.some(c => c.name.trim().toLowerCase() === name));
     const unlinked = (mtd.data ?? []).filter(c => !activeNames.includes(c.name.trim().toLowerCase()));
     return {chart, config, shown, last, prev, best, trailing: full.slice(-6).reduce((s, r) => s + r.total, 0), missing, unlinked};
-  }, [monthly.data, map.rows, models.rows, mtd.data, today]);
+  }, [monthly.data, map.rows, models.rows, mtd.data, today, dap.data]);
 
   if ([models, map].some(t => t.error)) return <TableError tables={[models, map]}/>;
   if (!today || models.loading || map.loading) return <PageSkeleton/>;
@@ -64,11 +71,11 @@ export default function Revenue() {
       actions={<Btn variant="primary" onClick={() => setAdding(true)}><Plus/>Add model</Btn>}/>
 
     {(monthly.isError || mtd.isError) && <Notice tone="red" icon={AlertTriangle}>Creator Staq is unavailable: {((monthly.error ?? mtd.error) as Error).message}</Notice>}
-    <Notice icon={AlertTriangle}>Creator Staq’s ranged API combines a creator’s accounts. DAP-only current revenue is withheld until account-level revenue is connected.</Notice>
+    {(dap.isError || accountRevenue.isError || (accountRevenue.isSuccess && dapSlugs.some(slug => accountRevenue.data?.[slug]?.net == null))) && <Notice tone="red" icon={AlertTriangle}>DAP account revenue could not be verified. Current revenue remains unavailable.</Notice>}
     {mtd.isSuccess && (d.missing.length > 0 || d.unlinked.length > 0) && <Notice icon={AlertTriangle}>The current API key also has missing or unmatched creators. Reconcile account access before company reporting.</Notice>}
 
     <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-      <Stat accent label="This month so far" icon={Banknote} value="—" sub="DAP account revenue not connected"/>
+      <Stat accent label="This month so far" icon={Banknote} value={revenue === null ? "—" : money(revenue)} sub="Included DAP accounts"/>
       <Stat label="Last full month" icon={CalendarDays} value={!d.missing.length && d.last?.total ? money(d.last.total) : "—"} delta={!d.missing.length && d.last?.total && d.prev?.total ? Math.round(d.last.total - d.prev.total) : null} deltaLabel="vs prior" sub={d.last ? fmtMonth(d.last.month) : undefined}/>
       <Stat label="Last 6 months" icon={TrendingUp} value={monthly.isSuccess && !d.missing.length && d.chart.some(r => r.total) ? money(d.trailing) : "—"} sub="Full months only"/>
       <Stat label="Best month" icon={Trophy} value={!d.missing.length && d.best?.total ? money(d.best.total) : "—"} sub={d.best ? fmtMonth(d.best.month) : undefined}/>
