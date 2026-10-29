@@ -145,7 +145,7 @@ export default function PnL() {
           <Store className="size-3.5 text-muted-foreground"/><span className="flex-1 truncate font-medium">{selectedIds.length > 1 ? "Combined report uses DAP account revenue for each selected model" : creator ? `${creator.name} · ${money(creator.net)} this period` : creators.isPending ? "Loading revenue…" : "No matching creator in this key’s revenue response"}</span>
         </div>
       </Field>
-      <Field label="Period">
+      <Field label="Period" className="lg:col-span-3">
         <Segmented size="md" value={preset} onChange={v => { setPreset(v); if (v !== "custom") setRange(presetRange(v, today)); }}
           options={[["month", "This month"], ["last-month", "Last month"], ["7d", "7d"], ["30d", "30d"], ["custom", "Custom"]] as const}/>
       </Field>

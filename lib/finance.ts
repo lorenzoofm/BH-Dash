@@ -27,6 +27,10 @@ const inRange = (d: any, start: string, end: string) => {
   return s !== "" && s >= start && s <= end;
 };
 
+export function completeDapMonth(ids: string[], accounts: {account_id: number}[] | undefined): boolean {
+  return !!accounts && ids.every(id => accounts.some(account => String(account.account_id) === id));
+}
+
 // No included DAP accounts means zero; unavailable or shared account revenue is unknown.
 export function dapRevenueFor(modelId: string, rows: Rec[], modelIds: string[], ready: boolean, amounts: Record<string, {net: number | null}> | undefined): number | null {
   if (!ready) return null;

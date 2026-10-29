@@ -29,3 +29,7 @@ assert.equal(ctx.dapRevenueFor('m1', [dapRow], ['m1'], true, {dap: {net: null}})
 assert.equal(ctx.dapRevenueFor('m1', [dapRow], ['m1'], true, {dap: {net: 42}}), 42);
 assert.equal(ctx.dapRevenueFor('m1', [dapRow], ['m1'], false, {}), null, 'unavailable directory remains unknown');
 assert.equal(ctx.dapRevenueFor('m1', [{fields:{model:['m1','m2'], slug:'dap'}}], ['m1','m2'], true, {dap:{net:42}}), null, 'shared account is not double counted');
+
+assert.equal(ctx.completeDapMonth(['1', '2'], [{account_id:1},{account_id:2}]), true);
+assert.equal(ctx.completeDapMonth(['1', '2'], [{account_id:1}]), false, 'partial historical totals must stay unknown');
+assert.equal(ctx.completeDapMonth([], undefined), false, 'missing month is not zero');

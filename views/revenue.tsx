@@ -8,6 +8,7 @@ import {ChartConfig, ChartContainer, ChartTooltip, ChartTooltipContent} from "@/
 import {TableError, Btn, Drawer, Field, Notice, PageHeader, PageSkeleton, Panel, Stat, inputClass} from "@/components/bh/ui";
 import {DataGrid} from "@/components/bh/grid";
 import {label, linkIds, money, num, todayIso} from "@/lib/bh";
+import {completeDapMonth} from "@/lib/finance";
 import {useProxyFetch} from "@/lib/datasource";
 import {CHOICES, linkOptions, opts, useAccountRevenues, useCreators, useDapAccounts, useTable} from "@/lib/tables";
 
@@ -54,12 +55,13 @@ export default function Revenue() {
     const thisMonth = today?.slice(0, 7);
     const full = chart.filter(r => r.month !== thisMonth);
     const last = full.at(-1), prev = full.at(-2);
+    const dapIds = new Set(dapRows.map(r => String(r.fields.accountId)));
+    const completeMonth = (month: string | undefined) => !!month && completeDapMonth([...dapIds], monthly.data?.find(m => m.month.slice(0, 7) === month)?.accounts);
+    const fullComplete = full.length > 0 && full.every(r => completeMonth(r.month));
     const best = [...full].sort((a, b) => b.total - a.total)[0];
     const activeNames = models.rows.filter(m => label(m.fields.status) !== "Ended").map(m => label(m.fields.model).toLowerCase());
-    const matched = (mtd.data ?? []).filter(c => activeNames.includes(c.name.trim().toLowerCase()));
-    const missing = activeNames.filter(name => !matched.some(c => c.name.trim().toLowerCase() === name));
     const unlinked = (mtd.data ?? []).filter(c => !activeNames.includes(c.name.trim().toLowerCase()));
-    return {chart, config, shown, last, prev, best, trailing: full.slice(-6).reduce((s, r) => s + r.total, 0), missing, unlinked};
+    return {chart, config, shown, last, prev, best, completeMonth, fullComplete, trailing: full.slice(-6).reduce((s, r) => s + r.total, 0), unlinked};
   }, [monthly.data, map.rows, models.rows, mtd.data, today, dap.data]);
 
   if ([models, map].some(t => t.error)) return <TableError tables={[models, map]}/>;
@@ -72,13 +74,12 @@ export default function Revenue() {
 
     {(monthly.isError || mtd.isError) && <Notice tone="red" icon={AlertTriangle}>Creator Staq is unavailable: {((monthly.error ?? mtd.error) as Error).message}</Notice>}
     {(dap.isError || accountRevenue.isError || (accountRevenue.isSuccess && dapSlugs.some(slug => accountRevenue.data?.[slug]?.net == null))) && <Notice tone="red" icon={AlertTriangle}>DAP account revenue could not be verified. Current revenue remains unavailable.</Notice>}
-    {mtd.isSuccess && (d.missing.length > 0 || d.unlinked.length > 0) && <Notice icon={AlertTriangle}>The current API key also has missing or unmatched creators. Reconcile account access before company reporting.</Notice>}
 
     <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
       <Stat accent label="This month so far" icon={Banknote} value={revenue === null ? "—" : money(revenue)} sub="Included DAP accounts"/>
-      <Stat label="Last full month" icon={CalendarDays} value={!d.missing.length && d.last?.total ? money(d.last.total) : "—"} delta={!d.missing.length && d.last?.total && d.prev?.total ? Math.round(d.last.total - d.prev.total) : null} deltaLabel="vs prior" sub={d.last ? fmtMonth(d.last.month) : undefined}/>
-      <Stat label="Last 6 months" icon={TrendingUp} value={monthly.isSuccess && !d.missing.length && d.chart.some(r => r.total) ? money(d.trailing) : "—"} sub="Full months only"/>
-      <Stat label="Best month" icon={Trophy} value={!d.missing.length && d.best?.total ? money(d.best.total) : "—"} sub={d.best ? fmtMonth(d.best.month) : undefined}/>
+      <Stat label="Last full month" icon={CalendarDays} value={dap.isSuccess && d.completeMonth(d.last?.month) ? money(d.last!.total) : "—"} delta={dap.isSuccess && d.completeMonth(d.last?.month) && d.completeMonth(d.prev?.month) ? Math.round(d.last!.total - d.prev!.total) : null} deltaLabel="vs prior" sub={d.last ? fmtMonth(d.last.month) : undefined}/>
+      <Stat label="Last 6 months" icon={TrendingUp} value={dap.isSuccess && monthly.isSuccess && d.fullComplete && d.chart.length > 0 ? money(d.trailing) : "—"} sub="Full months only"/>
+      <Stat label="Best month" icon={Trophy} value={dap.isSuccess && d.fullComplete && d.best ? money(d.best.total) : "—"} sub={d.best ? fmtMonth(d.best.month) : undefined}/>
     </div>
 
     <Panel title="Monthly net revenue" subtitle="Last 12 months, account-level history for pages visible to the API key.">
