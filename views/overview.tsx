@@ -5,7 +5,7 @@ import {AlertTriangle, ArrowRight, Banknote, CheckCircle2, Target, Trophy, Walle
 import {ChartConfig, ChartContainer, ChartTooltip, ChartTooltipContent} from "@/components/ui/chart";
 import {Avatar, Bar as Meter, Empty, PageHeader, PageSkeleton, Panel, Segmented, Stat} from "@/components/bh/ui";
 import {addDays, label, linkIds, money, mondayOf, num, shortDate, todayIso, weekLabel} from "@/lib/bh";
-import {useCreators, useTable} from "@/lib/tables";
+import {useAccountRevenues, useCreators, useTable} from "@/lib/tables";
 import {modelPnL} from "@/lib/finance";
 
 const COLORS = ["var(--chart-1)", "var(--chart-2)", "var(--chart-3)", "var(--chart-5)", "var(--chart-6)", "var(--chart-7)", "var(--chart-8)", "var(--chart-4)", "var(--series-muted)"];
@@ -17,6 +17,10 @@ export default function Overview({isAdmin}: {isAdmin: boolean}) {
   const targets = useTable("expectations"), models = useTable("models", isAdmin), map = useTable("map", isAdmin);
   const monthStart = today ? today.slice(0, 8) + "01" : null;
   const creators = useCreators(monthStart, today, isAdmin);
+  // Earnings come from each live model's mapped DAP accounts, as on the P&L page.
+  const liveIds = models.rows.filter(m => label(m.fields.status) !== "Ended").map(m => m.id);
+  const liveSlugs = map.rows.filter(r => r.fields.include !== false && linkIds(r.fields.model).some(id => liveIds.includes(id))).map(r => label(r.fields.slug)).filter(Boolean);
+  const accounts = useAccountRevenues(isAdmin ? liveSlugs : [], monthStart, today);
   const [mode, setMode] = useState<"va" | "total">("va");
 
   const d = useMemo(() => {
@@ -61,11 +65,20 @@ export default function Overview({isAdmin}: {isAdmin: boolean}) {
     // Money, month to date. Shared (unassigned) expenses are counted once, not per model.
     const live = models.rows.filter(m => label(m.fields.status) !== "Ended");
     const opts = {staff: staff.rows, paylog: pay.rows, expenses: expenses.rows, map: map.rows, creators: creators.data ?? [], start: monthStart, end: today, includeShared: false, revenueKnown: creators.isSuccess};
-    const pnls = live.map(m => modelPnL(m, opts));
+    const revenueOf = (modelId: string) => {
+      const rows = map.rows.filter(r => r.fields.include !== false && linkIds(r.fields.model).includes(modelId));
+      const slugs = rows.map(r => label(r.fields.slug));
+      // An account shared by two live models can't be split, so neither gets revenue.
+      const shared = rows.some(r => linkIds(r.fields.model).filter(id => liveIds.includes(id)).length > 1);
+      const known = rows.length > 0 && !shared && slugs.every(slug => slug && accounts.data?.[slug]?.net != null);
+      return known ? slugs.reduce((n, slug) => n + accounts.data![slug].net!, 0) : null;
+    };
+    const pnls = live.map(m => modelPnL(m, {...opts, accountRevenue: revenueOf(m.id)}));
+    const missingRevenue = pnls.filter(p => p.income === null).map(p => p.name);
     const shared = expenses.rows.filter(e => !linkIds(e.fields.model).length && String(e.fields.date ?? "").slice(0, 10) >= monthStart && String(e.fields.date ?? "").slice(0, 10) <= today);
     const sharedPaid = shared.filter(e => label(e.fields.status) === "Paid").reduce((s, e) => s + num(e.fields.amount), 0);
     const linked = pnls.filter(p => p.linked);
-    const income = !creators.isSuccess || pnls.some(p => p.income === null) ? null : linked.reduce((s, p) => s + p.income!, 0);
+    const income = !accounts.isSuccess || missingRevenue.length ? null : linked.reduce((s, p) => s + p.income!, 0);
     const payout = linked.reduce((s, p) => s + (p.payout ?? 0), 0);
     const wages = pnls.reduce((s, p) => s + p.wages, 0);
     const exp = pnls.reduce((s, p) => s + p.expenses, 0) + sharedPaid;
@@ -81,12 +94,12 @@ export default function Overview({isAdmin}: {isAdmin: boolean}) {
       ...active.filter(s => (lastLogged.get(s.id) ?? "") < addDays(today, -2)).map(s => ({tone: "amber" as const, text: `${label(s.fields.name)} — no hours logged since ${lastLogged.get(s.id) ? shortDate(lastLogged.get(s.id)!) : "ever"}`, href: "/pay-hours"})),
       ...active.filter(s => !grid.get(weeks[2])!.has(s.id)).map(s => ({tone: "amber" as const, text: `${label(s.fields.name)} — last week’s conversions not entered`, href: "/conversions"})),
       ...board.filter(b => b.lastTarget !== null && b.last !== null && b.last < b.lastTarget).map(b => ({tone: "red" as const, text: `${b.name} — missed target last week (${b.last}/${b.lastTarget})`, href: "/staff"})),
-      ...(isAdmin ? live.filter(m => !pnls.find(p => p.modelId === m.id)?.linked).map(m => ({tone: "amber" as const, text: `${label(m.fields.model)} — no revenue record in current Creator Staq key`, href: "/pnl"})) : []),
+      ...(isAdmin ? live.filter(m => !pnls.find(p => p.modelId === m.id)?.linked).map(m => ({tone: "amber" as const, text: map.rows.some(r => r.fields.include !== false && linkIds(r.fields.model).includes(m.id)) ? `${label(m.fields.model)} — DAP account revenue could not be read` : `${label(m.fields.model)} — no DAP account connected`, href: "/pnl"})) : []),
     ];
     const daysIn = Math.round((Date.parse(today) - Date.parse(thisWeek)) / 864e5) + 1;
-    return {thisWeek, weeks, chart, keys, config, board, income, payout, wages, exp, profit, unpaidWages, alerts, daysIn,
+    return {thisWeek, weeks, chart, keys, config, board, income, payout, wages, exp, profit, unpaidWages, alerts, daysIn, missingRevenue,
       thisTotal: total(weeks[3]), lastTotal: total(weeks[2]), activeCount: active.length};
-  }, [today, staff.rows, conv.rows, pay.rows, expenses.rows, targets.rows, models.rows, map.rows, creators.data, creators.isSuccess, isAdmin]);
+  }, [today, staff.rows, conv.rows, pay.rows, expenses.rows, targets.rows, models.rows, map.rows, creators.data, creators.isSuccess, accounts.data, accounts.isSuccess, isAdmin]);
 
   const tables = [staff, conv, pay, expenses, targets, models, map];
   if (tables.some(t => t.error)) return <Empty icon={AlertTriangle} title="Couldn’t load data from the BH database">{tables.find(t => t.error)?.error?.message || "Refresh the page to try again."}</Empty>;
@@ -100,7 +113,7 @@ export default function Overview({isAdmin}: {isAdmin: boolean}) {
       {isAdmin && <><Stat accent label="Profit · this month" icon={Wallet} value={d.profit === null ? "—" : money(d.profit)} tone={d.profit === null ? "" : d.profit >= 0 ? "positive" : "negative"}
         sub={<a href="/pnl" className="inline-flex items-center gap-1 hover:text-signal">Open P&amp;L <ArrowRight className="size-3"/></a>}/>
       <Stat label="Earnings · this month" icon={Banknote} value={d.income === null ? "—" : money(d.income)}
-        sub={creators.isError ? "Creator Staq unavailable" : d.income === null ? "DAP account-level revenue is not connected" : d.payout ? `${money(d.payout)} paid out to model` : "Creator Staq net"}/>
+        sub={accounts.isError ? "Creator Staq unavailable" : accounts.isPending && liveSlugs.length ? "Loading DAP revenue…" : d.income === null ? `No DAP revenue yet for ${d.missingRevenue.join(", ") || "any model"}` : d.payout ? `${money(d.payout)} paid out to models` : "Creator Staq net"}/>
       <Stat label="Costs · this month" icon={Wallet} value={money(d.wages + d.exp)} sub={`${money(d.wages)} wages · ${money(d.exp)} expenses`}/></>}
       <Stat label="Conversions · this week" icon={Target} value={d.thisTotal.toLocaleString()} delta={d.lastTotal ? d.thisTotal - d.lastTotal : null} deltaLabel="vs last week" sub={`Last week ${d.lastTotal}`}/>
     </div>
