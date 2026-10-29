@@ -75,6 +75,20 @@ export function linkedPages(mapRows: {fields: Record<string, any>}[], modelId: s
   return new Set(mapRows.filter(r => r.fields.include !== false && linkIds(r.fields.model).includes(modelId)).map(r => String(r.fields.accountId ?? "")));
 }
 
+// The DAP accounts this Creatorstaq key can read. Only these carry DAP revenue.
+export function useDapAccounts(enabled = true) {
+  const proxyFetch = useProxyFetch("live");
+  return useQuery({
+    queryKey: ["bh-creatorstaq-accounts"], enabled, staleTime: 300000, retry: 1,
+    queryFn: async (): Promise<{id: number; slug: string; of_username: string}[]> => {
+      const response = await proxyFetch("https://api.creatorstaq.com/v1/me");
+      const body: any = await response.json();
+      if (!response.ok) throw new Error(body.error || "Could not list Creatorstaq accounts");
+      return body.accounts;
+    },
+  });
+}
+
 export function useAccountRevenues(slugs: string[], start: string | null, end: string | null) {
   const proxyFetch = useProxyFetch("live");
   const accounts = [...new Set(slugs)].sort();
