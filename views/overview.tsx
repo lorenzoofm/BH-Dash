@@ -17,12 +17,13 @@ export default function Overview({isAdmin}: {isAdmin: boolean}) {
   const targets = useTable("expectations"), models = useTable("models", isAdmin), map = useTable("map", isAdmin);
   const monthStart = today ? today.slice(0, 8) + "01" : null;
   const creators = useCreators(monthStart, today, isAdmin);
-  // Earnings are DAP revenue only: the accounts in the Creatorstaq key. A model's other accounts add nothing.
-  // Unlinked DAP accounts are fetched too, so revenue no model claims is reported rather than dropped.
+  // Earnings are DAP revenue only: Model Accounts rows with "Include in P&L" on that the Creatorstaq key can read.
+  // A model with no DAP account adds nothing; other accounts in the key are not DAP and are ignored.
   const liveIds = models.rows.filter(m => label(m.fields.status) !== "Ended").map(m => m.id);
   const dap = useDapAccounts(isAdmin);
-  const dapSlugs = (dap.data ?? []).map(a => a.slug.toLowerCase());
-  const accounts = useAccountRevenues(isAdmin ? dapSlugs : [], monthStart, today);
+  const inKey = new Set((dap.data ?? []).map(a => a.slug.toLowerCase()));
+  const dapRows = map.rows.filter(r => r.fields.include !== false && inKey.has(label(r.fields.slug).toLowerCase()) && linkIds(r.fields.model).some(id => liveIds.includes(id)));
+  const accounts = useAccountRevenues(isAdmin ? dapRows.map(r => label(r.fields.slug).toLowerCase()) : [], monthStart, today);
   const [mode, setMode] = useState<"va" | "total">("va");
 
   const d = useMemo(() => {
@@ -67,25 +68,20 @@ export default function Overview({isAdmin}: {isAdmin: boolean}) {
     // Money, month to date. Shared (unassigned) expenses are counted once, not per model.
     const live = models.rows.filter(m => label(m.fields.status) !== "Ended");
     const opts = {staff: staff.rows, paylog: pay.rows, expenses: expenses.rows, map: map.rows, creators: creators.data ?? [], start: monthStart, end: today, includeShared: false, revenueKnown: creators.isSuccess};
-    const isDap = (slug: string) => dapSlugs.includes(slug.toLowerCase());
     const netOf = (slug: string) => accounts.data?.[slug.toLowerCase()]?.net ?? null;
-    const dapRows = map.rows.filter(r => r.fields.include !== false && isDap(label(r.fields.slug)));
     const revenueOf = (modelId: string) => {
-      if (!dap.isSuccess || !accounts.isSuccess) return null;
+      if (!dap.isSuccess || (dapRows.length > 0 && !accounts.isSuccess)) return null;
       const rows = dapRows.filter(r => linkIds(r.fields.model).includes(modelId));
       // A DAP account shared by two live models can't be split, so neither gets revenue.
       if (rows.some(r => linkIds(r.fields.model).filter(id => liveIds.includes(id)).length > 1)) return null;
       // No DAP account means no DAP revenue. A DAP account that can't be read stays unknown, never 0.
       return rows.some(r => netOf(label(r.fields.slug)) === null) ? null : rows.reduce((n, r) => n + netOf(label(r.fields.slug))!, 0);
     };
-    const claimed = new Set(dapRows.filter(r => linkIds(r.fields.model).some(id => liveIds.includes(id))).map(r => label(r.fields.slug).toLowerCase()));
-    const unlinked = dapSlugs.filter(slug => !claimed.has(slug));
-    const unlinkedNet = unlinked.reduce((n, slug) => n + (netOf(slug) ?? 0), 0);
     const pnls = live.map(m => modelPnL(m, {...opts, accountRevenue: revenueOf(m.id)}));
     const missingRevenue = pnls.filter(p => p.income === null).map(p => p.name);
     const shared = expenses.rows.filter(e => !linkIds(e.fields.model).length && String(e.fields.date ?? "").slice(0, 10) >= monthStart && String(e.fields.date ?? "").slice(0, 10) <= today);
     const sharedPaid = shared.filter(e => label(e.fields.status) === "Paid").reduce((s, e) => s + num(e.fields.amount), 0);
-    const income = !dap.isSuccess || !accounts.isSuccess || missingRevenue.length ? null : pnls.reduce((s, p) => s + p.income!, 0);
+    const income = !dap.isSuccess || (dapRows.length > 0 && !accounts.isSuccess) || missingRevenue.length ? null : pnls.reduce((s, p) => s + p.income!, 0);
     const payoutKnown = pnls.every(p => p.payout !== null);
     const payout = pnls.reduce((s, p) => s + (p.payout ?? 0), 0);
     const wages = pnls.reduce((s, p) => s + p.wages, 0);
@@ -105,7 +101,7 @@ export default function Overview({isAdmin}: {isAdmin: boolean}) {
       ...(isAdmin ? live.filter(m => !pnls.find(p => p.modelId === m.id)?.linked).map(m => ({tone: "amber" as const, text: map.rows.some(r => r.fields.include !== false && linkIds(r.fields.model).includes(m.id)) ? `${label(m.fields.model)} — DAP account revenue could not be read` : `${label(m.fields.model)} — no DAP account connected`, href: "/pnl"})) : []),
     ];
     const daysIn = Math.round((Date.parse(today) - Date.parse(thisWeek)) / 864e5) + 1;
-    return {thisWeek, weeks, chart, keys, config, board, income, payout, wages, exp, profit, unpaidWages, alerts, daysIn, missingRevenue, unlinked, unlinkedNet,
+    return {thisWeek, weeks, chart, keys, config, board, income, payout, wages, exp, profit, unpaidWages, alerts, daysIn, missingRevenue, dapCount: dapRows.length,
       thisTotal: total(weeks[3]), lastTotal: total(weeks[2]), activeCount: active.length};
   }, [today, staff.rows, conv.rows, pay.rows, expenses.rows, targets.rows, models.rows, map.rows, creators.data, creators.isSuccess, dap.data, dap.isSuccess, accounts.data, accounts.isSuccess, isAdmin]);
 
@@ -121,7 +117,7 @@ export default function Overview({isAdmin}: {isAdmin: boolean}) {
       {isAdmin && <><Stat accent label="Profit · this month" icon={Wallet} value={d.profit === null ? "—" : money(d.profit)} tone={d.profit === null ? "" : d.profit >= 0 ? "positive" : "negative"}
         sub={<a href="/pnl" className="inline-flex items-center gap-1 hover:text-signal">Open P&amp;L <ArrowRight className="size-3"/></a>}/>
       <Stat label="Earnings · this month" icon={Banknote} value={d.income === null ? "—" : money(d.income)}
-        sub={dap.isError || accounts.isError ? "Creator Staq unavailable" : dap.isPending || accounts.isPending ? "Loading DAP revenue…" : d.income === null ? `DAP revenue couldn’t be read for ${d.missingRevenue.join(", ") || "every model"}` : `DAP accounts only${d.payout ? ` · ${money(d.payout)} to models` : ""}${d.unlinked.length ? ` · ${money(d.unlinkedNet)} in ${d.unlinked.length} unlinked DAP account${d.unlinked.length === 1 ? "" : "s"} not counted` : ""}`}/>
+        sub={dap.isError || accounts.isError ? "Creator Staq unavailable" : dap.isPending || (dapRows.length > 0 && accounts.isPending) ? "Loading DAP revenue…" : d.income === null ? `DAP revenue couldn’t be read for ${d.missingRevenue.join(", ") || "every model"}` : `${d.dapCount} DAP account${d.dapCount === 1 ? "" : "s"}${d.payout ? ` · ${money(d.payout)} to models` : ""}`}/>
       <Stat label="Costs · this month" icon={Wallet} value={money(d.wages + d.exp)} sub={`${money(d.wages)} wages · ${money(d.exp)} expenses`}/></>}
       <Stat label="Conversions · this week" icon={Target} value={d.thisTotal.toLocaleString()} delta={d.lastTotal ? d.thisTotal - d.lastTotal : null} deltaLabel="vs last week" sub={`Last week ${d.lastTotal}`}/>
     </div>
