@@ -1,6 +1,7 @@
 "use client";
 import {useEffect, useState} from "react";
 import {usePathname} from "next/navigation";
+import {NavLink} from "@/components/bh/nav-link";
 import {ArrowUpRight, BarChart3, CircleUserRound, Clock, LayoutDashboard, LogOut, Menu, Moon, Receipt, Sun, TrendingUp, UserCog, Users, Wallet, X} from "lucide-react";
 import type {Page} from '@/lib/page-access-constants';
 
@@ -47,26 +48,26 @@ export default function Shell({children, email, otherUrl, isAdmin, pages}: {chil
   const idle = row + " text-muted-foreground hover:bg-accent hover:text-foreground";
 
   const nav = <nav className="flex h-full flex-col">
-    <a href="/" className="flex items-baseline gap-3 px-6 pb-7 pt-7">
+    <NavLink href="/" className="flex items-baseline gap-3 px-6 pb-7 pt-7">
       <span className="text-[30px] font-extrabold leading-none tracking-[-0.07em] text-foreground">20</span>
       <span className="label-mono text-muted-foreground">BH Operations</span>
-    </a>
+    </NavLink>
     <div className="flex-1 space-y-6 overflow-y-auto px-3">
       {groups.map(g => <div key={g.title}>
         {g.title && <div className="label-mono px-3 pb-2 text-muted-foreground">{g.title}</div>}
         <ul className="space-y-0.5">{g.items.filter(([href]) => pages.includes((href==='/'?'overview':href.slice(1)) as Page)).map(([href, text, Icon]) => {
           const active = path === href || path === "/detailed" + (href === "/" ? "/overview" : href);
-          return <li key={href}><a href={href} aria-current={active ? "page" : undefined} className={active ? row + " bg-surface-inverse text-text-inverse" : idle}>
+          return <li key={href}><NavLink href={href} aria-current={active ? "page" : undefined} className={active ? row + " bg-surface-inverse text-text-inverse" : idle}>
             <Icon className="size-4" strokeWidth={1.75}/>{text}
             {active && <span className="ml-auto size-1.5 rounded-full bg-signal"/>}
-          </a></li>;
+          </NavLink></li>;
         })}</ul>
       </div>)}
     </div>
     <div className="space-y-0.5 border-t px-3 py-4">
       <a href={otherUrl} className={idle + " justify-between"}>Content Studio<ArrowUpRight className="size-3.5"/></a>
-      <a href="/account" className={idle}><CircleUserRound className="size-4" strokeWidth={1.75}/>My account</a>
-      {isAdmin && <a href="/account/users" className={idle}><UserCog className="size-4" strokeWidth={1.75}/>Manage users</a>}
+      <NavLink href="/account" className={idle}><CircleUserRound className="size-4" strokeWidth={1.75}/>My account</NavLink>
+      {isAdmin && <NavLink href="/account/users" className={idle}><UserCog className="size-4" strokeWidth={1.75}/>Manage users</NavLink>}
       <button type="button" onClick={toggleTheme} className={idle + " w-full"} aria-pressed={dark}>
         {dark ? <Sun className="size-4" strokeWidth={1.75}/> : <Moon className="size-4" strokeWidth={1.75}/>}{dark ? "Paper theme" : "Ink theme"}
       </button>
