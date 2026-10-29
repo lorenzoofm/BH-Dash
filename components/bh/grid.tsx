@@ -93,7 +93,7 @@ function Cell({col, row, onSave}: {col: Column; row: Row; onSave?: (value: any) 
   let content: React.ReactNode;
   if (col.render) content = col.render(row);
   else if (col.type === "select") content = raw ? <Pill tone={statusTone(label(raw))} dot>{label(raw)}</Pill> : null;
-  else if (col.type === "checkbox") content = <span className={cn("inline-grid size-4 place-items-center rounded border", raw ? "border-foreground bg-foreground text-white" : "bg-card")}>{raw ? "✓" : ""}</span>;
+  else if (col.type === "checkbox") content = <span className={cn("inline-grid size-4 place-items-center rounded border", raw ? "border-foreground bg-surface-inverse text-text-inverse" : "bg-card")}>{raw ? "✓" : ""}</span>;
   else content = display(col, raw);
   const empty = content === "" || content === null || content === undefined;
 

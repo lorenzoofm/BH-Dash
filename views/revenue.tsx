@@ -12,7 +12,7 @@ import {useProxyFetch} from "@/lib/datasource";
 import {CHOICES, linkOptions, opts, useCreators, useTable} from "@/lib/tables";
 
 const MONTHLY = "https://api.creatorstaq.com/v1/computed/revenue/monthly?months=12";
-const COLORS = ["var(--chart-1)", "var(--chart-2)", "var(--chart-3)", "var(--chart-4)", "var(--chart-5)"];
+const COLORS = ["var(--chart-1)", "var(--chart-2)", "var(--chart-3)", "var(--chart-5)", "var(--chart-6)", "var(--chart-7)", "var(--chart-8)", "var(--chart-4)"];
 
 export default function Revenue() {
   const [today, setToday] = useState<string | null>(null);

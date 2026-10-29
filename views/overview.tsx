@@ -8,7 +8,7 @@ import {addDays, label, linkIds, money, mondayOf, num, shortDate, todayIso, week
 import {useCreators, useTable} from "@/lib/tables";
 import {modelPnL} from "@/lib/finance";
 
-const COLORS = ["var(--chart-1)", "var(--chart-2)", "var(--chart-3)", "var(--chart-4)", "#8a9a8a", "#c2410c", "#0f766e", "#334155", "#d6d3d1"];
+const COLORS = ["var(--chart-1)", "var(--chart-2)", "var(--chart-3)", "var(--chart-5)", "var(--chart-6)", "var(--chart-7)", "var(--chart-8)", "var(--chart-4)", "var(--series-muted)"];
 
 export default function Overview({isAdmin}: {isAdmin: boolean}) {
   const [today, setToday] = useState<string | null>(null);
@@ -98,7 +98,7 @@ export default function Overview({isAdmin}: {isAdmin: boolean}) {
 
     <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
       {isAdmin && <><Stat accent label="Profit · this month" icon={Wallet} value={d.profit === null ? "—" : money(d.profit)} tone={d.profit === null ? "" : d.profit >= 0 ? "positive" : "negative"}
-        sub={<a href="/pnl" className="inline-flex items-center gap-1 hover:text-white">Open P&amp;L <ArrowRight className="size-3"/></a>}/>
+        sub={<a href="/pnl" className="inline-flex items-center gap-1 hover:text-signal">Open P&amp;L <ArrowRight className="size-3"/></a>}/>
       <Stat label="Earnings · this month" icon={Banknote} value={d.income === null ? "—" : money(d.income)}
         sub={creators.isError ? "Creator Staq unavailable" : d.income === null ? "DAP account-level revenue is not connected" : d.payout ? `${money(d.payout)} paid out to model` : "Creator Staq net"}/>
       <Stat label="Costs · this month" icon={Wallet} value={money(d.wages + d.exp)} sub={`${money(d.wages)} wages · ${money(d.exp)} expenses`}/></>}

@@ -1,7 +1,7 @@
 "use client";
 import {useEffect, useState} from "react";
 import {usePathname} from "next/navigation";
-import {ArrowUpRight, BarChart3, CircleUserRound, Clock, LayoutDashboard, LogOut, Menu, Receipt, TrendingUp, UserCog, Users, Wallet, X} from "lucide-react";
+import {ArrowUpRight, BarChart3, CircleUserRound, Clock, LayoutDashboard, LogOut, Menu, Moon, Receipt, Sun, TrendingUp, UserCog, Users, Wallet, X} from "lucide-react";
 import type {Page} from '@/lib/page-access-constants';
 
 const groups = [
@@ -35,47 +35,59 @@ export default function Shell({children, email, otherUrl, isAdmin, pages}: {chil
     return () => lifecycle.abort();
   }, []);
 
+  const [dark, setDark] = useState(false);
+  useEffect(() => setDark(document.documentElement.dataset.theme === "dark"), []);
+  const toggleTheme = () => {
+    const next = !dark;
+    setDark(next);
+    document.documentElement.dataset.theme = next ? "dark" : "light";
+    try { localStorage.setItem("bh-theme", next ? "dark" : "light"); } catch {}
+  };
+  const row = "flex h-10 items-center gap-3 rounded-[var(--radius-control)] px-3 text-[13px] font-medium transition-colors duration-[var(--dur-fast)]";
+  const idle = row + " text-muted-foreground hover:bg-accent hover:text-foreground";
+
   const nav = <nav className="flex h-full flex-col">
-    <a href="/" className="flex items-center gap-3 px-5 pb-6 pt-6">
-      <img src="/20mg.png" alt="20MG" width={34} height={34} className="rounded-lg"/>
-      <div className="leading-tight">
-        <div className="text-[13px] font-semibold text-white">BH Operations</div>
-        <div className="text-[11px] text-white/45">20MG · Black Hat</div>
-      </div>
+    <a href="/" className="flex items-baseline gap-3 px-6 pb-7 pt-7">
+      <span className="text-[30px] font-extrabold leading-none tracking-[-0.07em] text-foreground">20</span>
+      <span className="label-mono text-muted-foreground">BH Operations</span>
     </a>
-    <div className="flex-1 space-y-6 px-3">
+    <div className="flex-1 space-y-6 overflow-y-auto px-3">
       {groups.map(g => <div key={g.title}>
-        {g.title && <div className="px-3 pb-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-white/35">{g.title}</div>}
+        {g.title && <div className="label-mono px-3 pb-2 text-muted-foreground">{g.title}</div>}
         <ul className="space-y-0.5">{g.items.filter(([href]) => pages.includes((href==='/'?'overview':href.slice(1)) as Page)).map(([href, text, Icon]) => {
           const active = path === href || path === "/detailed" + (href === "/" ? "/overview" : href);
-          return <li key={href}><a href={href} className={"group relative flex h-9 items-center gap-3 rounded-md px-3 text-[13px] transition-colors " + (active ? "bg-sidebar-accent font-medium text-white" : "text-white/60 hover:bg-sidebar-accent/60 hover:text-white")}>
-            {active && <span className="absolute inset-y-2 left-0 w-0.5 rounded-full bg-brand"/>}
-            <Icon className={"size-4 " + (active ? "text-brand" : "")}/>{text}
+          return <li key={href}><a href={href} aria-current={active ? "page" : undefined} className={active ? row + " bg-surface-inverse text-text-inverse" : idle}>
+            <Icon className="size-4" strokeWidth={1.75}/>{text}
+            {active && <span className="ml-auto size-1.5 rounded-full bg-signal"/>}
           </a></li>;
         })}</ul>
       </div>)}
     </div>
-    <div className="space-y-1 border-t border-sidebar-border px-3 py-4">
-      <a href={otherUrl} className="flex h-9 items-center justify-between rounded-md px-3 text-[13px] text-white/60 hover:bg-sidebar-accent hover:text-white">Content Studio<ArrowUpRight className="size-3.5"/></a>
-      <a href="/account" className="flex h-9 items-center gap-3 rounded-md px-3 text-[13px] text-white/60 hover:bg-sidebar-accent hover:text-white"><CircleUserRound className="size-4"/>My account</a>
-      {isAdmin && <a href="/account/users" className="flex h-9 items-center gap-3 rounded-md px-3 text-[13px] text-white/60 hover:bg-sidebar-accent hover:text-white"><UserCog className="size-4"/>Manage users</a>}
-      <div className="flex items-center gap-2.5 px-3 pt-2">
-        <span className="grid size-7 shrink-0 place-items-center rounded-full bg-sidebar-accent text-[11px] font-semibold uppercase text-white">{email[0]}</span>
-        <span className="min-w-0 flex-1 truncate text-[12px] text-white/55">{email}</span>
-        <a href="/cdn-cgi/access/logout" target="_top" aria-label="Sign out" className="text-white/40 hover:text-white"><LogOut className="size-4"/></a>
+    <div className="space-y-0.5 border-t px-3 py-4">
+      <a href={otherUrl} className={idle + " justify-between"}>Content Studio<ArrowUpRight className="size-3.5"/></a>
+      <a href="/account" className={idle}><CircleUserRound className="size-4" strokeWidth={1.75}/>My account</a>
+      {isAdmin && <a href="/account/users" className={idle}><UserCog className="size-4" strokeWidth={1.75}/>Manage users</a>}
+      <button type="button" onClick={toggleTheme} className={idle + " w-full"} aria-pressed={dark}>
+        {dark ? <Sun className="size-4" strokeWidth={1.75}/> : <Moon className="size-4" strokeWidth={1.75}/>}{dark ? "Paper theme" : "Ink theme"}
+      </button>
+      <div className="mt-2 flex items-center gap-2.5 rounded-[var(--radius-row)] bg-muted px-3 py-2.5">
+        <span className="grid size-8 shrink-0 place-items-center rounded-full bg-surface-inverse text-[11px] font-bold uppercase text-text-inverse">{email[0]}</span>
+        <span className="min-w-0 flex-1 truncate text-[12px] text-muted-foreground">{email}</span>
+        <a href="/cdn-cgi/access/logout" target="_top" aria-label="Sign out" className="text-muted-foreground hover:text-signal"><LogOut className="size-4"/></a>
       </div>
     </div>
   </nav>;
 
   return <div className="min-h-screen">
-    <aside className="fixed inset-y-0 left-0 z-30 hidden w-60 bg-sidebar lg:block">{nav}</aside>
-    {open && <div className="fixed inset-0 z-40 lg:hidden"><div className="absolute inset-0 bg-black/40" onClick={() => setOpen(false)}/><aside className="absolute inset-y-0 left-0 w-64 bg-sidebar">{nav}<button className="absolute right-3 top-6 text-white/60" onClick={() => setOpen(false)} aria-label="Close menu"><X className="size-5"/></button></aside></div>}
-    <div className="lg:pl-60">
-      <header className="sticky top-0 z-20 flex h-14 items-center gap-3 border-b bg-background/85 px-4 backdrop-blur lg:hidden">
-        <button onClick={() => setOpen(true)} aria-label="Open menu"><Menu className="size-5"/></button>
-        <span className="text-sm font-semibold">BH Operations</span>
+    <aside className="fixed inset-y-0 left-0 z-30 hidden w-64 border-r bg-sidebar lg:block">{nav}</aside>
+    {open && <div className="fixed inset-0 z-40 lg:hidden"><div className="absolute inset-0 bg-[var(--veil)]" onClick={() => setOpen(false)}/><aside className="absolute inset-y-0 left-0 w-72 bg-sidebar shadow-[var(--shadow-overlay)]">{nav}<button className="absolute right-4 top-7 text-muted-foreground" onClick={() => setOpen(false)} aria-label="Close menu"><X className="size-5"/></button></aside></div>}
+    <div className="lg:pl-64">
+      <header className="sticky top-0 z-20 flex h-16 items-center gap-3 border-b bg-background/90 px-4 backdrop-blur lg:hidden">
+        <button onClick={() => setOpen(true)} aria-label="Open menu" className="grid size-10 place-items-center rounded-full border bg-card"><Menu className="size-4"/></button>
+        <span className="text-[22px] font-extrabold tracking-[-0.07em]">20</span>
+        <span className="label-mono text-muted-foreground">BH Operations</span>
       </header>
-      <main className="mx-auto max-w-[1400px] px-4 py-6 sm:px-6 lg:px-10 lg:py-9">{children}</main>
+      <main className="mx-auto max-w-[var(--container-max)] px-4 py-7 sm:px-8 lg:px-12 lg:py-12">{children}</main>
     </div>
   </div>;
 }

@@ -12,8 +12,9 @@ export default async function Layout({children}:{children:React.ReactNode}){
  const user=await requireUser();
  const isAdmin=adminEmails().includes(user.email.toLowerCase());
  const pages=await pagesFor(user.email,isAdmin);
- return <html lang="en"><head>
-  <link rel="preconnect" href="https://fonts.googleapis.com"/><link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin=""/>
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500;600&display=swap"/>
+ return <html lang="en" data-theme="light" suppressHydrationWarning><head>
+  <link rel="preload" href="/fonts/archivo-latin.woff2" as="font" type="font/woff2" crossOrigin=""/>
+  {/* Apply the saved Paper/Ink choice before paint. */}
+  <script dangerouslySetInnerHTML={{__html:`try{var t=localStorage.getItem('bh-theme');if(t==='dark'||t==='light')document.documentElement.dataset.theme=t}catch(e){}`}}/>
  </head><body><Providers><Shell email={user.email} isAdmin={isAdmin} pages={pages} otherUrl={process.env.OTHER_DASHBOARD_URL||'https://gmr20mg.softr.app'}>{children}</Shell></Providers></body></html>;
 }

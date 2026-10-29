@@ -1,6 +1,7 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "../vendor/shadcn-tailwind-4.13.0.css";
+@import "./20mg-tokens.css";
 
 @utility scrollbar-thin {
   scrollbar-width: thin;
@@ -18,49 +19,54 @@
   scrollbar-gutter: stable;
 }
 
-/* BH Operations theme: light, crisp, one ink colour plus the orange brand accent. */
-:root {
-  --background: #f4f4f2;
-  --foreground: #111311;
-  --card: #ffffff;
-  --card-foreground: #111311;
-  --popover: #ffffff;
-  --popover-foreground: #111311;
-  --primary: #111311;
-  --primary-foreground: #fafaf9;
-  --secondary: #f1f1ef;
-  --secondary-foreground: #111311;
-  --muted: #f1f1ef;
-  --muted-foreground: #6b6f6b;
-  --accent: #f1f1ef;
-  --accent-foreground: #111311;
-  --destructive: #dc2626;
-  --border: #e6e6e3;
-  --input: #dcdcd8;
-  --ring: #f54900;
-  --brand: #f54900;
-  --brand-soft: #fff1ea;
-  --positive: #047857;
-  --positive-soft: #ecfdf5;
-  --warning: #b45309;
-  --warning-soft: #fffbeb;
-  --negative: #dc2626;
-  --negative-soft: #fef2f2;
-  --chart-1: #f54900;
-  --chart-2: #009689;
-  --chart-3: #104e64;
-  --chart-4: #ffb900;
-  --chart-5: #fe9a00;
-  --chart-6: #6d7a6d;
-  --radius: 0.625rem;
-  --sidebar: #101310;
-  --sidebar-foreground: #e8eae8;
-  --sidebar-primary: #f54900;
-  --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: #1d211d;
-  --sidebar-accent-foreground: #ffffff;
-  --sidebar-border: #232723;
-  --sidebar-ring: #f54900;
+/* 20MG design system: Paper surfaces, Ink hierarchy, one Signal colour.
+   Source tokens live in 20mg-tokens.css; everything below maps onto them so the
+   Ink (dark) theme follows by setting data-theme="dark" on <html>. */
+@font-face { font-family: Archivo; src: url(/fonts/archivo-latin.woff2) format("woff2"); font-weight: 400 800; font-stretch: 100% 125%; font-display: swap; }
+@font-face { font-family: "Space Mono"; src: url(/fonts/space-mono-400-latin.woff2) format("woff2"); font-weight: 400; font-display: swap; }
+
+:root, [data-theme="dark"] {
+  --background: var(--surface-page);
+  --foreground: var(--text-heading);
+  --card: var(--surface-card);
+  --card-foreground: var(--text-body);
+  --popover: var(--surface-card);
+  --popover-foreground: var(--text-body);
+  --primary: var(--surface-inverse);
+  --primary-foreground: var(--text-inverse);
+  --secondary: var(--surface-sunken);
+  --secondary-foreground: var(--text-heading);
+  --muted: var(--surface-sunken);
+  --muted-foreground: var(--text-muted);
+  --accent: var(--wash);
+  --accent-foreground: var(--text-heading);
+  --destructive: var(--negative);
+  --border: var(--border-faint);
+  --input: var(--edge-control);
+  --ring: var(--focus-ring);
+  --brand: var(--signal);
+  --brand-soft: var(--signal-tint);
+  --positive-soft: color-mix(in srgb, var(--positive) 14%, var(--surface-card));
+  --warning-soft: color-mix(in srgb, var(--warning) 14%, var(--surface-card));
+  --negative-soft: color-mix(in srgb, var(--negative) 14%, var(--surface-card));
+  /* Chart series: Ink and Signal first, then neutrals, then account hues. */
+  --chart-1: var(--series-1);
+  --chart-2: var(--signal);
+  --chart-3: var(--series-3);
+  --chart-4: var(--series-4);
+  --chart-5: var(--acct-dap);
+  --chart-6: var(--acct-free);
+  --chart-7: var(--acct-pap);
+  --chart-8: var(--acct-fanvue);
+  --radius: var(--radius-control);
+  --sidebar: var(--surface-card);
+  --sidebar-foreground: var(--text-body);
+  --sidebar-primary: var(--surface-inverse);
+  --sidebar-primary-foreground: var(--text-inverse);
+  --sidebar-accent: var(--wash);
+  --sidebar-accent-foreground: var(--text-heading);
+  --sidebar-border: var(--border-faint);
+  --sidebar-ring: var(--focus-ring);
 }
 
 @theme inline {
@@ -104,21 +110,44 @@
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
-  --radius-sm: calc(var(--radius) - 4px);
-  --radius-md: calc(var(--radius) - 2px);
-  --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) + 4px);
-  --font-sans: "Geist", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
-  --font-mono: "Geist Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  --color-chart-7: var(--chart-7);
+  --color-chart-8: var(--chart-8);
+  --color-signal: var(--signal);
+  --color-surface-inverse: var(--surface-inverse);
+  --color-text-inverse: var(--text-inverse);
+  --color-text-body: var(--text-body);
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: var(--radius-control);
+  --radius-xl: 14px;
+  --radius-2xl: var(--radius-card);
+  --font-sans: "Archivo", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: "Space Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
 }
 
 body {
   background: var(--background);
-  color: var(--foreground);
+  color: var(--text-body);
   font-family: var(--font-sans);
-  font-feature-settings: "ss01", "cv11";
+  font-size: var(--text-base);
+  line-height: var(--leading-body);
   -webkit-font-smoothing: antialiased;
 }
+h1, h2, h3 { color: var(--text-heading); }
+:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
+::selection { background: var(--signal); color: var(--white); }
+
+/* Uppercase mono caption used for eyebrows, table heads and rail sections. */
+.label-mono {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  letter-spacing: var(--label-tracking);
+  text-transform: uppercase;
+}
+
+/* Recharts: faint grid, mono ticks. */
+.recharts-cartesian-grid line { stroke: var(--chart-grid); }
+.recharts-cartesian-axis-tick text { font-family: var(--font-mono); font-size: 11px; fill: var(--text-muted); }
 
 /* Also appears if the browser never starts the page's JavaScript. */
 .skeleton-help { animation: show-skeleton-help 0s 15s both; }
@@ -127,8 +156,8 @@ body {
   to { visibility: visible; }
 }
 
+/* Figures stay in Archivo (tabular) for the bold hierarchy the system uses for metrics. */
 .num {
-  font-family: var(--font-mono);
   font-variant-numeric: tabular-nums;
   letter-spacing: -0.01em;
 }
@@ -147,3 +176,7 @@ input[type="number"] {
     border-color: var(--border);
   }
 }
+
+/* Tables: muted header strip, hairline rows. */
+main thead { background: var(--surface-thead); }
+main tbody tr { border-color: var(--border-faint); }
