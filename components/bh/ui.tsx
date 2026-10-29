@@ -81,16 +81,37 @@ export function Segmented<T extends string>({value, options, onChange, size = "m
   </div>;
 }
 
-export function Btn({variant = "outline", size = "md", className, children, loading, ...props}: React.ButtonHTMLAttributes<HTMLButtonElement> & {variant?: "primary" | "outline" | "ghost" | "danger" | "brand"; size?: "sm" | "md" | "icon"; loading?: boolean}) {
-  return <button {...props} disabled={props.disabled || loading} className={cn(
-    "inline-flex shrink-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-full font-semibold transition-colors duration-[var(--dur-fast)] disabled:pointer-events-none disabled:opacity-45 [&_svg]:size-4",
-    size === "sm" ? "h-8 px-3 text-[12.5px]" : size === "icon" ? "size-9" : "h-10 px-5 text-[13px]",
-    variant === "primary" && "bg-surface-inverse text-text-inverse hover:bg-surface-inverse/85",
-    variant === "brand" && "bg-signal text-white hover:bg-[var(--signal-deep)]",
-    variant === "outline" && "border border-[var(--border-subtle)] bg-card text-foreground hover:border-foreground",
-    variant === "ghost" && "text-foreground hover:bg-accent",
-    variant === "danger" && "bg-negative-soft text-[var(--negative-fg)] hover:bg-negative/20",
-    className)}>{loading && <Loader2 className="animate-spin"/>}{children}</button>;
+type BtnStyle = {variant?: "primary" | "outline" | "ghost" | "danger" | "brand"; size?: "sm" | "md" | "icon"};
+const btnClass = ({variant = "outline", size = "md"}: BtnStyle, className?: string) => cn(
+  "inline-flex shrink-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-full font-semibold transition-colors duration-[var(--dur-fast)] disabled:pointer-events-none disabled:opacity-45 [&_svg]:size-4",
+  size === "sm" ? "h-8 px-3 text-[12.5px]" : size === "icon" ? "size-9" : "h-10 px-5 text-[13px]",
+  variant === "primary" && "bg-surface-inverse text-text-inverse hover:bg-surface-inverse/85",
+  variant === "brand" && "bg-signal text-white hover:bg-[var(--signal-deep)]",
+  variant === "outline" && "border border-[var(--border-subtle)] bg-card text-foreground hover:border-foreground",
+  variant === "ghost" && "text-foreground hover:bg-accent",
+  variant === "danger" && "bg-negative-soft text-[var(--negative-fg)] hover:bg-negative/20",
+  className);
+
+export function Btn({variant, size, className, children, loading, ...props}: React.ButtonHTMLAttributes<HTMLButtonElement> & BtnStyle & {loading?: boolean}) {
+  return <button {...props} disabled={props.disabled || loading} className={btnClass({variant, size}, className)}>{loading && <Loader2 className="animate-spin"/>}{children}</button>;
+}
+
+// A link that looks like Btn.
+export function LinkBtn({variant, size, className, ...props}: React.AnchorHTMLAttributes<HTMLAnchorElement> & BtnStyle) {
+  return <a {...props} className={btnClass({variant, size}, className)}/>;
+}
+
+// On/off control: the whole tile is the switch, so the label is part of the hit area.
+export function Switch({checked, onChange, disabled, children, className}: {checked: boolean; onChange: (next: boolean) => void; disabled?: boolean; children: React.ReactNode; className?: string}) {
+  return <button type="button" role="switch" aria-checked={checked} disabled={disabled} onClick={() => onChange(!checked)}
+    className={cn("group flex h-11 w-full items-center justify-between gap-3 rounded-[var(--radius-control)] border bg-card px-3 text-left text-[13px] font-medium transition-colors duration-[var(--dur-fast)] disabled:cursor-not-allowed",
+      checked ? "border-[var(--border-subtle)] text-foreground" : "border-[var(--edge-control)] text-muted-foreground",
+      !disabled && "hover:border-foreground", className)}>
+    <span className="min-w-0 truncate">{children}</span>
+    <span aria-hidden className={cn("relative h-5 w-9 shrink-0 rounded-full transition-colors duration-[var(--dur-fast)]", checked ? "bg-surface-inverse" : "bg-muted ring-1 ring-inset ring-[var(--border-subtle)]", disabled && "opacity-40")}>
+      <span className={cn("absolute top-0.5 size-4 rounded-full shadow-sm transition-[left] duration-[var(--dur-base)] ease-[var(--ease-snap)]", checked ? "left-[18px] bg-card" : "left-0.5 bg-muted-foreground/70")}/>
+    </span>
+  </button>;
 }
 
 export const inputClass = "h-10 w-full rounded-[var(--radius-control)] border border-[var(--edge-control)] bg-card px-3 text-[13px] text-foreground outline-none transition hover:border-[var(--edge-control-hover)] focus:border-foreground focus:ring-2 focus:ring-signal/20 disabled:bg-muted disabled:text-muted-foreground";
@@ -127,9 +148,10 @@ export function Empty({icon: Icon, title, children}: {icon?: any; title: string;
   </div>;
 }
 
-export function Notice({tone = "amber", icon: Icon, children}: {tone?: "amber" | "red" | "gray"; icon?: any; children: React.ReactNode}) {
-  return <div className={cn("flex items-start gap-2.5 rounded-[var(--radius-row)] border px-4 py-3 text-[13px]",
+export function Notice({tone = "amber", icon: Icon, children, role}: {tone?: "amber" | "red" | "green" | "gray"; icon?: any; children: React.ReactNode; role?: "alert" | "status"}) {
+  return <div role={role} className={cn("flex items-start gap-2.5 rounded-[var(--radius-row)] border px-4 py-3 text-[13px]",
     tone === "amber" && "border-transparent bg-warning-soft text-[var(--warning-fg)]",
+    tone === "green" && "border-transparent bg-positive-soft text-[var(--positive-fg)]",
     tone === "red" && "border-transparent bg-negative-soft text-[var(--negative-fg)]",
     tone === "gray" && "bg-muted text-muted-foreground")}>
     {Icon && <Icon className="mt-0.5 size-4 shrink-0"/>}<div>{children}</div>
