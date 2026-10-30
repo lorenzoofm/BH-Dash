@@ -114,6 +114,11 @@
                 "id": "sel9MnGzARdiCbpjj",
                 "label": "VPS",
                 "color": "grayLight2"
+              },
+              {
+                "id": "selIgMassReach01",
+                "label": "IG MR",
+                "color": "grayLight2"
               }
             ],
             "allowToAddNewChoice": true
@@ -159,6 +164,11 @@
               {
                 "id": "sel9MnGzARdiCbpjj",
                 "name": "VPS",
+                "color": "grayLight2"
+              },
+              {
+                "id": "selIgMassReach01",
+                "name": "IG MR",
                 "color": "grayLight2"
               }
             ]

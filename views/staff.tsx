@@ -6,7 +6,7 @@ import {Select} from "@/components/bh/menu";
 import {Btn, Drawer, Field, LinkBtn, PageHeader, PageSkeleton, Segmented, TableError, inputClass} from "@/components/bh/ui";
 import {addDays, label, linkIds, money, mondayOf, num, todayIso, weekLabel} from "@/lib/bh";
 import {CHOICES, linkOptions, useTable} from "@/lib/tables";
-import {ROLE_STYLE, ROLES, converts, dayOfWeek, initials, roleOf, targetOf, type Role} from "@/lib/team";
+import {ROLE_STYLE, ROLES, converts, hasTarget, dayOfWeek, initials, roleOf, targetOf, type Role} from "@/lib/team";
 import {DEFAULT_OFF, daysPerWeek, offForDays, parseOff} from "@/lib/pay";
 import {cn} from "@/lib/utils";
 
@@ -14,7 +14,7 @@ type Period = "this" | "last" | "4w";
 type Row = {id: string; fields: Record<string, any>};
 
 // Channel colours on the ink card (X's ink would vanish on ink, so it uses the signal orange there).
-const RC: Record<Role, string> = {X: "#ff3000", Discord: "#7b5cf5", IG: "#ff5c93", VPS: "#2a9d96"};
+const RC: Record<Role, string> = {X: "#ff3000", Discord: "#7b5cf5", IG: "#ff5c93", "IG MR": "#f08a3e", VPS: "#2a9d96"};
 const ST: Record<string, string> = {Active: "bg-[#dce7dc] text-[#1d7341]", Setup: "bg-[#f2e6d3] text-[#8f5a00]", Inactive: "bg-[#f4dad7] text-[#c01d1d]"};
 const card = "flex min-w-0 flex-col rounded-[20px] border border-[var(--ink-100)] bg-[var(--surface-card)] p-6 text-[var(--ink)] shadow-[var(--shadow-card)]";
 const section = "overflow-hidden rounded-[20px] border border-[var(--ink-100)] bg-[var(--surface-card)] shadow-[var(--shadow-card)]";
@@ -108,7 +108,7 @@ export default function Staff() {
   const ql = q.trim().toLowerCase();
   const team = rows.filter(s => (!fStatus || status(s) === fStatus) && (!ql || `${name(s)} ${label(s.fields.email)} ${label(s.fields.staffId)}`.toLowerCase().includes(ql))).sort((a, b) => name(a).localeCompare(name(b)));
   const modelOpts = [{value: "", label: "—"}, ...linkOptions(models.rows, "model")];
-  const mins = live.filter(s => converts(s.fields.platform)).sort((a, b) => ROLES.indexOf(roleOf(a.fields.platform)) - ROLES.indexOf(roleOf(b.fields.platform)) || name(a).localeCompare(name(b)));
+  const mins = live.filter(s => hasTarget(s.fields.platform)).sort((a, b) => ROLES.indexOf(roleOf(a.fields.platform)) - ROLES.indexOf(roleOf(b.fields.platform)) || name(a).localeCompare(name(b)));
   const teamCols = "grid-cols-[60px_minmax(160px,1.4fr)_110px_110px_110px_90px_90px_100px_minmax(150px,1fr)_76px]";
   const minCols = "grid-cols-[minmax(180px,1fr)_150px_minmax(220px,1.6fr)_120px]";
   const perfCols = "grid-cols-[minmax(0,1.4fr)_110px_90px_minmax(0,1fr)_130px]";
@@ -276,7 +276,7 @@ function AddStaff({open, onClose, create, rows, models, today}: {open: boolean; 
     try {
       await create({staffId: next, name, status: "Active", model: f.model ? [f.model] : [], platform: f.platform, payType: f.payType, currency: "USD",
         rate: f.rate === "" ? null : Number(f.rate), hours: f.hours === "" ? null : Number(f.hours), daysOff: f.off,
-        weeklyMin: f.weeklyMin === "" ? null : Math.round(Number(f.weeklyMin)), email: f.email || null, start: f.start || null});
+        weeklyMin: f.weeklyMin === "" || !hasTarget(f.platform) ? null : Math.round(Number(f.weeklyMin)), email: f.email || null, start: f.start || null});
       toast(`${name} added as ${next} · now on Conversions under ${f.platform}`); onClose();
     } catch (e: any) { toast.error(e.message); } finally { setBusy(false); }
   }
@@ -290,7 +290,7 @@ function AddStaff({open, onClose, create, rows, models, today}: {open: boolean; 
       <Field label="Pay type"><Select value={f.payType} options={opt(CHOICES.payType)} onChange={set("payType")} ariaLabel="Pay type"/></Field>
       <Field label="Hourly rate (USD)"><input type="number" min={0} step="0.01" className={inputClass + " num"} value={f.rate} onChange={set("rate")}/></Field>
       <Field label="Standard daily hours"><input type="number" min={0} max={24} className={inputClass + " num"} value={f.hours} onChange={set("hours")}/></Field>
-      <Field label="Weekly conversion minimum" className="col-span-2" hint="Shows as their target on Conversions"><input type="number" min={0} step={1} className={inputClass + " num"} value={f.weeklyMin} onChange={set("weeklyMin")}/></Field>
+      {hasTarget(f.platform) && <Field label="Weekly conversion minimum" className="col-span-2" hint="Shows as their target on Conversions"><input type="number" min={0} step={1} className={inputClass + " num"} value={f.weeklyMin} onChange={set("weeklyMin")}/></Field>}
       <Field label="Days off" className="col-span-2"><Select value={f.off} onChange={set("off")} ariaLabel="Days off"
         options={[{value: "[0]", label: "Sunday"}, {value: "[0,6]", label: "Saturday + Sunday"}, {value: "[]", label: "None (7 days)"}]}/></Field>
       <Field label="Email" className="col-span-2"><input type="email" className={inputClass} value={f.email} onChange={set("email")}/></Field>

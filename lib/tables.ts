@@ -52,7 +52,7 @@ export function linkOptions(rows: {id: string; fields: Record<string, any>}[], k
 
 export const CHOICES = {
   staffStatus: ["Active", "Setup", "Inactive"],
-  platform: ["X", "Discord", "IG", "VPS"], // marketing role
+  platform: ["X", "Discord", "IG", "IG MR", "VPS"], // marketing role
   payType: ["Hourly", "Salary", "Commission"],
   currency: ["USD"], // all money is USD
   payStatus: ["Unpaid", "Scheduled", "Paid"],

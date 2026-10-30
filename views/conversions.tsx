@@ -11,7 +11,7 @@ import {CONVERTING, dayOfWeek, initials, paceFor, ROLE_STYLE, ROLES, roleOf, tar
 type Row = {id: string; fields: Record<string, any>};
 type Hover = {w: string; x: number; y: number; week: string; value: number; name: string; note: string; c: string};
 
-const DOT: Record<Role, string> = {X: "var(--text-heading)", Discord: "#2166c9", IG: "#b8327a", VPS: ROLE_STYLE.VPS.c};
+const DOT: Record<Role, string> = {X: "var(--text-heading)", Discord: "#2166c9", IG: "#b8327a", "IG MR": ROLE_STYLE["IG MR"].c, VPS: ROLE_STYLE.VPS.c};
 const TONE_FG = {met: "var(--positive-fg)", short: "var(--warning-fg)", low: "var(--negative-fg)", missing: "var(--text-faint)", none: "var(--text-faint)"};
 const TIP_C = {met: "#7fd3a0", short: "#f2c46b", low: "#ff8a73", missing: "#f4f1ea99", none: "#f4f1ea99"};
 const RANGES = [["this", "This week"], ["last", "Last week"], ["2w", "Last 2 weeks"], ["lastMonth", "Last month"], ["thisMonth", "This month"]] as const;
