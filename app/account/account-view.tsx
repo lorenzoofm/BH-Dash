@@ -1,6 +1,7 @@
 "use client";
 import {LogOut, ShieldAlert, UserCog} from "lucide-react";
-import {Avatar, LinkBtn, Notice, PageHeader, Panel, Pill} from "@/components/bh/ui";
+import {LinkBtn, Notice, PageHeader, Panel, Pill} from "@/components/bh/ui";
+import {initials} from "@/lib/team";
 
 export default function AccountView({email, isAdmin, denied}: {email: string; isAdmin: boolean; denied: boolean}) {
   return <div className="mx-auto max-w-3xl space-y-6">
@@ -10,7 +11,7 @@ export default function AccountView({email, isAdmin, denied}: {email: string; is
 
     <Panel>
       <div className="flex flex-wrap items-center gap-4">
-        <Avatar name={email} className="size-12 bg-surface-inverse text-[15px] text-text-inverse"/>
+        <span className="grid size-12 shrink-0 place-items-center rounded-full bg-surface-inverse text-[15px] font-bold text-text-inverse">{initials(email.split("@")[0])}</span>
         <div className="min-w-0 flex-1">
           <p className="break-all text-[18px] font-bold tracking-[-0.02em] text-foreground">{email}</p>
           <div className="mt-1.5 flex flex-wrap items-center gap-2 text-[13px] text-muted-foreground">

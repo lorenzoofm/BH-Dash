@@ -25,7 +25,7 @@ export function usePayData(enabled = true) {
     for (const r of vaRows.rows) for (const sid of linkIds(r.fields.staff)) {
       const f = r.fields, snapped = f.rateSnapshot != null || f.stdSnapshot != null;
       va.set(vaKey(String(f.period), sid), {id: r.id, checked: !!f.checked, sent: !!f.sent, held: (label(f.held) || null) as any, excused: parseDays(f.excused),
-        snap: snapped ? {rate: f.rateSnapshot == null ? null : num(f.rateSnapshot), std: f.stdSnapshot == null ? null : num(f.stdSnapshot), off: parseOff(f.offSnapshot) ?? []} : null});
+        snap: snapped ? {rate: f.rateSnapshot == null ? null : num(f.rateSnapshot), std: f.stdSnapshot == null ? null : num(f.stdSnapshot), off: parseOff(f.offSnapshot)} : null});
     }
     const adjustments: PayData["adjustments"] = new Map();
     for (const r of adj.rows) for (const sid of linkIds(r.fields.staff)) {

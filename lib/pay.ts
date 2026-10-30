@@ -24,7 +24,7 @@ export function periodsBetween(start: string, end: string) { const out: Period[]
 
 export type VA = {id: string; name: string; rate: number | null; std: number | null; off: number[] | null};
 export type Adjustment = {id?: string; type: "Bonus" | "Deduction" | "Extra hours" | "Correction"; value: number | null; hours: number | null; note?: string; forPeriod?: string | null};
-export type VAPeriod = {id?: string; checked: boolean; sent: boolean; held: "pay" | "no" | null; excused: string[]; snap: {rate: number | null; std: number | null; off: number[]} | null};
+export type VAPeriod = {id?: string; checked: boolean; sent: boolean; held: "pay" | "no" | null; excused: string[]; snap: {rate: number | null; std: number | null; off: number[] | null} | null};
 // Everything the rules need, keyed by period start and staff record id.
 export type PayData = {
   hours: Map<string, Map<string, number | null>>;        // staff -> day -> hours (null = row without hours)

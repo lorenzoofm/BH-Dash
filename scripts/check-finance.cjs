@@ -23,6 +23,19 @@ assert.equal(result.income, null, 'unknown deal cannot become Managed revenue');
 assert.equal(result.profit, null);
 console.log('PASS: unassigned expenses excluded; unknown deal blocks profit');
 
+const staff = [{id: 's1', fields: {name: 'Ana', model: [{id: 'm1'}, {id: 'm2'}]}}, {id: 's2', fields: {name: 'Bo', model: [{id: 'm2'}]}}];
+const wages = new Map([['s1', {hours: 20, pay: 100, unpaid: 40}], ['s2', {hours: 5, pay: 50, unpaid: 50}]]);
+const paylog = [{fields: {workDate: '2026-09-24', staff: ['s1'], hours: 99, totalPay: 999}}];
+const split = [{fields: {date: '2026-09-24', amount: 30, status: 'Paid', model: [{id: 'm1'}, {id: 'm2'}], category: 'Ads'}}];
+result = ctx.modelPnL(model, {...base, staff, paylog, wages, expenses: split});
+assert.equal(result.wages, 50, 'pay-run wages split evenly across a VA\'s models; Pay Log ignored');
+assert.equal(result.unpaidWages, 20);
+assert.equal(result.byStaff.length, 1, 'staff on other models excluded');
+assert.equal(result.expenses, 15, 'multi-model expense split amount/N');
+assert.equal(result.profit, 100 - 25 - 50 - 15);
+assert.equal(ctx.modelPnL(model, {...base, staff, paylog, expenses: []}).wages, 999 / 2, 'no wages map falls back to Pay Log');
+console.log('PASS: pay-run wages and multi-model expense split');
+
 const dapRow = {fields: {model: ['m1'], slug: 'Dap'}};
 assert.equal(ctx.dapRevenueFor('m1', [], ['m1'], true, {}), 0, 'no DAP account means zero');
 assert.equal(ctx.dapRevenueFor('m1', [dapRow], ['m1'], true, {dap: {net: null}}), null, 'failed DAP account remains unknown');

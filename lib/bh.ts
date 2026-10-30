@@ -68,7 +68,8 @@ export function weekLabel(monday: string) {
 
 export function money(value: number | null, digits = 0) {
   if (value === null) return "—";
-  return value.toLocaleString("en-US", {style: "currency", currency: "USD", minimumFractionDigits: digits, maximumFractionDigits: digits});
+  const text = Math.abs(value).toLocaleString("en-US", {style: "currency", currency: "USD", minimumFractionDigits: digits, maximumFractionDigits: digits});
+  return value < 0 && text !== "$0" && !/^\$0\.0+$/.test(text) ? "\u2212" + text : text; // true minus sign, as in the design
 }
 
 export function rowsOf(result: any): {id: string; fields: Record<string, any>}[] {

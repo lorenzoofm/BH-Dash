@@ -88,7 +88,7 @@ export default function Shell({children, email, otherUrl, isAdmin, pages}: {chil
         <span className="text-[22px] font-extrabold tracking-[-0.07em]">20</span>
         <span className="label-mono text-muted-foreground">BH Operations</span>
       </header>
-      <main className="mx-auto max-w-[var(--container-max)] px-4 py-7 sm:px-8 lg:px-12 lg:py-12">{children}</main>
+      <main className="mx-auto max-w-[var(--container-max)] px-4 py-7 lg:px-8 lg:py-12 xl:px-12">{children}</main>
     </div>
   </div>;
 }

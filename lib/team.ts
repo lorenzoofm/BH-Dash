@@ -6,7 +6,7 @@ export const ROLES = ["X", "Discord", "IG", "VPS"] as const;
 export type Role = typeof ROLES[number];
 // X/Discord/IG are the design's channel colours; VPS uses the 20MG teal account token.
 export const ROLE_STYLE: Record<Role, {c: string; bar: string; track: string; label: string; pillBg: string; pillFg: string}> = {
-  X: {c: "#0a0a0a", bar: "linear-gradient(180deg, #2b2925, #0a0a0a)", track: "linear-gradient(180deg, #ffffff, #f7f5f1)", label: "#ffffff", pillBg: "#e7e3dc", pillFg: "#0a0a0a"},
+  X: {c: "#0a0a0a", bar: "linear-gradient(180deg, #2b2925, #0a0a0a)", track: "linear-gradient(180deg, #ffffff, #f7f5f1)", label: "#ffffff", pillBg: "#0a0a0a", pillFg: "#f4f1ea"},
   Discord: {c: "#4a25c9", bar: "linear-gradient(180deg, #6d4cf0, #4a25c9)", track: "linear-gradient(180deg, #d9cffd, #c6b8fb)", label: "#ffffffe6", pillBg: "#dde6f6", pillFg: "#1d4f9e"},
   IG: {c: "#c8174f", bar: "linear-gradient(180deg, #ee3f78, #c8174f)", track: "linear-gradient(180deg, #ffd4e1, #ffbfd2)", label: "#ffffffe6", pillBg: "#f6dde9", pillFg: "#9a2462"},
   VPS: {c: "#0f7b76", bar: "linear-gradient(180deg, #2a9d96, #0f7b76)", track: "linear-gradient(180deg, #cdeae6, #b5dfda)", label: "#ffffffe6", pillBg: "#d5ece9", pillFg: "#0b6460"},

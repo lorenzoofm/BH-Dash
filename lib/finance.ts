@@ -45,14 +45,17 @@ export function dapRevenueFor(modelId: string, rows: Rec[], modelIds: string[], 
   - Revenue: selected Creator Staq account-level ranged net, before chargebacks.
   - Managed: 20MG keeps the page revenue and pays the model Model's Cut %.
     Chat-only: 20MG earns Our Cut % of page revenue; no payout.
-  - Wages: every Pay Log row (paid or unpaid) for staff assigned to the model,
-    split evenly when a staff member covers several models.
+  - Wages: the pay run's wagesFor (lib/pay.ts) per staff member assigned to the model,
+    split evenly when a staff member covers several models. Without `wages`, falls back to
+    summing Pay Log Total Pay (legacy callers).
   - Expenses: Paid expenses linked to the model (split evenly across linked models).
     Unassigned expenses are excluded until allocated to a model; otherwise each
     model's report would count the same company expense in full.
 */
-export function modelPnL(model: Rec, {staff, paylog, expenses, map, creators, start, end, revenueKnown, accountRevenue = null}: {
+export type StaffWages = Map<string, {hours: number; pay: number; unpaid: number}>;
+export function modelPnL(model: Rec, {staff, paylog, expenses, map, creators, start, end, revenueKnown, accountRevenue = null, wages: payRun}: {
   staff: Rec[]; paylog: Rec[]; expenses: Rec[]; map: Rec[]; creators: Creator[]; start: string; end: string; revenueKnown: boolean; accountRevenue?: number | null;
+  wages?: StaffWages; // wagesFor(...) from lib/pay.ts for [start, end]
 }): ModelPnL {
   const modelId = model.id;
   // The ranged API returns creator_id, not an account ID. Its creator name is
@@ -69,7 +72,14 @@ export function modelPnL(model: Rec, {staff, paylog, expenses, map, creators, st
 
   const staffInfo = new Map(staff.map(s => [s.id, {name: label(s.fields.name), models: linkIds(s.fields.model)}]));
   const byStaff = new Map<string, {id: string; name: string; hours: number; pay: number; unpaid: number}>();
-  for (const w of paylog) {
+  if (payRun) for (const [sid, w] of payRun) {
+    const s = staffInfo.get(sid);
+    if (!s || !s.models.includes(modelId)) continue;
+    const share = 1 / s.models.length;
+    byStaff.set(sid, {id: sid, name: s.name, hours: w.hours * share, pay: w.pay * share, unpaid: w.unpaid * share});
+  }
+  // ponytail: legacy Pay Log path for callers that don't pass `wages` yet; delete once they all do.
+  else for (const w of paylog) {
     if (!inRange(w.fields.workDate, start, end)) continue;
     for (const sid of linkIds(w.fields.staff)) {
       const s = staffInfo.get(sid);

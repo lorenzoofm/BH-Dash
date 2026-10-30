@@ -1,170 +1,287 @@
 "use client";
 import {useEffect, useMemo, useState} from "react";
-import {toast} from "sonner";
-import {AtSign, CalendarDays, CircleDot, Clock, DollarSign, Globe, Hash, Plus, Tag, Target, User, UserCheck, Users, Wallet} from "lucide-react";
-import {TableError, Avatar, Bar, Btn, Drawer, Field, PageHeader, PageSkeleton, Panel, Pill, Segmented, Stat, inputClass} from "@/components/bh/ui";
-import {DataGrid} from "@/components/bh/grid";
+import {ArrowRight, Clock, DollarSign, Plus, Target, UserCheck} from "lucide-react";
+import {toast} from "@/components/bh/toast";
+import {Select} from "@/components/bh/menu";
+import {Btn, Drawer, Field, LinkBtn, PageHeader, PageSkeleton, Segmented, TableError, inputClass} from "@/components/bh/ui";
 import {addDays, label, linkIds, money, mondayOf, num, todayIso, weekLabel} from "@/lib/bh";
-import {CHOICES, linkOptions, opts, useTable} from "@/lib/tables";
+import {CHOICES, linkOptions, useTable} from "@/lib/tables";
+import {ROLE_STYLE, ROLES, dayOfWeek, initials, roleOf, targetOf, type Role} from "@/lib/team";
+import {DEFAULT_OFF, daysPerWeek, offForDays, parseOff} from "@/lib/pay";
+import {cn} from "@/lib/utils";
 
 type Period = "this" | "last" | "4w";
+type Row = {id: string; fields: Record<string, any>};
+
+// Channel colours on the ink card (X's ink would vanish on ink, so it uses the signal orange there).
+const RC: Record<Role, string> = {X: "#ff3000", Discord: "#7b5cf5", IG: "#ff5c93", VPS: "#2a9d96"};
+const ST: Record<string, string> = {Active: "bg-[#dce7dc] text-[#1d7341]", Setup: "bg-[#f2e6d3] text-[#8f5a00]", Inactive: "bg-[#f4dad7] text-[#c01d1d]"};
+const card = "flex min-w-0 flex-col rounded-[20px] border border-[var(--ink-100)] bg-[var(--surface-card)] p-6 text-[var(--ink)] shadow-[var(--shadow-card)]";
+const section = "overflow-hidden rounded-[20px] border border-[var(--ink-100)] bg-[var(--surface-card)] shadow-[var(--shadow-card)]";
+const head = "items-center bg-[var(--ink-100)] text-[11.5px] font-medium text-[var(--text-faint)]";
+const cellIn = "h-8 w-full rounded-[6px] border border-transparent bg-transparent text-[13px] outline-none hover:border-[var(--ink-100)] focus:border-[var(--signal)] focus:bg-[var(--surface-card)]";
+const hf = (n: number) => n.toLocaleString("en-US", {maximumFractionDigits: 1});
+const off = (r: Row) => parseOff(r.fields.daysOff) ?? DEFAULT_OFF;
+
+// Inline-edit input: looks like text, saves on blur or Enter, Esc reverts. onCommit returning false resets it.
+function Cell({value, onCommit, className, ...rest}: {value: unknown; onCommit: (v: string) => boolean | void} & Omit<React.InputHTMLAttributes<HTMLInputElement>, "value">) {
+  const v = value == null ? "" : String(value);
+  return <input key={v} defaultValue={v} {...rest} className={cn(cellIn, className)}
+    onBlur={e => { const t = e.target.value.trim(); if (t !== v && onCommit(t) === false) e.target.value = v; }}
+    onKeyDown={e => { if (e.key === "Enter") e.currentTarget.blur(); if (e.key === "Escape") { e.currentTarget.value = v; e.currentTarget.blur(); } }}/>;
+}
+
+function Face({name, className}: {name: string; className?: string}) {
+  return <span className={cn("grid shrink-0 place-items-center rounded-full bg-[var(--ink-100)] font-bold text-[var(--ink)]", className)}>{initials(name)}</span>;
+}
 
 export default function Staff() {
   const [today, setToday] = useState<string | null>(null);
   useEffect(() => setToday(todayIso()), []);
-  const staff = useTable("staff"), models = useTable("models"), conv = useTable("conversions"), targets = useTable("expectations"), pay = useTable("paylog");
+  const staff = useTable("staff"), models = useTable("models"), conv = useTable("conversions"), pay = useTable("paylog");
+  const tables = [staff, models, conv, pay];
   const [period, setPeriod] = useState<Period>("last");
-  const [adding, setAdding] = useState<null | "staff" | "target">(null);
+  const [q, setQ] = useState(""), [fStatus, setFStatus] = useState("");
+  const [adding, setAdding] = useState(false);
+  // Optimistic overrides per staff record until the write lands (or rolls back).
+  const [ov, setOv] = useState<Record<string, Record<string, any>>>({});
+  const rows = useMemo<Row[]>(() => staff.rows.map(r => ov[r.id] ? {...r, fields: {...r.fields, ...ov[r.id]}} : r), [staff.rows, ov]);
 
-  const perf = useMemo(() => {
-  if (!today) return null;
-    const thisWeek = mondayOf(today);
-    const weeks = period === "this" ? [thisWeek] : period === "last" ? [addDays(thisWeek, -7)] : [-28, -21, -14, -7].map(n => addDays(thisWeek, n));
-    const target = (sid: string, w: string) => targets.rows.filter(t => linkIds(t.fields.staff).includes(sid) && String(t.fields.week ?? "").slice(0, 10) <= w && t.fields.weekly != null)
-      .sort((a, b) => String(b.fields.week).localeCompare(String(a.fields.week)))[0];
-    return {
-      weeks,
-      rows: staff.rows.filter(s => label(s.fields.status) !== "Inactive").map(s => {
-        let actual = 0, goal = 0, reported = 0, hasGoal = false;
-        for (const w of weeks) {
-          const e = conv.rows.filter(r => linkIds(r.fields.staff).includes(s.id) && String(r.fields.week ?? "").slice(0, 10) === w);
-          if (e.length) { reported++; actual += e.reduce((t, r) => t + num(r.fields.conversions), 0); }
-          const t = target(s.id, w);
-          if (t) { hasGoal = true; goal += num(t.fields.weekly); }
-        }
-        const pct = hasGoal && goal ? actual / goal : null;
-        return {id: s.id, name: label(s.fields.name), model: label(s.fields.model?.[0]), actual: reported ? actual : null, goal: hasGoal ? goal : null, pct, reported};
-      }).sort((a, b) => (b.pct ?? -1) - (a.pct ?? -1) || (b.actual ?? -1) - (a.actual ?? -1)),
-    };
-  }, [today, period, staff.rows, conv.rows, targets.rows]);
+  async function save(r: Row, fields: Record<string, any>, msg: string, shown: Record<string, any> = fields) {
+    setOv(o => ({...o, [r.id]: {...o[r.id], ...shown}}));
+    try { await staff.update(r.id, fields); toast(msg); } catch (e: any) { toast.error(e.message); }
+    finally { setOv(o => { const f = {...o[r.id]}; for (const k in shown) delete f[k]; return {...o, [r.id]: f}; }); }
+  }
 
-  if ([staff, models, conv, targets, pay].some(t => t.error)) return <TableError tables={[staff, models, conv, targets, pay]}/>;
-  if (!perf || [staff, models, conv, targets, pay].some(t => t.loading)) return <PageSkeleton/>;
-  const active = staff.rows.filter(s => label(s.fields.status) === "Active");
-  const thisWeek = mondayOf(today!);
-  const hoursWeek = pay.rows.filter(r => String(r.fields.workDate ?? "").slice(0, 10) >= thisWeek).reduce((s, r) => s + num(r.fields.hours), 0);
-  const avgRate = active.length ? active.reduce((s, r) => s + num(r.fields.rate), 0) / active.length : 0;
-  const modelOpts = linkOptions(models.rows, "model"), staffOpts = linkOptions(staff.rows, "name");
-  const onTarget = perf.rows.filter(r => r.pct !== null && r.pct >= 1).length, withGoal = perf.rows.filter(r => r.pct !== null).length;
+  const sumWeek = useMemo(() => {
+    const m = new Map<string, number>();
+    for (const c of conv.rows) for (const sid of linkIds(c.fields.staff)) { const k = sid + "|" + String(c.fields.week ?? "").slice(0, 10); m.set(k, (m.get(k) ?? 0) + num(c.fields.conversions)); }
+    return (sid: string, w: string) => m.get(sid + "|" + w) ?? null;
+  }, [conv.rows]);
 
-  return <div className="space-y-6">
+  if (tables.some(t => t.error)) return <TableError tables={tables}/>;
+  if (!today || tables.some(t => t.loading)) return <PageSkeleton/>;
+
+  const thisWeek = mondayOf(today), day = dayOfWeek(today), status = (r: Row) => label(r.fields.status);
+  const act = rows.filter(r => status(r) === "Active"), live = rows.filter(r => status(r) !== "Inactive");
+  const name = (r: Row) => label(r.fields.name);
+
+  // KPI 1: active staff by role.
+  const roles = ROLES.map(role => ({role, n: act.filter(s => roleOf(s.fields.platform) === role).length})).filter(x => x.n);
+  // KPI 2: pace this week.
+  const pv = act.map(s => { const m = targetOf(s), now = sumWeek(s.id, thisWeek); return {s, k: m == null ? "none" : now == null ? "missing" : now >= m ? "met" : now >= m * day / 7 ? "pace" : "behind"}; });
+  const good = pv.filter(x => x.k === "met" || x.k === "pace").length, judged = pv.filter(x => x.k !== "none").length;
+  const segs = ([["met", "Hit", "#1f7a45", ""], ["pace", "On pace", "var(--ink)", ""], ["behind", "Behind", "#e3a33b", ""], ["missing", "Not entered", "var(--surface-card)", "inset 0 0 0 1.5px var(--ink-200)"]] as const)
+    .map(([k, l, bg, ring]) => { const who = pv.filter(x => x.k === k); return {k, l, bg, ring, n: who.length, title: l + ": " + (who.map(x => name(x.s).split(" ")[0]).join(", ") || "nobody")}; }).filter(g => g.n);
+  // KPI 3: hours this week from the Pay Log.
+  const week = Array.from({length: 7}, (_, i) => addDays(thisWeek, i));
+  const hrs = week.map(d => pay.rows.filter(r => String(r.fields.workDate ?? "").slice(0, 10) === d).reduce((t, r) => t + num(r.fields.hours), 0));
+  const std = (s: Row) => num(s.fields.hours);
+  const sched = act.reduce((t, s) => t + std(s) * daysPerWeek(off(s)), 0);
+  const maxH = Math.max(1, ...hrs, ...week.map(d => act.filter(s => !off(s).includes(new Date(d + "T00:00:00Z").getUTCDay())).reduce((t, s) => t + std(s), 0)));
+  const hTot = hrs.reduce((a, b) => a + b, 0);
+  // KPI 4: hourly rates.
+  const rated = act.filter(s => num(s.fields.rate) > 0), rs = rated.map(s => num(s.fields.rate));
+  const lo = Math.min(...rs), hi = Math.max(...rs), avg = rs.reduce((a, b) => a + b, 0) / (rs.length || 1);
+  const pos = (v: number) => (0.12 + 0.76 * (rs.length > 1 && hi > lo ? (v - lo) / (hi - lo) : 0.5)) * 100 + "%";
+  const wkCost = rated.reduce((t, s) => t + num(s.fields.rate) * std(s) * daysPerWeek(off(s)), 0);
+
+  // Performance: conversions vs weekly minimum over the chosen weeks.
+  const weeks = period === "this" ? [thisWeek] : period === "last" ? [addDays(thisWeek, -7)] : [-28, -21, -14, -7].map(n => addDays(thisWeek, n));
+  const perf = live.map(s => {
+    const vals = weeks.map(w => sumWeek(s.id, w)).filter((v): v is number => v != null), min = targetOf(s);
+    const actual = vals.length ? vals.reduce((a, b) => a + b, 0) : null, goal = min == null ? null : min * weeks.length;
+    return {s, actual, goal, pct: goal ? (actual ?? 0) / goal : null};
+  }).sort((a, b) => (b.pct ?? -1) - (a.pct ?? -1) || (b.actual ?? -1) - (a.actual ?? -1));
+  const range = weeks.length === 1 ? weekLabel(weeks[0]) : `${weekLabel(weeks[0]).split(" – ")[0]} – ${weekLabel(weeks[3]).split(" – ")[1]}`;
+
+  const ql = q.trim().toLowerCase();
+  const team = rows.filter(s => (!fStatus || status(s) === fStatus) && (!ql || `${name(s)} ${label(s.fields.email)} ${label(s.fields.staffId)}`.toLowerCase().includes(ql))).sort((a, b) => name(a).localeCompare(name(b)));
+  const modelOpts = [{value: "", label: "—"}, ...linkOptions(models.rows, "model")];
+  const mins = [...live].sort((a, b) => ROLES.indexOf(roleOf(a.fields.platform)) - ROLES.indexOf(roleOf(b.fields.platform)) || name(a).localeCompare(name(b)));
+  const teamCols = "grid-cols-[60px_minmax(160px,1.4fr)_110px_110px_110px_90px_90px_100px_minmax(150px,1fr)]";
+  const minCols = "grid-cols-[minmax(180px,1fr)_150px_minmax(220px,1.6fr)_120px]";
+  const perfCols = "grid-cols-[minmax(0,1.4fr)_110px_90px_minmax(0,1fr)_130px]";
+
+  return <div className="flex flex-col gap-6">
     <PageHeader eyebrow="Operations · Live records" title="Staff" subtitle="Team directory, weekly targets and performance from the existing BH staff base."
-      actions={<><Btn onClick={() => setAdding("target")}><Target/>Set target</Btn><Btn variant="primary" onClick={() => setAdding("staff")}><Plus/>Add staff</Btn></>}/>
+      actions={<Btn variant="primary" onClick={() => setAdding(true)}><Plus/>Add staff</Btn>}/>
 
-    <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-      <Stat label="Active staff" icon={UserCheck} value={active.length} sub={`${staff.rows.filter(s => label(s.fields.status) === "Setup").length} in setup · ${staff.rows.filter(s => label(s.fields.status) === "Inactive").length} inactive`}/>
-      <Stat label="On target" icon={Target} value={withGoal ? `${onTarget}/${withGoal}` : "—"} sub={period === "this" ? "this week so far" : period === "last" ? "last week" : "last 4 weeks"}/>
-      <Stat label="Hours this week" icon={Clock} value={hoursWeek.toLocaleString()} sub={`Since ${weekLabel(thisWeek).split(" – ")[0]}`}/>
-      <Stat label="Average hourly rate" icon={DollarSign} value={money(avgRate, 2)} sub="Active staff"/>
+    <div className="grid grid-cols-[repeat(auto-fit,minmax(240px,1fr))] gap-4">
+      <div className="flex min-w-0 flex-col rounded-[20px] border border-surface-inverse bg-surface-inverse p-6 text-text-inverse shadow-[var(--shadow-card)]">
+        <div className="flex items-center justify-between text-[13px] font-medium text-text-inverse/60">Active staff<UserCheck className="size-4 text-signal" strokeWidth={1.75}/></div>
+        <div className="mt-5 flex items-end justify-between gap-3">
+          <span className="num text-[40px] font-bold leading-none tracking-[-0.05em]">{act.length}</span>
+          <span className="flex pl-2">{act.slice(0, 5).map(s => <span key={s.id} title={name(s)} className="-ml-2 grid size-7 place-items-center rounded-full border-2 border-surface-inverse text-[9.5px] font-bold text-white" style={{background: RC[roleOf(s.fields.platform)]}}>{initials(name(s))}</span>)}</span>
+        </div>
+        <div className="mt-[18px] flex h-1.5 gap-[3px] overflow-hidden rounded-full">{roles.map(x => <span key={x.role} title={`${x.role}: ${x.n} VAs`} className="rounded-full" style={{flex: `${x.n} 1 0`, background: RC[x.role]}}/>)}</div>
+        <div className="mt-2.5 flex flex-wrap gap-x-3 gap-y-1 text-[12px] text-text-inverse/60">{roles.map(x => <span key={x.role} className="flex items-center gap-1.5"><span className="size-1.5 rounded-full" style={{background: RC[x.role]}}/>{x.role} {x.n}</span>)}</div>
+        <div className="mt-auto pt-3 text-[12px] text-text-inverse/50">{rows.filter(s => status(s) === "Setup").length} in setup · {rows.filter(s => status(s) === "Inactive").length} inactive</div>
+      </div>
+
+      <div className={card}>
+        <div className="flex items-center justify-between text-[13px] font-medium text-[var(--text-faint)]">On pace this week<Target className="size-4 opacity-70" strokeWidth={1.75}/></div>
+        <div className="mt-5 flex items-baseline gap-2"><span className="num text-[40px] font-bold leading-none tracking-[-0.05em]">{good}</span><span className="text-[13px] text-[var(--text-faint)]">of {judged} · day {day}/7</span></div>
+        <div className="mt-5 flex h-2.5 gap-[3px]">{segs.map(g => <span key={g.k} title={g.title} className="min-w-1.5 rounded-full" style={{flex: `${g.n} 1 0`, background: g.bg, boxShadow: g.ring || undefined}}/>)}</div>
+        <div className="mt-auto grid grid-cols-2 gap-x-3 gap-y-1.5 pt-3.5">{segs.map(g => <span key={g.k} title={g.title} className="flex items-center gap-2 text-[12px] text-[var(--text-faint)]">
+          <span className="size-2 shrink-0 rounded-full" style={{background: g.bg, boxShadow: g.ring || undefined}}/>{g.l}<span className="num ml-auto font-bold text-[var(--ink)]">{g.n}</span></span>)}</div>
+      </div>
+
+      <div className={card}>
+        <div className="flex items-center justify-between text-[13px] font-medium text-[var(--text-faint)]">Hours this week<Clock className="size-4 opacity-70" strokeWidth={1.75}/></div>
+        <div className="mt-5 flex items-baseline gap-2"><span className="num text-[40px] font-bold leading-none tracking-[-0.05em]">{hf(hTot)}</span><span className="text-[13px] text-[var(--text-faint)]">of {hf(sched)} scheduled</span></div>
+        <div className="mt-4 grid h-14 grid-cols-7 items-end gap-1.5">{week.map((d, i) => { const fut = d > today, now = d === today; return <div key={d} title={`${weekLabel(d).split(" – ")[0]} · ${hf(hrs[i])}h${fut ? " (upcoming)" : ""}`}
+          className="flex h-full flex-col justify-end overflow-hidden rounded-[6px]" style={{background: fut ? "repeating-linear-gradient(135deg, var(--ink-100) 0 4px, var(--paper) 4px 8px)" : "var(--ink-100)"}}>
+          <div className="rounded-[6px]" style={{height: hrs[i] / maxH * 100 + "%", background: now ? "var(--signal)" : "var(--ink)"}}/></div>; })}</div>
+        <div className="mt-1.5 grid grid-cols-7 gap-1.5">{week.map((d, i) => <span key={d} className={cn("text-center font-mono text-[10px]", d === today ? "text-signal" : "text-[var(--text-faint)]")}>{"MTWTFSS"[i]}</span>)}</div>
+        <div className="mt-auto pt-2.5 text-[12px] text-[var(--text-faint)]">{Math.round(hTot / Math.max(1, sched) * 100)}% of the week logged · today in orange</div>
+      </div>
+
+      <div className={card}>
+        <div className="flex items-center justify-between text-[13px] font-medium text-[var(--text-faint)]">Average hourly rate<DollarSign className="size-4 opacity-70" strokeWidth={1.75}/></div>
+        <div className="num mt-5 text-[40px] font-bold leading-none tracking-[-0.05em]">{rs.length ? money(avg, 2) : "—"}</div>
+        <div className="relative mt-[22px] h-1.5 rounded-full bg-[var(--ink-100)]">
+          {rs.length > 0 && <>
+            <div className="absolute inset-y-0 rounded-full bg-[var(--ink)]" style={{left: pos(lo), right: `calc(100% - ${pos(hi)})`}}/>
+            {[...new Set(rs)].map(v => <span key={v} title={`${money(v, 2)}/h · ${rs.filter(x => x === v).length} VAs`} className="absolute top-1/2 -ml-[5px] -mt-[5px] size-2.5 rounded-full border-2 border-[var(--ink)] bg-[var(--surface-card)]" style={{left: pos(v)}}/>)}
+            <span className="absolute top-1/2 -ml-1.5 -mt-1.5 size-3 rounded-full bg-signal shadow-[0_0_0_2px_var(--surface-card)]" style={{left: pos(avg)}}/>
+          </>}
+        </div>
+        <div className="num mt-2 flex justify-between text-[11.5px] text-[var(--text-faint)]"><span>{rs.length ? "Low " + money(lo, 2) : ""}</span><span>{rs.length ? "High " + money(hi, 2) : ""}</span></div>
+        <div className="mt-auto pt-2.5 text-[12px] text-[var(--text-faint)]">≈ {money(wkCost)} a week at standard hours</div>
+      </div>
     </div>
 
-    <Panel title="Performance" icon={Target} subtitle={`Conversions against weekly minimum · ${perf.weeks.length === 1 ? weekLabel(perf.weeks[0]) : `${weekLabel(perf.weeks[0]).split(" – ")[0]} – ${weekLabel(perf.weeks.at(-1)!).split(" – ")[1]}`}`}
-      actions={<Segmented size="sm" value={period} onChange={setPeriod} options={[["this", "This week"], ["last", "Last week"], ["4w", "Last 4 weeks"]] as const}/>} flush>
-      <div className="mt-4 overflow-x-auto border-t">
-        <table className="w-full min-w-[640px] text-[13px]">
-          <thead><tr className="border-b bg-muted/40 text-[11.5px] text-muted-foreground">
-            <th className="h-9 px-5 text-left font-medium">VA</th><th className="px-4 text-right font-medium">Conversions</th><th className="px-4 text-right font-medium">Target</th>
-            <th className="w-[28%] px-4 text-left font-medium">Achievement</th><th className="px-5 text-right font-medium">Status</th>
-          </tr></thead>
-          <tbody className="divide-y">{perf.rows.map(r => <tr key={r.id}>
-            <td className="px-5 py-2.5"><div className="flex items-center gap-2.5"><Avatar name={r.name}/><div><div className="font-medium">{r.name}</div><div className="text-[12px] text-muted-foreground">{r.model || "No model"}</div></div></div></td>
-            <td className="num px-4 text-right">{r.actual ?? "—"}</td>
-            <td className="num px-4 text-right text-muted-foreground">{r.goal ?? "—"}</td>
-            <td className="px-4"><div className="flex items-center gap-3"><Bar value={r.actual ?? 0} max={r.goal ?? 1} className={r.pct === null ? "bg-foreground/30" : r.pct >= 1 ? "bg-positive" : r.pct >= 0.8 ? "bg-warning" : "bg-negative"}/><span className="num w-11 text-right text-[12px]">{r.pct === null ? "" : `${Math.round(r.pct * 100)}%`}</span></div></td>
-            <td className="px-5 text-right">{r.actual === null ? <Pill>Not reported</Pill> : r.pct === null ? <Pill>No target</Pill> : r.pct >= 1 ? <Pill tone="green" dot>On target</Pill> : <Pill tone={r.pct >= 0.8 ? "amber" : "red"} dot>{r.goal! - r.actual} short</Pill>}</td>
-          </tr>)}</tbody>
-        </table>
+    <section className={section}>
+      <header className="flex flex-wrap items-start justify-between gap-3 px-6 pb-4 pt-6">
+        <div><h2 className="text-[18px] font-bold tracking-[-0.02em]">Performance</h2><p className="mt-1 text-[13px] text-[var(--text-faint)]">Conversions against weekly minimum · {range}</p></div>
+        <Segmented size="sm" value={period} onChange={setPeriod} options={[["this", "This week"], ["last", "Last week"], ["4w", "Last 4 weeks"]] as const}/>
+      </header>
+      <div className="overflow-x-auto border-t border-[var(--ink-100)]"><div className="min-w-[640px]">
+        <div className={cn("grid h-9 gap-3 px-5", perfCols, head)}><span>VA</span><span className="text-right">Conversions</span><span className="text-right">Target</span><span>Achievement</span><span className="text-right">Status</span></div>
+        {perf.map(({s, actual, goal, pct}) => {
+          const [txt, cls] = actual === null ? ["Not reported", "text-[var(--text-faint)] ring-1 ring-inset ring-[var(--ink-200)]"] : pct === null ? ["No target", "text-[var(--text-faint)] ring-1 ring-inset ring-[var(--ink-200)]"]
+            : pct >= 1 ? ["● On target", "bg-[#dce7dc] text-[#1d7341]"] : [`● ${goal! - actual} short`, pct >= 0.8 ? "bg-[#f2e6d3] text-[#8f5a00]" : "bg-[#f4dad7] text-[#c01d1d]"];
+          return <div key={s.id} className={cn("grid items-center gap-3 border-b border-[var(--ink-100)] px-5 py-2.5 text-[13px]", perfCols)}>
+            <div className="flex min-w-0 items-center gap-2.5"><Face name={name(s)} className="size-8 text-[11px]"/><div className="min-w-0"><div className="truncate font-medium">{name(s)}</div><div className="text-[12px] text-[var(--text-faint)]">{label(s.fields.model?.[0]) || "No model"}</div></div></div>
+            <span className="num text-right">{actual ?? "—"}</span>
+            <span className="num text-right text-[var(--text-faint)]">{goal ?? "—"}</span>
+            <div className="flex items-center gap-3"><div className="h-1.5 flex-1 overflow-hidden rounded-full bg-[var(--ink-100)]"><div className="h-full rounded-full" style={{width: Math.min(100, (actual ?? 0) / (goal || 1) * 100) + "%", background: pct === null ? "#0a0a0a4d" : pct >= 1 ? "#1f7a45" : pct >= 0.8 ? "#b77400" : "#c81e1e"}}/></div>
+              <span className="num w-11 text-right text-[12px]">{pct === null ? "" : Math.round(pct * 100) + "%"}</span></div>
+            <div className="text-right"><span className={cn("inline-flex h-6 items-center gap-1.5 whitespace-nowrap rounded-full px-2.5 text-[11px] font-semibold", cls)}>{txt}</span></div>
+          </div>;
+        })}
+      </div></div>
+    </section>
+
+    <section className={section}>
+      <header className="px-6 pb-4 pt-6"><h2 className="text-[18px] font-bold tracking-[-0.02em]">Team</h2><p className="mt-1 text-[13px] text-[var(--text-faint)]">Click any cell to edit. Set Status to Inactive instead of deleting. Rates and schedules here drive the pay run.</p></header>
+      <div className="flex flex-wrap items-center gap-2 border-y border-[var(--ink-100)] px-5 py-3">
+        <input value={q} onChange={e => setQ(e.target.value)} placeholder="Search staff" className="h-8 min-w-[200px] max-w-[320px] flex-1 rounded-[8px] border border-[var(--ink-100)] bg-[var(--surface-card)] px-3 text-[13px] outline-none focus:border-[var(--signal)]"/>
+        <Select variant="none" value={fStatus} onChange={setFStatus} ariaLabel="Filter by status" className="h-8 rounded-[8px] border border-[var(--ink-100)] bg-[var(--surface-card)] px-2.5 text-[12.5px]"
+          options={[{value: "", label: "Status: All"}, ...CHOICES.staffStatus.map(s => ({value: s, label: "Status: " + s}))]}/>
       </div>
-    </Panel>
+      <div className="overflow-x-auto"><div className="min-w-[1160px]">
+        <div className={cn("grid h-9 gap-2 px-5", teamCols, head)}><span>ID</span><span>Name</span><span>Status</span><span>Model</span><span>Role</span><span className="text-right">Rate /h</span><span className="text-right">Std hours</span><span className="text-right">Days / week</span><span>Email</span></div>
+        {team.map(s => { const n = name(s), st = status(s) || "Active", days = daysPerWeek(off(s)), rate = s.fields.rate;
+          return <div key={s.id} className={cn("grid min-h-11 items-center gap-2 border-b border-[var(--ink-100)] px-5 py-0.5 text-[13px] hover:bg-[#e7e3dc4d]", teamCols)}>
+            <span className="num text-[12px] text-[var(--text-faint)]">{label(s.fields.staffId)}</span>
+            <span className="flex min-w-0 items-center gap-2"><Face name={n} className="size-6 text-[9.5px]"/>
+              <Cell value={n} aria-label="Name" className="min-w-0 flex-1 px-1.5 font-medium" onCommit={v => v ? void save(s, {name: v}, `${v} · saved`) : false}/></span>
+            <Select variant="none" value={st} onChange={v => v !== st && save(s, {status: v}, `${n} set to ${v}`)} ariaLabel={`Status for ${n}`}
+              className={cn("h-[26px] w-max rounded-full px-2 text-[11px] font-semibold", ST[st])} options={CHOICES.staffStatus.map(v => ({value: v, label: v}))}/>
+            <Select variant="cell" value={linkIds(s.fields.model)[0] ?? ""} options={modelOpts} ariaLabel={`Model for ${n}`} className="px-1"
+              onChange={v => save(s, {model: v ? [v] : []}, `${n} · model saved`, {model: v ? [{id: v, label: modelOpts.find(o => o.value === v)?.label}] : []})}/>
+            <Select variant="cell" value={roleOf(s.fields.platform)} options={ROLES.map(r => ({value: r, label: r}))} ariaLabel={`Role for ${n}`} className="px-1"
+              onChange={v => save(s, {platform: v}, `${n} · now under ${v} on Conversions`)}/>
+            <Cell type="number" min={0} step={0.25} value={rate} placeholder="Not set" aria-label={`Rate for ${n}`} className={cn("num px-2 text-right hover:border-[var(--ink-200)]", !num(rate) && "border-[#e5a59e]")}
+              onCommit={v => void save(s, {rate: v === "" ? null : Number(v)}, "Rate saved · applies to unlocked pay periods")}/>
+            <Cell type="number" min={0} max={24} value={s.fields.hours} aria-label={`Standard hours for ${n}`} className="num px-2 text-right"
+              onCommit={v => void save(s, {hours: Number(v) || 0}, "Standard day saved")}/>
+            <Cell type="number" min={1} max={7} step={1} value={days} aria-label={`Working days per week for ${n}`} title={`${days} working days a week`} className="num px-2 text-right"
+              onCommit={raw => { const v = Math.round(Number(raw)); if (!raw || v < 1 || v > 7) { toast.error("Enter 1 to 7 days"); return false; }
+                save(s, {daysOff: JSON.stringify(offForDays(v))}, `${n} now works ${v} day${v > 1 ? "s" : ""} a week`); }}/>
+            <Cell type="email" value={s.fields.email} placeholder="—" aria-label={`Email for ${n}`} className="px-1.5 text-[var(--text-faint)]"
+              onCommit={v => void save(s, {email: v || null}, `${n} · email saved`)}/>
+          </div>; })}
+      </div></div>
+      <div className="px-5 py-3 text-[12.5px] text-[var(--text-faint)]">{team.length} staff</div>
+    </section>
 
-    <Panel title="Team" icon={Users} subtitle="Click any cell to edit. Set Status to Inactive instead of deleting." flush>
-      <DataGrid rows={staff.rows} initialSort={{key: "name", dir: "asc"}} searchPlaceholder="Search staff"
-        columns={[
-          {key: "staffId", label: "ID", icon: Hash, width: "70px", render: r => <span className="num text-[12px] text-muted-foreground">{label(r.fields.staffId)}</span>},
-          {key: "name", label: "Name", icon: User, editable: true, render: r => <span className="flex items-center gap-2.5 font-medium"><Avatar name={label(r.fields.name)} className="size-6 text-[9.5px]"/>{label(r.fields.name)}</span>},
-          {key: "status", label: "Status", icon: CircleDot, type: "select", options: opts(CHOICES.staffStatus), editable: true, filter: true},
-          {key: "model", label: "Model", icon: Tag, type: "link", options: modelOpts, editable: true, filter: true},
-          {key: "platform", label: "Platform", icon: Globe, type: "select", options: opts(CHOICES.platform), editable: true, render: r => label(r.fields.platform), hideBelow: "lg"},
-          {key: "payType", label: "Pay", icon: Wallet, type: "select", options: opts(CHOICES.payType), editable: true, render: r => label(r.fields.payType), hideBelow: "xl"},
-          {key: "rate", label: "Rate /h", icon: DollarSign, type: "money", editable: true},
-          {key: "hours", label: "Std hours", icon: Clock, type: "number", editable: true, hideBelow: "xl"},
-          {key: "start", label: "Started", icon: CalendarDays, type: "date", editable: true, hideBelow: "lg"},
-          {key: "end", label: "End date", type: "date", editable: true, hideBelow: "xl"},
-          {key: "currency", label: "Currency", type: "select", options: opts(CHOICES.currency), editable: true, hideBelow: "xl"},
-          {key: "email", label: "Email", icon: AtSign, editable: true, hideBelow: "xl"},
-        ]}
-        onUpdate={(id, key, value) => staff.update(id, {[key]: value})}/>
-    </Panel>
+    <section className={section}>
+      <header className="flex flex-wrap items-start justify-between gap-3 px-6 pb-4 pt-6">
+        <div><h2 className="text-[18px] font-bold tracking-[-0.02em]">Weekly minimums</h2><p className="mt-1 text-[13px] text-[var(--text-faint)]">One number per VA. It&apos;s the target on Conversions, the leaderboard and performance, checked against each week&apos;s count.</p></div>
+        <LinkBtn size="sm" href="/conversions">Enter this week&apos;s counts<ArrowRight className="!size-[13px]"/></LinkBtn>
+      </header>
+      <div className="overflow-x-auto border-t border-[var(--ink-100)]"><div className="min-w-[720px]">
+        <div className={cn("grid h-9 gap-4 px-6", minCols, head)}><span>VA</span><span className="text-right">Weekly minimum</span><span>This week so far · day {day}/7</span><span className="text-right">Last week</span></div>
+        {mins.map(s => {
+          const n = name(s), role = roleOf(s.fields.platform), m = targetOf(s), now = sumWeek(s.id, thisWeek), last = sumWeek(s.id, addDays(thisWeek, -7));
+          const ok = !!m && now != null && now >= m * day / 7, met = !!m && (now ?? 0) >= m;
+          return <div key={s.id} className={cn("grid min-h-[52px] items-center gap-4 border-b border-[var(--ink-100)] px-6 py-1 text-[13px]", minCols)}>
+            <span className="flex min-w-0 items-center gap-2.5"><Face name={n} className="size-7 text-[10.5px]"/><span className="min-w-0">
+              <span className="block truncate font-semibold text-[var(--ink)]">{n}</span>
+              <span className="inline-flex h-[18px] items-center rounded-full px-[7px] text-[10.5px] font-semibold" style={{background: ROLE_STYLE[role].pillBg, color: ROLE_STYLE[role].pillFg}}>{role}</span></span></span>
+            <span className="flex items-center justify-end gap-1.5">
+              <input key={String(m)} type="number" min={0} step={1} defaultValue={m ?? ""} placeholder="—" aria-label={`Weekly minimum for ${n}`}
+                className={cn("num h-9 w-[84px] rounded-[8px] border bg-[var(--surface-card)] px-2.5 text-right text-[14px] font-bold outline-none focus:border-[var(--ink)] focus:shadow-[0_0_0_3px_#ff300026]", m == null ? "border-[#e5a59e]" : "border-[var(--ink-100)]")}
+                onKeyDown={e => { if (e.key === "Enter") e.currentTarget.blur(); if (e.key === "Escape") { e.currentTarget.value = m == null ? "" : String(m); e.currentTarget.blur(); } }}
+                onBlur={e => { const raw = e.target.value.trim(), v = raw === "" ? null : Math.round(Number(raw)); if (v === m) return;
+                  if (v !== null && (!Number.isFinite(v) || v < 0)) { toast.error("Enter a whole number"); e.target.value = m == null ? "" : String(m); return; }
+                  save(s, {weeklyMin: v}, v == null ? `${n}: no weekly minimum` : `${n}: ${v} a week · synced to Conversions`); }}/>
+              <span className="text-[12px] text-[var(--text-faint)]">/ wk</span></span>
+            <div className="flex min-w-0 items-center gap-3">
+              <div className="relative h-2 flex-1 overflow-hidden rounded-full bg-[var(--ink-100)]">
+                <div className="absolute inset-y-0 left-0 bg-[#0a0a0a1a]" style={{width: m ? day / 7 * 100 + "%" : 0}}/>
+                <div className="absolute inset-y-0 left-0 rounded-full transition-[width] duration-300 ease-[cubic-bezier(.2,.8,.2,1)]" style={{width: m ? Math.min(100, (now ?? 0) / m * 100) + "%" : 0, background: !m ? "#0a0a0a4d" : met ? "#1f7a45" : ok ? "var(--ink)" : "#c98a1c"}}/>
+              </div>
+              <span className="num w-[120px] whitespace-nowrap text-right text-[12px] font-semibold" style={{color: now == null ? "var(--text-faint)" : !m ? "var(--ink)" : met ? "#1d7341" : ok ? "var(--ink)" : "#8f5a00"}}>
+                {now == null ? "Not entered" : m ? `${now} of ${m}${met ? " ✓" : ok ? " · on pace" : " · behind"}` : now}</span>
+            </div>
+            <span className="num whitespace-nowrap text-right text-[12.5px] font-semibold" style={{color: last == null || !m ? "var(--text-faint)" : last >= m ? "#1d7341" : "#c01d1d"}}>{last == null ? "—" : m ? `${last} / ${m}` : last}</span>
+          </div>;
+        })}
+      </div></div>
+    </section>
 
-    <Panel title="Target history" icon={Target} subtitle="Each target applies from its effective week until a newer one replaces it." flush>
-      <DataGrid rows={targets.rows} initialSort={{key: "week", dir: "desc"}} pageSize={10} searchPlaceholder="Search targets"
-        columns={[
-          {key: "staff", label: "VA", icon: User, type: "link", options: staffOpts, filter: true},
-          {key: "week", label: "Effective from", icon: CalendarDays, type: "date", render: r => weekLabel(String(r.fields.week ?? "").slice(0, 10))},
-          {key: "daily", label: "Daily", type: "number", editable: true},
-          {key: "weekly", label: "Weekly minimum", type: "number", editable: true},
-          {key: "monthly", label: "Monthly", type: "number", editable: true},
-        ]}
-        onUpdate={(id, key, value) => targets.update(id, {[key]: value})}/>
-    </Panel>
-
-    <AddStaff open={adding === "staff"} onClose={() => setAdding(null)} create={staff.create} rows={staff.rows} modelOpts={modelOpts}/>
-    <AddTarget open={adding === "target"} onClose={() => setAdding(null)} create={targets.create} staffOpts={linkOptions(active, "name")} week={thisWeek}/>
+    <AddStaff open={adding} onClose={() => setAdding(false)} create={staff.create} rows={staff.rows} models={models.rows} today={today}/>
   </div>;
 }
 
-function AddStaff({open, onClose, create, rows, modelOpts}: {open: boolean; onClose: () => void; create: (f: any) => Promise<any>; rows: any[]; modelOpts: {value: string; label: string}[]}) {
-  const next = "VA" + (Math.max(0, ...rows.map(r => parseInt(String(r.fields.staffId ?? "").replace(/\D/g, "")) || 0)) + 1);
-  const blank = {name: "", model: "", platform: "OnlyFans", payType: "Hourly", rate: "", hours: "8", email: "", start: todayIso()};
+function AddStaff({open, onClose, create, rows, models, today}: {open: boolean; onClose: () => void; create: (f: any) => Promise<any>; rows: Row[]; models: Row[]; today: string}) {
+  const next = "VA" + (Math.max(0, ...rows.map(r => /^VA\d+$/i.test(label(r.fields.staffId)) ? parseInt(label(r.fields.staffId).slice(2)) : 0)) + 1);
+  const blank = {name: "", model: "", platform: "X", payType: "Hourly", rate: "", hours: "8", off: "[0]", weeklyMin: "", email: "", start: today};
   const [f, setF] = useState(blank);
   const [busy, setBusy] = useState(false);
-  useEffect(() => { if (open) setF(blank); }, [open]);
-  const set = (k: keyof typeof blank) => (e: any) => setF(x => ({...x, [k]: e.target.value}));
+  useEffect(() => { if (open) setF(blank); }, [open]); // eslint-disable-line react-hooks/exhaustive-deps
+  const set = (k: keyof typeof blank) => (v: any) => setF(x => ({...x, [k]: typeof v === "string" ? v : v.target.value}));
+  const modelOpts = [{value: "", label: "—"}, ...linkOptions(models.filter(m => label(m.fields.status) !== "Ended"), "model")];
+  const name = f.name.trim();
   async function submit() {
+    if (!name) return;
     setBusy(true);
     try {
-      await create({staffId: next, name: f.name.trim(), status: "Active", model: f.model ? [f.model] : [], platform: f.platform, payType: f.payType, currency: "USD",
-        rate: f.rate === "" ? null : Number(f.rate), hours: f.hours === "" ? null : Number(f.hours), email: f.email || null, start: f.start || null});
-      toast.success(`${f.name} added as ${next}`); onClose();
+      await create({staffId: next, name, status: "Active", model: f.model ? [f.model] : [], platform: f.platform, payType: f.payType, currency: "USD",
+        rate: f.rate === "" ? null : Number(f.rate), hours: f.hours === "" ? null : Number(f.hours), daysOff: f.off,
+        weeklyMin: f.weeklyMin === "" ? null : Math.round(Number(f.weeklyMin)), email: f.email || null, start: f.start || null});
+      toast(`${name} added as ${next} · now on Conversions under ${f.platform}`); onClose();
     } catch (e: any) { toast.error(e.message); } finally { setBusy(false); }
   }
-  return <Drawer open={open} onClose={onClose} title="Add staff member" subtitle={`Will be created as ${next}`}
-    footer={<><Btn variant="ghost" onClick={onClose}>Cancel</Btn><Btn variant="primary" onClick={submit} loading={busy} disabled={!f.name.trim()}>Add staff</Btn></>}>
-    <Field label="Full name"><input className={inputClass} value={f.name} onChange={set("name")} autoFocus/></Field>
-    <Field label="Model"><select className={inputClass} value={f.model} onChange={set("model")}><option value="">—</option>{modelOpts.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}</select></Field>
-    <div className="grid grid-cols-2 gap-3">
-      <Field label="Platform"><select className={inputClass} value={f.platform} onChange={set("platform")}>{CHOICES.platform.map(o => <option key={o}>{o}</option>)}</select></Field>
-      <Field label="Pay type"><select className={inputClass} value={f.payType} onChange={set("payType")}>{CHOICES.payType.map(o => <option key={o}>{o}</option>)}</select></Field>
+  const opt = (a: readonly string[]) => a.map(v => ({value: v, label: v}));
+  return <Drawer open={open} onClose={onClose} title="Add staff member" subtitle={`Will be created as ${next}. No rate = flagged "Pay not set" in the pay run.`}
+    footer={<><Btn variant="ghost" onClick={onClose}>Cancel</Btn><Btn variant="primary" onClick={submit} loading={busy} disabled={!name}>Add staff</Btn></>}>
+    <div className="grid grid-cols-2 gap-x-3 gap-y-4">
+      <Field label="Full name" className="col-span-2"><input className={inputClass} value={f.name} onChange={set("name")} autoFocus/></Field>
+      <Field label="Model" className="col-span-2"><Select value={f.model} options={modelOpts} onChange={set("model")} ariaLabel="Model"/></Field>
+      <Field label="Marketing role"><Select value={f.platform} options={opt(ROLES)} onChange={set("platform")} ariaLabel="Marketing role"/></Field>
+      <Field label="Pay type"><Select value={f.payType} options={opt(CHOICES.payType)} onChange={set("payType")} ariaLabel="Pay type"/></Field>
       <Field label="Hourly rate (USD)"><input type="number" min={0} step="0.01" className={inputClass + " num"} value={f.rate} onChange={set("rate")}/></Field>
       <Field label="Standard daily hours"><input type="number" min={0} max={24} className={inputClass + " num"} value={f.hours} onChange={set("hours")}/></Field>
-    </div>
-    <Field label="Email"><input type="email" className={inputClass} value={f.email} onChange={set("email")}/></Field>
-    <Field label="Start date"><input type="date" className={inputClass} value={f.start} onChange={set("start")}/></Field>
-  </Drawer>;
-}
-
-function AddTarget({open, onClose, create, staffOpts, week}: {open: boolean; onClose: () => void; create: (f: any) => Promise<any>; staffOpts: {value: string; label: string}[]; week: string}) {
-  const [f, setF] = useState({staff: "", week, daily: "", weekly: "", monthly: ""});
-  const [busy, setBusy] = useState(false);
-  useEffect(() => { if (open) setF({staff: "", week, daily: "", weekly: "", monthly: ""}); }, [open]);
-  const set = (k: string) => (e: any) => setF(x => ({...x, [k]: e.target.value}));
-  const n = (v: string) => v === "" ? null : Math.round(Number(v));
-  async function submit() {
-    setBusy(true);
-    try {
-      const name = staffOpts.find(o => o.value === f.staff)?.label ?? "";
-      await create({name, staff: [f.staff], week: mondayOf(f.week), daily: n(f.daily), weekly: n(f.weekly), monthly: n(f.monthly)});
-      toast.success(`Target set for ${name}`); onClose();
-    } catch (e: any) { toast.error(e.message); } finally { setBusy(false); }
-  }
-  return <Drawer open={open} onClose={onClose} title="Set a target" subtitle="Applies from the chosen week onwards. Leave any field blank for no target."
-    footer={<><Btn variant="ghost" onClick={onClose}>Cancel</Btn><Btn variant="primary" onClick={submit} loading={busy} disabled={!f.staff}>Save target</Btn></>}>
-    <Field label="VA"><select className={inputClass} value={f.staff} onChange={set("staff")}><option value="">Choose…</option>{staffOpts.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}</select></Field>
-    <Field label="Effective week" hint={`Starts ${weekLabel(mondayOf(f.week || week))}`}><input type="date" className={inputClass} value={f.week} onChange={set("week")}/></Field>
-    <div className="grid grid-cols-3 gap-3">
-      <Field label="Daily"><input type="number" min={0} className={inputClass + " num"} value={f.daily} onChange={set("daily")}/></Field>
-      <Field label="Weekly min."><input type="number" min={0} className={inputClass + " num"} value={f.weekly} onChange={set("weekly")}/></Field>
-      <Field label="Monthly"><input type="number" min={0} className={inputClass + " num"} value={f.monthly} onChange={set("monthly")}/></Field>
+      <Field label="Weekly conversion minimum" className="col-span-2" hint="Shows as their target on Conversions"><input type="number" min={0} step={1} className={inputClass + " num"} value={f.weeklyMin} onChange={set("weeklyMin")}/></Field>
+      <Field label="Days off" className="col-span-2"><Select value={f.off} onChange={set("off")} ariaLabel="Days off"
+        options={[{value: "[0]", label: "Sunday"}, {value: "[0,6]", label: "Saturday + Sunday"}, {value: "[]", label: "None (7 days)"}]}/></Field>
+      <Field label="Email" className="col-span-2"><input type="email" className={inputClass} value={f.email} onChange={set("email")}/></Field>
+      <Field label="Start date" className="col-span-2"><input type="date" className={inputClass} value={f.start} onChange={set("start")}/></Field>
     </div>
   </Drawer>;
 }
