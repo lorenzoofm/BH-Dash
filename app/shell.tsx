@@ -48,8 +48,8 @@ export default function Shell({children, email, isAdmin, pages}: {children: Reac
   const idle = row + " text-muted-foreground hover:bg-accent hover:text-foreground";
 
   const nav = <nav className="flex h-full flex-col">
-    <NavLink href="/" className="flex items-baseline gap-3 px-6 pb-7 pt-7">
-      <span className="text-[30px] font-extrabold leading-none tracking-[-0.07em] text-foreground">20</span>
+    <NavLink href="/" className="flex items-center gap-3 px-6 pb-7 pt-7">
+      <img src="/20mg.png" alt="20MG" width={34} height={34} className="rounded-[9px]"/>
       <span className="label-mono text-muted-foreground">BH Operations</span>
     </NavLink>
     <div className="flex-1 space-y-6 overflow-y-auto px-3">
@@ -84,7 +84,7 @@ export default function Shell({children, email, isAdmin, pages}: {children: Reac
     <div className="lg:pl-64">
       <header className="sticky top-0 z-20 flex h-16 items-center gap-3 border-b bg-background/90 px-4 backdrop-blur lg:hidden">
         <button onClick={() => setOpen(true)} aria-label="Open menu" className="grid size-10 place-items-center rounded-full border bg-card"><Menu className="size-4"/></button>
-        <span className="text-[22px] font-extrabold tracking-[-0.07em]">20</span>
+        <img src="/20mg.png" alt="20MG" width={28} height={28} className="rounded-[7px]"/>
         <span className="label-mono text-muted-foreground">BH Operations</span>
       </header>
       <main className="mx-auto max-w-[var(--container-max)] px-4 py-7 lg:px-8 lg:py-12 xl:px-12">{children}</main>
