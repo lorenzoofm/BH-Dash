@@ -180,3 +180,7 @@ input[type="number"] {
 /* Tables: muted header strip, hairline rows. */
 main thead { background: var(--surface-thead); }
 main tbody tr { border-color: var(--border-faint); }
+
+/* Menus, popovers and the toast open with a short drop-in. */
+.bh-pop { animation: bh-pop 140ms var(--ease-snap); }
+@keyframes bh-pop { from { opacity: 0; translate: 0 -4px; } }

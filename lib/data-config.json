@@ -101,33 +101,13 @@
                 "color": "grayLight2"
               },
               {
-                "id": "selp0bs3ZzdVEF1V0",
-                "label": "OnlyFans",
-                "color": "grayLight2"
-              },
-              {
-                "id": "selTHNsUGJYOq81Iw",
-                "label": "Fanvue",
-                "color": "grayLight2"
-              },
-              {
-                "id": "selwviNeivQ9o5old",
-                "label": "Instagram",
-                "color": "grayLight2"
-              },
-              {
                 "id": "selk5sBS9uu6CoNim",
                 "label": "Discord",
                 "color": "grayLight2"
               },
               {
-                "id": "sel6bHdUS76stpGE9",
-                "label": "Threads",
-                "color": "grayLight2"
-              },
-              {
-                "id": "selIX0N5GpGAVPJxq",
-                "label": "Reddit",
+                "id": "selwviNeivQ9o5old",
+                "label": "IG",
                 "color": "grayLight2"
               },
               {
@@ -634,6 +614,31 @@
             "prefersSingleRecordLink": false,
             "inverseLinkFieldId": "fldqUMUju3IGfq3bg"
           }
+        },
+        {
+          "id": "fldWeeklyMinimum0",
+          "name": "Weekly Minimum",
+          "type": "NUMBER",
+          "options": {
+            "precision": 2,
+            "min": null,
+            "max": null
+          },
+          "rawType": "number",
+          "rawOptions": {
+            "precision": 2
+          }
+        },
+        {
+          "id": "fldDaysOff0000000",
+          "name": "Days Off",
+          "type": "SINGLE_LINE_TEXT",
+          "options": {
+            "minLength": null,
+            "maxLength": null
+          },
+          "rawType": "singleLineText",
+          "rawOptions": {}
         }
       ],
       "actions": {
@@ -648,7 +653,9 @@
           "Currency",
           "Start Date",
           "End Date",
-          "Email"
+          "Email",
+          "Weekly Minimum",
+          "Days Off"
         ],
         "POST": [
           "Staff ID",
@@ -662,7 +669,9 @@
           "Currency",
           "Start Date",
           "End Date",
-          "Email"
+          "Email",
+          "Weekly Minimum",
+          "Days Off"
         ]
       }
     },
@@ -1896,6 +1905,14 @@
           },
           "rawType": "multilineText",
           "rawOptions": {}
+        },
+        {
+          "id": "fldAvatarURL00000",
+          "name": "Avatar URL",
+          "type": "URL",
+          "options": {},
+          "rawType": "url",
+          "rawOptions": {}
         }
       ],
       "actions": {
@@ -1905,11 +1922,13 @@
           "OF Username",
           "Model",
           "Include in P&L",
-          "Notes"
+          "Notes",
+          "Avatar URL"
         ],
         "PATCH": [
           "Model",
-          "Include in P&L"
+          "Include in P&L",
+          "Avatar URL"
         ]
       }
     },
@@ -2397,6 +2416,464 @@
           "Paid Subscribers",
           "Notes"
         ]
+      }
+    },
+    "payPeriods": {
+      "tableId": "payPeriods",
+      "table": "Pay Periods",
+      "primaryField": "Period",
+      "fields": [
+        {
+          "id": "fldPeriod00000000",
+          "name": "Period",
+          "type": "SINGLE_LINE_TEXT",
+          "options": {
+            "minLength": null,
+            "maxLength": null
+          },
+          "rawType": "singleLineText",
+          "rawOptions": {}
+        },
+        {
+          "id": "fldStatus00000000",
+          "name": "Status",
+          "type": "SELECT",
+          "options": {
+            "choices": [
+              {
+                "id": "selopen0000000000",
+                "label": "open",
+                "color": "grayLight2"
+              },
+              {
+                "id": "selapproved000000",
+                "label": "approved",
+                "color": "grayLight2"
+              },
+              {
+                "id": "selpaid0000000000",
+                "label": "paid",
+                "color": "grayLight2"
+              }
+            ],
+            "allowToAddNewChoice": false
+          },
+          "rawType": "singleSelect",
+          "rawOptions": {}
+        },
+        {
+          "id": "fldApprovedAt0000",
+          "name": "Approved At",
+          "type": "SINGLE_LINE_TEXT",
+          "options": {
+            "minLength": null,
+            "maxLength": null
+          },
+          "rawType": "singleLineText",
+          "rawOptions": {}
+        },
+        {
+          "id": "fldApprovedBy0000",
+          "name": "Approved By",
+          "type": "SINGLE_LINE_TEXT",
+          "options": {
+            "minLength": null,
+            "maxLength": null
+          },
+          "rawType": "singleLineText",
+          "rawOptions": {}
+        }
+      ],
+      "actions": {
+        "POST": [
+          "Period",
+          "Status",
+          "Approved At",
+          "Approved By"
+        ],
+        "PATCH": [
+          "Status",
+          "Approved At",
+          "Approved By"
+        ]
+      }
+    },
+    "payStaff": {
+      "tableId": "payStaff",
+      "table": "Pay Staff",
+      "primaryField": "Period",
+      "fields": [
+        {
+          "id": "fldPeriod00000000",
+          "name": "Period",
+          "type": "SINGLE_LINE_TEXT",
+          "options": {
+            "minLength": null,
+            "maxLength": null
+          },
+          "rawType": "singleLineText",
+          "rawOptions": {}
+        },
+        {
+          "id": "fldStaff000000000",
+          "name": "Staff",
+          "type": "LINKED_RECORD",
+          "options": {
+            "linkedTableId": "Staff"
+          },
+          "rawType": "multipleRecordLinks",
+          "rawOptions": {
+            "linkedTableId": "tblbHePRmAbfWwXBU",
+            "isReversed": false,
+            "prefersSingleRecordLink": true
+          }
+        },
+        {
+          "id": "fldChecked0000000",
+          "name": "Checked",
+          "type": "CHECKBOX",
+          "options": {},
+          "rawType": "checkbox",
+          "rawOptions": {}
+        },
+        {
+          "id": "fldSent0000000000",
+          "name": "Sent",
+          "type": "CHECKBOX",
+          "options": {},
+          "rawType": "checkbox",
+          "rawOptions": {}
+        },
+        {
+          "id": "fldHeldDecision00",
+          "name": "Held Decision",
+          "type": "SELECT",
+          "options": {
+            "choices": [
+              {
+                "id": "selpay00000000000",
+                "label": "pay",
+                "color": "grayLight2"
+              },
+              {
+                "id": "selno000000000000",
+                "label": "no",
+                "color": "grayLight2"
+              }
+            ],
+            "allowToAddNewChoice": false
+          },
+          "rawType": "singleSelect",
+          "rawOptions": {}
+        },
+        {
+          "id": "fldExcused0000000",
+          "name": "Excused",
+          "type": "SINGLE_LINE_TEXT",
+          "options": {
+            "minLength": null,
+            "maxLength": null
+          },
+          "rawType": "singleLineText",
+          "rawOptions": {}
+        },
+        {
+          "id": "fldRateSnapshot00",
+          "name": "Rate Snapshot",
+          "type": "CURRENCY",
+          "options": {
+            "precision": 2,
+            "min": null,
+            "max": null,
+            "isoCode": null,
+            "customSymbol": "$"
+          },
+          "rawType": "currency",
+          "rawOptions": {
+            "precision": 2,
+            "symbol": "$"
+          }
+        },
+        {
+          "id": "fldStdHoursSnapsh",
+          "name": "Std Hours Snapshot",
+          "type": "NUMBER",
+          "options": {
+            "precision": 2,
+            "min": null,
+            "max": null
+          },
+          "rawType": "number",
+          "rawOptions": {
+            "precision": 2
+          }
+        },
+        {
+          "id": "fldDaysOffSnapsho",
+          "name": "Days Off Snapshot",
+          "type": "SINGLE_LINE_TEXT",
+          "options": {
+            "minLength": null,
+            "maxLength": null
+          },
+          "rawType": "singleLineText",
+          "rawOptions": {}
+        }
+      ],
+      "actions": {
+        "POST": [
+          "Period",
+          "Staff",
+          "Checked",
+          "Sent",
+          "Held Decision",
+          "Excused",
+          "Rate Snapshot",
+          "Std Hours Snapshot",
+          "Days Off Snapshot"
+        ],
+        "PATCH": [
+          "Checked",
+          "Sent",
+          "Held Decision",
+          "Excused",
+          "Rate Snapshot",
+          "Std Hours Snapshot",
+          "Days Off Snapshot"
+        ]
+      }
+    },
+    "payAdjustments": {
+      "tableId": "payAdjustments",
+      "table": "Pay Adjustments",
+      "primaryField": "Period",
+      "fields": [
+        {
+          "id": "fldPeriod00000000",
+          "name": "Period",
+          "type": "SINGLE_LINE_TEXT",
+          "options": {
+            "minLength": null,
+            "maxLength": null
+          },
+          "rawType": "singleLineText",
+          "rawOptions": {}
+        },
+        {
+          "id": "fldStaff000000000",
+          "name": "Staff",
+          "type": "LINKED_RECORD",
+          "options": {
+            "linkedTableId": "Staff"
+          },
+          "rawType": "multipleRecordLinks",
+          "rawOptions": {
+            "linkedTableId": "tblbHePRmAbfWwXBU",
+            "isReversed": false,
+            "prefersSingleRecordLink": true
+          }
+        },
+        {
+          "id": "fldType0000000000",
+          "name": "Type",
+          "type": "SELECT",
+          "options": {
+            "choices": [
+              {
+                "id": "selBonus000000000",
+                "label": "Bonus",
+                "color": "grayLight2"
+              },
+              {
+                "id": "selDeduction00000",
+                "label": "Deduction",
+                "color": "grayLight2"
+              },
+              {
+                "id": "selExtrahours0000",
+                "label": "Extra hours",
+                "color": "grayLight2"
+              },
+              {
+                "id": "selCorrection0000",
+                "label": "Correction",
+                "color": "grayLight2"
+              }
+            ],
+            "allowToAddNewChoice": false
+          },
+          "rawType": "singleSelect",
+          "rawOptions": {}
+        },
+        {
+          "id": "fldValue000000000",
+          "name": "Value",
+          "type": "CURRENCY",
+          "options": {
+            "precision": 2,
+            "min": null,
+            "max": null,
+            "isoCode": null,
+            "customSymbol": "$"
+          },
+          "rawType": "currency",
+          "rawOptions": {
+            "precision": 2,
+            "symbol": "$"
+          }
+        },
+        {
+          "id": "fldHours000000000",
+          "name": "Hours",
+          "type": "NUMBER",
+          "options": {
+            "precision": 2,
+            "min": null,
+            "max": null
+          },
+          "rawType": "number",
+          "rawOptions": {
+            "precision": 2
+          }
+        },
+        {
+          "id": "fldNote0000000000",
+          "name": "Note",
+          "type": "LONG_TEXT",
+          "options": {
+            "type": "TEXT"
+          },
+          "rawType": "multilineText",
+          "rawOptions": {}
+        },
+        {
+          "id": "fldForPeriod00000",
+          "name": "For Period",
+          "type": "SINGLE_LINE_TEXT",
+          "options": {
+            "minLength": null,
+            "maxLength": null
+          },
+          "rawType": "singleLineText",
+          "rawOptions": {}
+        }
+      ],
+      "actions": {
+        "POST": [
+          "Period",
+          "Staff",
+          "Type",
+          "Value",
+          "Hours",
+          "Note",
+          "For Period"
+        ],
+        "PATCH": [
+          "Type",
+          "Value",
+          "Hours",
+          "Note"
+        ],
+        "DELETE": []
+      }
+    },
+    "expenseViews": {
+      "tableId": "expenseViews",
+      "table": "Expense Views",
+      "primaryField": "Name",
+      "fields": [
+        {
+          "id": "fldName0000000000",
+          "name": "Name",
+          "type": "SINGLE_LINE_TEXT",
+          "options": {
+            "minLength": null,
+            "maxLength": null
+          },
+          "rawType": "singleLineText",
+          "rawOptions": {}
+        },
+        {
+          "id": "fldUserEmail00000",
+          "name": "User Email",
+          "type": "EMAIL",
+          "options": {},
+          "rawType": "email",
+          "rawOptions": {}
+        },
+        {
+          "id": "fldFilters0000000",
+          "name": "Filters",
+          "type": "LONG_TEXT",
+          "options": {
+            "type": "TEXT"
+          },
+          "rawType": "multilineText",
+          "rawOptions": {}
+        },
+        {
+          "id": "fldSort0000000000",
+          "name": "Sort",
+          "type": "SINGLE_LINE_TEXT",
+          "options": {
+            "minLength": null,
+            "maxLength": null
+          },
+          "rawType": "singleLineText",
+          "rawOptions": {}
+        },
+        {
+          "id": "fldGroupBy0000000",
+          "name": "Group By",
+          "type": "SINGLE_LINE_TEXT",
+          "options": {
+            "minLength": null,
+            "maxLength": null
+          },
+          "rawType": "singleLineText",
+          "rawOptions": {}
+        },
+        {
+          "id": "fldSystem00000000",
+          "name": "System",
+          "type": "CHECKBOX",
+          "options": {},
+          "rawType": "checkbox",
+          "rawOptions": {}
+        },
+        {
+          "id": "fldPosition000000",
+          "name": "Position",
+          "type": "NUMBER",
+          "options": {
+            "precision": 2,
+            "min": null,
+            "max": null
+          },
+          "rawType": "number",
+          "rawOptions": {
+            "precision": 2
+          }
+        }
+      ],
+      "actions": {
+        "POST": [
+          "Name",
+          "User Email",
+          "Filters",
+          "Sort",
+          "Group By",
+          "System",
+          "Position"
+        ],
+        "PATCH": [
+          "Name",
+          "Filters",
+          "Sort",
+          "Group By",
+          "Position"
+        ],
+        "DELETE": []
       }
     }
   }

@@ -2,6 +2,7 @@
 import {ArrowDownRight, ArrowUpRight, ChevronLeft, ChevronRight, Loader2, Minus, X} from "lucide-react";
 import {useEffect} from "react";
 import {cn} from "@/lib/utils";
+import {AVATAR_GRADIENTS, initials, ROLE_STYLE, type Role} from "@/lib/team";
 
 // Small, opinionated building blocks shared by every page.
 
@@ -199,4 +200,18 @@ export function Bar({value, max, className}: {value: number; max: number; classN
 export function TableError({tables}: {tables: {error: Error | null; refetch: () => unknown}[]}) {
   const failed=tables.filter(t=>t.error);
   return <div role="alert" className="rounded-[var(--radius-card)] border border-destructive/30 bg-card p-6 text-sm"><p className="font-medium">Data could not finish loading.</p><p className="my-2 text-muted-foreground">{failed[0]?.error?.message || "Please retry before editing records."}</p><Btn onClick={()=>failed.forEach(t=>t.refetch())}>Retry loading</Btn></div>;
+}
+
+// Creatorstaq photo when there is one, otherwise the model's gradient (by model order) and initials.
+export function ModelAvatar({name, src, index = 0, size = 28, className}: {name: string; src?: string | null; index?: number; size?: number; className?: string}) {
+  return <span className={cn("grid shrink-0 place-items-center overflow-hidden rounded-full font-bold text-white", className)}
+    style={{width: size, height: size, fontSize: Math.round(size * 0.36), background: AVATAR_GRADIENTS[index % AVATAR_GRADIENTS.length]}}>
+    {src ? <img src={src} alt="" className="size-full object-cover" referrerPolicy="no-referrer"/> : initials(name)}
+  </span>;
+}
+
+// Marketing role pill (X / Discord / IG / VPS) in its channel colours.
+export function RolePill({role, className}: {role: Role; className?: string}) {
+  const s = ROLE_STYLE[role];
+  return <span className={cn("inline-flex h-[22px] items-center rounded-full px-2 text-[11px] font-bold", className)} style={{background: s.pillBg, color: s.pillFg}}>{role}</span>;
 }

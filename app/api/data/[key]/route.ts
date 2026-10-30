@@ -3,14 +3,16 @@ import {uniqueFields,sameValue} from '@/lib/data-rules';
 import {pagesFor,type Page} from '@/lib/page-access';
 export const dynamic='force-dynamic';
 const response=(body:any)=>Response.json(body,{headers:{'Cache-Control':'private, no-store'}});
-const tablePages:Record<string,Page[]>={staff:['overview','staff','conversions','pay-hours','pnl'],models:['overview','staff','pnl','revenue'],conversions:['overview','conversions','staff','pnl'],expectations:['overview','staff','conversions'],paylog:['overview','staff','pay-hours','pnl'],expenses:['expenses','pnl'],map:['pnl','revenue'],paidSubs:['conversions']};
+const tablePages:Record<string,Page[]>={staff:['overview','staff','conversions','pay-hours','pnl'],models:['overview','staff','pnl','revenue'],conversions:['overview','conversions','staff','pnl'],expectations:['overview','staff','conversions'],paylog:['overview','staff','pay-hours','pnl'],expenses:['expenses','pnl'],map:['pnl','revenue'],paidSubs:['conversions'],payPeriods:['overview','pay-hours','pnl'],payStaff:['overview','pay-hours','pnl'],payAdjustments:['overview','pay-hours','pnl'],expenseViews:['expenses']};
 // Writes need the page that edits the table, not just one that reads it.
-const writePages:Record<string,Page[]>={staff:['staff'],expectations:['staff'],conversions:['conversions'],paidSubs:['conversions'],paylog:['pay-hours'],expenses:['expenses'],models:['pnl','revenue'],map:['pnl','revenue']};
+const writePages:Record<string,Page[]>={staff:['staff'],expectations:['staff'],conversions:['conversions'],paidSubs:['conversions'],paylog:['pay-hours'],expenses:['expenses'],models:['pnl','revenue'],map:['pnl','revenue'],payPeriods:['pay-hours'],payStaff:['pay-hours'],payAdjustments:['pay-hours'],expenseViews:['expenses']};
 // Fields hidden unless the user has one of the listed pages.
 const privateFields:Record<string,{fields:Set<string>;pages:Page[]}>={
  models:{fields:new Set(["Deal Type","Model's Cut %","Our Cut %","Payout Basis"]),pages:['pnl']},
  staff:{fields:new Set(["Current Hourly Rate"]),pages:['staff','pay-hours','pnl']},
  paylog:{fields:new Set(["Hourly Rate Snapshot","Bonus","Deductions","Total Pay"]),pages:['staff','pay-hours','pnl']},
+ payStaff:{fields:new Set(["Rate Snapshot"]),pages:['pay-hours','pnl']},
+ payAdjustments:{fields:new Set(["Value"]),pages:['pay-hours','pnl']},
 };
 const hidden=(key:string,pages:Page[],field:string)=>{const p=privateFields[key];return !!p&&p.fields.has(field)&&!p.pages.some(page=>pages.includes(page));};
 async function access(actor:Awaited<ReturnType<typeof guard>>,key:string,write=false){const pages=await pagesFor(actor.user!.email,actor.isAdmin);if(!(write?writePages:tablePages)[key]?.some(page=>pages.includes(page)))throw new Error('403:This data is not enabled for your account.');return pages;}
@@ -30,6 +32,7 @@ export async function GET(req:Request,{params}:any){try{
  [...new Set(Object.values(select))].forEach(f=>query.append('fields[]',f));
  const offset=url.searchParams.get('offset');if(offset){if(offset.length>1024)throw new Error('400:Invalid page.');query.set('offset',offset);}
  const sort=url.searchParams.get('sort');if(sort){if(!select[sort])throw new Error('400:Unknown sort field.');query.set('sort[0][field]',select[sort]);query.set('sort[0][direction]',url.searchParams.get('direction')==='desc'?'desc':'asc');}
+ if(key==='expenseViews'){const me=actor.user!.email.toLowerCase();const records=(await allRows(s,true)).filter(r=>String(r.fields['User Email']??'').toLowerCase()===me);return response({items:await formatRecords(s,records,select),nextCursor:null});}
  const result=url.searchParams.get('all')==='1'&&!offset?{records:await allRows(s,false,query),offset:null}:await store(s.tableId+'?'+query);
  return response({items:await formatRecords(s,result.records,select),nextCursor:result.offset??null});
  }catch(e){return failure(e);}}
@@ -48,6 +51,7 @@ async function save(req:Request,{params}:any){try{
  const select=projection(s,body.select||{}),fields=req.method==='DELETE'?{}:validateFields(s,req.method,select,body.fields);
  if(fields.Currency!=null&&fields.Currency!=='USD')throw new Error('400:All amounts must be in USD.');
  const existing=id?await store(s.tableId+'/'+id,{},false):undefined;
+ if(key==='expenseViews'){if(existing&&String(existing.fields['User Email']??'').toLowerCase()!==actor.user!.email.toLowerCase())throw new Error('404:That view no longer exists.');if(req.method==='POST')fields['User Email']=actor.user!.email.toLowerCase();}
  if(existing){
   if(!body.expected||typeof body.expected!=='object'||Array.isArray(body.expected)||Object.keys(body.expected).length===0||Object.keys(body.expected).length>50)throw new Error('409:Refresh this record before saving.');
   for(const [name,value] of Object.entries(body.expected)){

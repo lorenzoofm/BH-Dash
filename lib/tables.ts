@@ -7,14 +7,18 @@ import {fetchCreators, label, linkIds, revenueRanges, rowsOf, useAllPages} from 
 // One field selection per Airtable table. Every page reads through these, so the
 // query cache is shared and navigating between pages doesn't refetch.
 export const SELECT = {
-  staff: {name: "Full Name", staffId: "Staff ID", status: "Status", model: "Model", platform: "Platform", payType: "Pay Type", rate: "Current Hourly Rate", currency: "Currency", hours: "Standard Daily Hours", start: "Start Date", end: "End Date", email: "Email"},
+  staff: {name: "Full Name", staffId: "Staff ID", status: "Status", model: "Model", platform: "Platform", payType: "Pay Type", rate: "Current Hourly Rate", currency: "Currency", hours: "Standard Daily Hours", start: "Start Date", end: "End Date", email: "Email", weeklyMin: "Weekly Minimum", daysOff: "Days Off"},
   paylog: {workDate: "Work Date", staff: "Staff", hours: "Hours Worked", rate: "Hourly Rate Snapshot", bonus: "Bonus", deductions: "Deductions", status: "Payment Status", paidDate: "Payment Date", notes: "Notes", submittedBy: "Submitted By", totalPay: "Total Pay"},
   expenses: {expenseId: "Expense ID", date: "Expense Date", description: "Description", amount: "Amount", currency: "Currency", category: "Category", channel: "Channel", model: "Model", vendor: "Vendor", billing: "Billing Type", status: "Status", paidDate: "Paid Date", notes: "Notes", createdBy: "Created By", sourceRef: "Source Ref"},
   models: {model: "Model", status: "Status", dealType: "Deal Type", modelCut: "Model's Cut %", ourCut: "Our Cut %", basis: "Payout Basis", start: "Start Date", notes: "Notes"},
-  map: {slug: "Account Slug", accountId: "Account ID", ofUsername: "OF Username", model: "Model", include: "Include in P&L", notes: "Notes"},
+  map: {slug: "Account Slug", accountId: "Account ID", ofUsername: "OF Username", model: "Model", include: "Include in P&L", notes: "Notes", avatar: "Avatar URL"},
   conversions: {week: "Week Starting", staff: "Staff", model: "Model", conversions: "Conversions", notes: "Notes", source: "Source"},
   expectations: {name: "Name", week: "Effective Week", staff: "Staff", daily: "Daily Target", weekly: "Weekly Minimum", monthly: "Monthly Target"},
   paidSubs: {name: "Name", week: "Week Starting", model: "Model", paidSubs: "Paid Subscribers", notes: "Notes"},
+  payPeriods: {period: "Period", status: "Status", approvedAt: "Approved At", approvedBy: "Approved By"},
+  payStaff: {period: "Period", staff: "Staff", checked: "Checked", sent: "Sent", held: "Held Decision", excused: "Excused", rateSnapshot: "Rate Snapshot", stdSnapshot: "Std Hours Snapshot", offSnapshot: "Days Off Snapshot"},
+  payAdjustments: {period: "Period", staff: "Staff", type: "Type", value: "Value", hours: "Hours", note: "Note", forPeriod: "For Period"},
+  expenseViews: {name: "Name", filters: "Filters", sort: "Sort", group: "Group By", system: "System", position: "Position"},
 } as const;
 
 export type TableName = keyof typeof SELECT;
@@ -48,7 +52,7 @@ export function linkOptions(rows: {id: string; fields: Record<string, any>}[], k
 
 export const CHOICES = {
   staffStatus: ["Active", "Setup", "Inactive"],
-  platform: ["X", "OnlyFans", "Fanvue", "Instagram", "Discord", "Threads", "Reddit", "VPS"],
+  platform: ["X", "Discord", "IG", "VPS"], // marketing role
   payType: ["Hourly", "Salary", "Commission"],
   currency: ["USD"], // all money is USD
   payStatus: ["Unpaid", "Scheduled", "Paid"],

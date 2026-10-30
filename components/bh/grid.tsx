@@ -5,6 +5,7 @@ import {toast} from "sonner";
 import {cn} from "@/lib/utils";
 import {label, linkIds, num, shortDate} from "@/lib/bh";
 import {Btn, Pill, statusTone} from "./ui";
+import {Menu, Select} from "./menu";
 
 export type Row = {id: string; fields: Record<string, any>};
 export type Option = {value: string; label: string};
@@ -49,7 +50,7 @@ function Cell({col, row, onSave}: {col: Column; row: Row; onSave?: (value: any) 
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState<any>("");
   const [saving, setSaving] = useState(false);
-  const ref = useRef<any>(null), finished = useRef(false);
+  const ref = useRef<any>(null), anchorRef = useRef<HTMLDivElement>(null), finished = useRef(false);
   const editable = !!onSave && col.editable;
   useEffect(() => { if (editing) ref.current?.focus?.(); }, [editing]);
 
@@ -81,11 +82,16 @@ function Cell({col, row, onSave}: {col: Column; row: Row; onSave?: (value: any) 
   const align = col.align ?? (col.type === "money" || col.type === "number" ? "right" : "left");
   if (editing) {
     const cls = "h-8 w-full rounded-md border border-brand bg-card px-2 text-[13px] outline-none ring-2 ring-brand/15 " + (align === "right" ? "text-right num" : "");
-    if (col.type === "select" || col.type === "link")
-      return <select ref={ref} multiple={col.type === "link"} className={cls + (col.type === "link" ? " h-24" : "")} value={draft} onChange={e => col.type === "link" ? setDraft(Array.from(e.target.selectedOptions, o => o.value)) : commit(e.target.value)} onBlur={() => col.type === "link" ? commit() : setEditing(false)} onKeyDown={keys}>
-        {col.type !== "link" && <option value="">—</option>}
-        {(col.options ?? []).map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-      </select>;
+    if (col.type === "select" || col.type === "link") {
+      const multi = col.type === "link", picked: string[] = multi ? draft : draft ? [draft] : [];
+      return <>
+        <div ref={anchorRef} className={cls + " flex items-center truncate"}>{picked.map(v => col.options?.find(o => o.value === v)?.label ?? v).join(" + ") || "—"}</div>
+        <Menu anchor={anchorRef.current} open onClose={() => multi ? commit() : setEditing(false)} multi={multi} selected={picked}
+          search={(col.options?.length ?? 0) > 8 ? "Search" : undefined}
+          items={[...(multi ? [] : [{value: "", label: "—"}]), ...(col.options ?? [])]}
+          onPick={v => multi ? setDraft(picked.includes(v) ? picked.filter(x => x !== v) : [...picked, v]) : commit(v)}/>
+      </>;
+    }
     return <input ref={ref} className={cls} type={col.type === "date" ? "date" : col.type === "number" || col.type === "money" ? "number" : "text"} step="any"
       value={draft} onChange={e => setDraft(e.target.value)} onBlur={() => commit()} onKeyDown={keys}/>;
   }
@@ -151,10 +157,8 @@ export function DataGrid({rows, columns, onUpdate, onDelete, loading, toolbar, f
       </div>
       {columns.filter(c => c.filter).map(c => <div key={c.key} className={cn("relative flex h-8 items-center rounded-lg border bg-card pl-2.5 text-[12.5px]", filters[c.key] && "border-foreground/30 bg-muted")}>
         <ListFilter className="mr-1.5 size-3.5 text-muted-foreground"/>
-        <select aria-label={`Filter by ${c.label}`} value={filters[c.key] ?? ""} onChange={e => setFilters(f => ({...f, [c.key]: e.target.value}))} className="h-full appearance-none bg-transparent pr-3 outline-none">
-          <option value="">{c.label}: All</option>
-          {(c.options ?? []).map(o => <option key={o.value} value={o.value}>{c.label}: {o.label}</option>)}
-        </select>
+        <Select variant="none" ariaLabel={`Filter by ${c.label}`} value={filters[c.key] ?? ""} onChange={v => setFilters(f => ({...f, [c.key]: v}))} className="h-full pr-2"
+          options={[{value: "", label: `${c.label}: All`}, ...(c.options ?? []).map(o => ({value: o.value, label: `${c.label}: ${o.label}`}))]}/>
       </div>)}
       <div className="ml-auto flex items-center gap-2">{columns.some(c => c.hideBelow) && <Btn size="sm" variant="ghost" onClick={() => setShowAll(v => !v)}>{showAll ? "Compact columns" : "All columns"}</Btn>}{toolbar}</div>
     </div>
