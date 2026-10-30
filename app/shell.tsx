@@ -2,7 +2,7 @@
 import {useEffect, useState} from "react";
 import {usePathname} from "next/navigation";
 import {NavLink} from "@/components/bh/nav-link";
-import {ArrowUpRight, BarChart3, CircleUserRound, Clock, LayoutDashboard, LogOut, Menu, Moon, Receipt, Sun, TrendingUp, UserCog, Users, Wallet, X} from "lucide-react";
+import {BarChart3, CircleUserRound, Clock, LayoutDashboard, LogOut, Menu, Moon, Receipt, Sun, TrendingUp, UserCog, Users, Wallet, X} from "lucide-react";
 import type {Page} from '@/lib/page-access-constants';
 
 const groups = [
@@ -11,7 +11,7 @@ const groups = [
   {title: "Finance", items: [["/pnl", "Profit & Loss", Wallet], ["/expenses", "Expenses", Receipt], ["/revenue", "Revenue", TrendingUp]]},
 ] as const;
 
-export default function Shell({children, email, otherUrl, isAdmin, pages}: {children: React.ReactNode; email: string; otherUrl: string; isAdmin: boolean; pages:Page[]}) {
+export default function Shell({children, email, isAdmin, pages}: {children: React.ReactNode; email: string; isAdmin: boolean; pages:Page[]}) {
   const path = usePathname();
   const [open, setOpen] = useState(false);
   useEffect(() => setOpen(false), [path]);
@@ -65,7 +65,6 @@ export default function Shell({children, email, otherUrl, isAdmin, pages}: {chil
       </div>)}
     </div>
     <div className="space-y-0.5 border-t px-3 py-4">
-      <a href={otherUrl} className={idle + " justify-between"}>Content Studio<ArrowUpRight className="size-3.5"/></a>
       <NavLink href="/account" className={idle}><CircleUserRound className="size-4" strokeWidth={1.75}/>My account</NavLink>
       {isAdmin && <NavLink href="/account/users" className={idle}><UserCog className="size-4" strokeWidth={1.75}/>Manage users</NavLink>}
       <button type="button" onClick={toggleTheme} className={idle + " w-full"} aria-pressed={dark}>

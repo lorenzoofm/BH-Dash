@@ -5,7 +5,7 @@ import {Popover} from "@/components/bh/menu";
 import {ModelAvatar} from "@/components/bh/ui";
 import {toast} from "@/components/bh/toast";
 
-export type PickerModel = {id: string; name: string; handle: string; sub: string; avatar: string | null; index: number; ended: boolean; deal: string};
+export type PickerModel = {id: string; name: string; handle: string; sub: string; avatar: string | null; index: number; ended: boolean; deal: string; disabled?: boolean};
 
 const Face = ({m, size, className}: {m: PickerModel; size: number; className?: string}) =>
   <ModelAvatar name={m.name} src={m.avatar} index={m.index} size={size} className={"shadow-[inset_0_0_0_1px_#0a0a0a14] " + (className ?? "")}/>;
@@ -31,7 +31,7 @@ export function ModelPicker({models, selected, onChange, activeIds, focus}: {
     </span>)}
     <button ref={setAnchor} type="button" aria-haspopup="listbox" aria-expanded={open} onClick={() => { setQ(""); setOpen(o => !o); }}
       className="inline-flex h-9 items-center gap-2 rounded-full border border-dashed border-[var(--ink-200)] bg-card pl-1.5 pr-3.5 text-[12.5px] font-semibold text-foreground hover:border-foreground">
-      <span className="flex">{models.filter(m => !selected.includes(m.id)).slice(0, 3).map(m => <Face key={m.id} m={m} size={24} className="-mr-1.5 border-2 border-[var(--surface-card)] !text-[8.5px]"/>)}</span>
+      <span className="flex">{models.filter(m => !selected.includes(m.id) && !m.disabled).slice(0, 3).map(m => <Face key={m.id} m={m} size={24} className="-mr-1.5 border-2 border-[var(--surface-card)] !text-[8.5px]"/>)}</span>
       <span className="ml-1.5">Choose models</span>
       <ChevronDown className="size-[11px] opacity-60" strokeWidth={2.5}/>
     </button>
@@ -45,8 +45,8 @@ export function ModelPicker({models, selected, onChange, activeIds, focus}: {
         </div>
         <div className="min-h-0 flex-1 overflow-y-auto px-1.5 pb-1.5 pt-1">
           {list.map(m => { const on = selected.includes(m.id);
-            return <button key={m.id} type="button" role="option" aria-selected={on} onClick={() => toggle(m.id)}
-              className={"flex min-h-[52px] w-full items-center gap-3 rounded-xl px-2.5 py-1.5 text-left hover:bg-[var(--ink-100)] " + (on ? "bg-[var(--paper)]" : "")}>
+            return <button key={m.id} type="button" role="option" aria-selected={on} disabled={m.disabled} onClick={() => toggle(m.id)}
+              className={"flex min-h-[52px] w-full items-center gap-3 rounded-xl px-2.5 py-1.5 text-left hover:bg-[var(--ink-100)] disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-transparent " + (on ? "bg-[var(--paper)]" : "")}>
               <span className="relative"><Face m={m} size={36} className="!text-[12px]"/>{m.ended && <span className="absolute -bottom-0.5 -right-0.5 size-3 rounded-full bg-[var(--ink-200)] shadow-[0_0_0_2px_var(--surface-card)]"/>}</span>
               <span className="min-w-0 flex-1"><span className="block truncate text-[13px] font-bold text-foreground">{m.handle}</span>
                 <span className="block truncate text-[11.5px] text-muted-foreground">{m.sub}{m.ended ? " · ended" : ""}{m.deal ? " · " + m.deal : ""}</span></span>
@@ -56,7 +56,7 @@ export function ModelPicker({models, selected, onChange, activeIds, focus}: {
           {!list.length && <div className="px-2.5 py-4 text-[12.5px] text-muted-foreground">No accounts match.</div>}
         </div>
         <div className="flex items-center justify-between gap-2 border-t border-[var(--ink-100)] py-2 pl-3.5 pr-2">
-          <span className="num text-[12px] text-muted-foreground">{selected.length} of {models.length} selected</span>
+          <span className="num text-[12px] text-muted-foreground">{selected.length} of {models.filter(m => !m.disabled).length} selected</span>
           <button type="button" onClick={() => setOpen(false)} className="h-[30px] rounded-full bg-[var(--ink)] px-3.5 text-[12.5px] font-semibold text-[var(--paper)]">Done</button>
         </div>
       </div>

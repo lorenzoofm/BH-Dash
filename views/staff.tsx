@@ -45,7 +45,9 @@ export default function Staff() {
   const [adding, setAdding] = useState(false), [confirmDel, setConfirmDel] = useState<string | null>(null);
   // Optimistic overrides per staff record until the write lands (or rolls back).
   const [ov, setOv] = useState<Record<string, Record<string, any>>>({});
-  const rows = useMemo<Row[]>(() => staff.rows.map(r => ov[r.id] ? {...r, fields: {...r.fields, ...ov[r.id]}} : r), [staff.rows, ov]);
+  // Rows deleted on this screen disappear at once; a failed delete brings them back.
+  const [gone, setGone] = useState<Set<string>>(new Set());
+  const rows = useMemo<Row[]>(() => staff.rows.filter(r => !gone.has(r.id)).map(r => ov[r.id] ? {...r, fields: {...r.fields, ...ov[r.id]}} : r), [staff.rows, ov, gone]);
 
   async function save(r: Row, fields: Record<string, any>, msg: string, shown: Record<string, any> = fields) {
     setOv(o => ({...o, [r.id]: {...o[r.id], ...shown}}));
@@ -56,7 +58,9 @@ export default function Staff() {
   // Only rows with no pay or conversion history can go; the server refuses the rest.
   async function remove(r: Row) {
     setConfirmDel(null);
-    try { await staff.remove(r.id); toast(`${label(r.fields.name) || "Blank row"} deleted`); } catch (e: any) { toast.error(e.message); }
+    setGone(g => new Set(g).add(r.id));
+    try { await staff.remove(r.id); toast(`${label(r.fields.name) || "Blank row"} deleted`); }
+    catch (e: any) { setGone(g => { const n = new Set(g); n.delete(r.id); return n; }); toast.error(e.message); }
   }
 
   const sumWeek = useMemo(() => {

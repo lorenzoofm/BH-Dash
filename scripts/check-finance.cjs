@@ -21,7 +21,10 @@ assert.equal(result.profit, 75);
 result = ctx.modelPnL({...model, fields: {...model.fields, dealType: ''}}, {...base, expenses: []});
 assert.equal(result.income, null, 'unknown deal cannot become Managed revenue');
 assert.equal(result.profit, null);
-console.log('PASS: unassigned expenses excluded; unknown deal blocks profit');
+result = ctx.modelPnL(model, {...base, expenses, sharedAcross: ['m1', 'm2']});
+assert.equal(result.expenses, 20, 'shared expense split evenly across live models');
+assert.equal(ctx.modelPnL({id: 'm3', fields: model.fields}, {...base, expenses, sharedAcross: ['m1', 'm2']}).expenses, 0, 'ended model gets no share');
+console.log('PASS: shared expenses split across live models only when asked; unknown deal blocks profit');
 
 const staff = [{id: 's1', fields: {name: 'Ana', model: [{id: 'm1'}, {id: 'm2'}]}}, {id: 's2', fields: {name: 'Bo', model: [{id: 'm2'}]}}];
 const wages = new Map([['s1', {hours: 20, pay: 100, unpaid: 40}], ['s2', {hours: 5, pay: 50, unpaid: 50}]]);

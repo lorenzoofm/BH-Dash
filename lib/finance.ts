@@ -49,13 +49,14 @@ export function dapRevenueFor(modelId: string, rows: Rec[], modelIds: string[], 
     split evenly when a staff member covers several models. Without `wages`, falls back to
     summing Pay Log Total Pay (legacy callers).
   - Expenses: Paid expenses linked to the model (split evenly across linked models).
-    Unassigned expenses are excluded until allocated to a model; otherwise each
-    model's report would count the same company expense in full.
+    Shared expenses (no model) are split evenly across `sharedAcross` (the live models), so the
+    models' expenses add up to every expense on the Expenses page. Without it they're excluded.
 */
 export type StaffWages = Map<string, {hours: number; pay: number; unpaid: number}>;
-export function modelPnL(model: Rec, {staff, paylog, expenses, map, creators, start, end, revenueKnown, accountRevenue = null, wages: payRun}: {
+export function modelPnL(model: Rec, {staff, paylog, expenses, map, creators, start, end, revenueKnown, accountRevenue = null, wages: payRun, sharedAcross = []}: {
   staff: Rec[]; paylog: Rec[]; expenses: Rec[]; map: Rec[]; creators: Creator[]; start: string; end: string; revenueKnown: boolean; accountRevenue?: number | null;
   wages?: StaffWages; // wagesFor(...) from lib/pay.ts for [start, end]
+  sharedAcross?: string[]; // model ids that share the no-model expenses
 }): ModelPnL {
   const modelId = model.id;
   // The ranged API returns creator_id, not an account ID. Its creator name is
@@ -96,7 +97,7 @@ export function modelPnL(model: Rec, {staff, paylog, expenses, map, creators, st
   let unpaidExpenses = 0;
   for (const e of expenses) {
     if (!inRange(e.fields.date, start, end)) continue;
-    const ids = linkIds(e.fields.model);
+    const linked = linkIds(e.fields.model), ids = linked.length ? linked : sharedAcross;
     if (!ids.includes(modelId)) continue;
     const amount = num(e.fields.amount) / Math.max(1, ids.length);
     if (label(e.fields.status) !== "Paid") { unpaidExpenses += amount; continue; }

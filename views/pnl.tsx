@@ -4,7 +4,7 @@ import {AlertTriangle, Banknote, Link2, Plus, Receipt, RefreshCw, TrendingUp, Us
 import {Btn, Drawer, Field, Notice, PageHeader, PageSkeleton, Segmented, inputClass} from "@/components/bh/ui";
 import {Select} from "@/components/bh/menu";
 import {toast} from "@/components/bh/toast";
-import {addDays, label, linkIds, money, num, todayIso, validDay} from "@/lib/bh";
+import {addDays, label, linkIds, money, todayIso, validDay} from "@/lib/bh";
 import {useAccountRevenues, useCreators, useDapAccounts, useTable} from "@/lib/tables";
 import {useSession} from "@/lib/datasource";
 import {usePayData} from "@/lib/pay-data";
@@ -90,33 +90,46 @@ export default function PnL() {
   const revenueRows = dapRows.filter(r => linkIds(r.fields.model).some(id => relevantIds.includes(id)));
   const accountRevenue = useAccountRevenues(revenueRows.map(r => label(r.fields.slug).toLowerCase()), valid ? start : null, valid ? end : null);
   const revenueOf = (id: string) => dapRevenueFor(id, revenueRows, relevantIds, dap.isSuccess && (revenueRows.length === 0 || accountRevenue.isSuccess), accountRevenue.data);
-  const pnlOf = (m: (typeof models.rows)[number]) => modelPnL(m, {staff: staff.rows, paylog: pay.rows, expenses: expenses.rows, map: map.rows, creators: creators.data ?? [], start, end, revenueKnown: creators.isSuccess, accountRevenue: revenueOf(m.id), wages});
+  // Shared (no-model) expenses are split evenly across the live models, so every expense is counted.
+  const sharedAcross = models.rows.filter(m => label(m.fields.status) !== "Ended").map(m => m.id);
+  const pnlOf = (m: (typeof models.rows)[number]) => modelPnL(m, {sharedAcross, staff: staff.rows, paylog: pay.rows, expenses: expenses.rows, map: map.rows, creators: creators.data ?? [], start, end, revenueKnown: creators.isSuccess, accountRevenue: revenueOf(m.id), wages});
   const reports = selectedModels.map(pnlOf);
   const p = reports.find(r => r.modelId === modelId) ?? null;
   const company = useMemo(() => {
     if (!valid) return null;
     const active = models.rows.filter(m => label(m.fields.status) !== "Ended").map(pnlOf);
     const missing = active.filter(r => r.pageRevenue === null).map(r => r.name);
-    const unassigned = expenses.rows.filter(r => !linkIds(r.fields.model).length && label(r.fields.status) === "Paid" && String(r.fields.date ?? "").slice(0, 10) >= start && String(r.fields.date ?? "").slice(0, 10) <= end)
-      .reduce((sum, r) => sum + num(r.fields.amount), 0);
     const unresolved = missing.length > 0 || active.some(r => r.dealType !== "Managed" && r.dealType !== "Chat-only");
-    const sum = (rows: typeof active, key: "income" | "payout" | "profit") => rows.some(r => r[key] === null) || unresolved || (key === "profit" && unassigned > 0) ? null : rows.reduce((n, r) => n + (r[key] ?? 0), 0);
+    const sum = (rows: typeof active, key: "income" | "payout" | "profit") => rows.some(r => r[key] === null) || unresolved ? null : rows.reduce((n, r) => n + (r[key] ?? 0), 0);
     const section = (deal: string) => {
       const rows = active.filter(r => r.dealType === deal);
       return {count: rows.length, income: sum(rows, "income"), payout: sum(rows, "payout"), profit: sum(rows, "profit"), wages: rows.reduce((n, r) => n + r.wages, 0), expenses: rows.reduce((n, r) => n + r.expenses, 0)};
     };
-    return {managed: section("Managed"), chat: section("Chat-only"), unassigned, missing, unknownDeals: active.filter(r => r.dealType !== "Managed" && r.dealType !== "Chat-only").length};
+    return {managed: section("Managed"), chat: section("Chat-only"), missing, unknownDeals: active.filter(r => r.dealType !== "Managed" && r.dealType !== "Chat-only").length};
   }, [valid, creators.data, creators.isSuccess, models.rows, staff.rows, pay.rows, expenses.rows, map.rows, start, end, dap.data, dap.isSuccess, accountRevenue.data, accountRevenue.isSuccess, selectedIds, wages]);
 
   if (!today || !range || tables.some(t => t.loading)) return <PageSkeleton/>;
 
-  const pickerModels: PickerModel[] = models.rows.map((m, index) => {
+  // The picker mirrors the accounts Creatorstaq returns right now (/v1/me): one entry per model that has a
+  // current Creatorstaq account, named by that account. Models without one (or Ended) drop out unless already
+  // selected; Creatorstaq accounts not linked to a model show disabled so they can be linked on Revenue.
+  const csAccounts = dap.data ?? [];
+  const pickerModels: PickerModel[] = [];
+  models.rows.forEach((m, index) => {
     const own = map.rows.filter(r => linkIds(r.fields.model).includes(m.id));
-    const a = own.find(r => r.fields.include !== false) ?? own[0], name = label(m.fields.model), handle = label(a?.fields.ofUsername);
-    return {id: m.id, name, index, handle: handle ? "@" + handle : name, sub: name + (a ? " · " + label(a.fields.slug) : " · no DAP account"),
-      avatar: a?.fields.avatar || photoOf(dap.data?.find(x => x.id === Number(a?.fields.accountId))), ended: label(m.fields.status) === "Ended", deal: label(m.fields.dealType)};
+    const live = csAccounts.filter(acc => own.some(r => Number(r.fields.accountId) === acc.id));
+    const row = own.find(r => r.fields.include !== false && live.some(acc => acc.id === Number(r.fields.accountId))) ?? own.find(r => live.some(acc => acc.id === Number(r.fields.accountId))) ?? own[0];
+    const acc = live.find(x => x.id === Number(row?.fields.accountId)) ?? live[0];
+    const ended = label(m.fields.status) === "Ended", name = label(m.fields.model);
+    if (dap.isSuccess && (!live.length || ended) && !selectedIds.includes(m.id)) return;
+    const handle = acc?.of_username || label(row?.fields.ofUsername);
+    pickerModels.push({id: m.id, name, index, handle: handle ? "@" + handle : name, sub: name + (acc ? " · " + acc.slug : row ? " · " + label(row.fields.slug) : " · no Creatorstaq account"),
+      avatar: photoOf(acc) || row?.fields.avatar || null, ended, deal: label(m.fields.dealType)});
   });
-  const activeIds = models.rows.filter(m => label(m.fields.status) !== "Ended").map(m => m.id);
+  const linkedIds = new Set(map.rows.filter(r => linkIds(r.fields.model).length).map(r => Number(r.fields.accountId)));
+  for (const acc of csAccounts) if (!linkedIds.has(acc.id))
+    pickerModels.push({id: "cs:" + acc.id, name: acc.of_username || acc.slug, index: pickerModels.length, handle: "@" + (acc.of_username || acc.slug), sub: acc.slug + " · not linked to a model · link it on Revenue", avatar: photoOf(acc), ended: false, deal: "", disabled: true});
+  const activeIds = pickerModels.filter(p => !p.disabled && !p.ended).map(p => p.id);
   const pick = (ids: string[]) => { setSelectedIds(ids); if (!ids.includes(modelId)) setModelId(ids[ids.length - 1]); };
 
   const syncing = creators.isFetching || accountRevenue.isFetching || tables.some(t => t.fetching);
@@ -192,7 +205,7 @@ export default function PnL() {
               <input type="date" value={start} max={today} onChange={e => setRange([e.target.value, end])} className="h-8 rounded-lg border border-[var(--ink-100)] bg-card px-2 text-[12.5px] text-foreground"/>→
               <input type="date" value={end} max={today} onChange={e => setRange([start, e.target.value])} className="h-8 rounded-lg border border-[var(--ink-100)] bg-card px-2 text-[12.5px] text-foreground"/>
             </span> : <span className="num">{start} → {end}</span>}
-            <span>Unassigned expenses stay outside model profit until assigned.</span>
+            <span>Shared expenses are split evenly across active models.</span>
           </div>
         </div>
       </section>
@@ -220,7 +233,7 @@ export default function PnL() {
             </div>)}
           </div></div>
         </section>
-        <Notice>Wages and paid expenses linked to several models are split between them. Unassigned expenses are excluded. Revenue is transaction net before chargebacks.</Notice>
+        <Notice>Wages and paid expenses linked to several models are split between them; shared expenses are split across all active models. Revenue is transaction net before chargebacks.</Notice>
       </>}
 
       {showBody && !combined && p && <>
@@ -234,7 +247,7 @@ export default function PnL() {
 
         {company && <section className={CARD + " p-6"}>
           <h2 className="text-[18px] font-bold tracking-[-0.02em]">Company summary</h2>
-          <p className="mb-3 mt-1.5 text-[12px] text-muted-foreground">Managed models and chatting clients are separate. Unassigned paid expenses stay outside both until linked to a model.</p>
+          <p className="mb-3 mt-1.5 text-[12px] text-muted-foreground">Managed models and chatting clients are separate. Shared paid expenses are split evenly across all active models.</p>
           {company.missing.length > 0 && <div className="mb-3"><Notice icon={AlertTriangle}>DAP revenue could not be verified for {company.missing.join(", ")}; company totals remain unavailable.</Notice></div>}
           {company.unknownDeals > 0 && <div className="mb-3"><Notice icon={AlertTriangle}>{company.unknownDeals} model{company.unknownDeals === 1 ? " has" : "s have"} an unknown deal type and are excluded from these sections.</Notice></div>}
           <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,260px),1fr))] gap-3">
@@ -246,7 +259,6 @@ export default function PnL() {
               </div>
             </div>)}
           </div>
-          {company.unassigned > 0 && <p className="mt-3 text-[12px] text-[var(--warning-fg)]">{m2(company.unassigned)} in paid expenses is unassigned. Aggregate profit remains unavailable until these costs are allocated. <a href="/expenses" className="underline">Assign them</a></p>}
         </section>}
 
         {p.income !== null && <section className={CARD + " p-6"}>

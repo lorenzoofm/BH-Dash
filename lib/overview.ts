@@ -50,10 +50,9 @@ export function overview({today, can, staff, conversions, pay, expenses, models,
   const live = models.filter(m => label(m.fields.status) !== "Ended");
   const sumP = (a: string, b: string, rev: (id: string) => number | null) => {
     const w = wagesFor(pay.data, pay.vas, a, b, T);
-    const ps = live.map(m => modelPnL(m, {staff, paylog: [], expenses, map, creators: [], start: a, end: b, revenueKnown: true, accountRevenue: rev(m.id), wages: w}));
-    const shared = sum(expenses.filter(e => !linkIds(e.fields.model).length && label(e.fields.status) === "Paid" && day10(e.fields.date) >= a && day10(e.fields.date) <= b).map(e => num(e.fields.amount)));
+    const ps = live.map(m => modelPnL(m, {sharedAcross: live.map(x => x.id), staff, paylog: [], expenses, map, creators: [], start: a, end: b, revenueKnown: true, accountRevenue: rev(m.id), wages: w}));
     const income = ps.some(p => p.income === null) ? null : sum(ps.map(p => p.income!));
-    const payout = sum(ps.map(p => p.payout ?? 0)), wages = sum(ps.map(p => p.wages)), exp = sum(ps.map(p => p.expenses)) + shared;
+    const payout = sum(ps.map(p => p.payout ?? 0)), wages = sum(ps.map(p => p.wages)), exp = sum(ps.map(p => p.expenses)); // includes shared expenses, split across live models
     return {ps, income, payout, wages, exp, profit: income === null || ps.some(p => p.payout === null) ? null : income - payout - wages - exp};
   };
   const mtd = sumP(mStart, T, revenue.mtd), lm = sumP(lmStart, lmSame, revenue.lm);

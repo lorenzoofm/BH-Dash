@@ -21,5 +21,5 @@ export default async function Layout({children}:{children:React.ReactNode}){
   {/* Keeps the Clerk session cookie fresh while the dashboard is open. */}
   {clerkHost&&<script async crossOrigin="anonymous" data-clerk-publishable-key={clerkKey} src={`https://${clerkHost}/npm/@clerk/clerk-js@5/dist/clerk.browser.js`}/>}
   {clerkHost&&<script dangerouslySetInnerHTML={{__html:`addEventListener('load',function(){var c=window.Clerk;c&&c.load&&c.load().catch(function(){})})`}}/>}
- </head><body><Providers><Shell email={user.email} isAdmin={isAdmin} pages={pages} otherUrl={process.env.OTHER_DASHBOARD_URL||'https://gmr20mg.softr.app'}>{children}</Shell></Providers></body></html>;
+ </head><body><Providers><Shell email={user.email} isAdmin={isAdmin} pages={pages}>{children}</Shell></Providers></body></html>;
 }

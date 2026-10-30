@@ -50,7 +50,9 @@ async function save(req:Request,{params}:any){try{
  const id=body.recordId;if(req.method!=='POST'&&(typeof id!=='string'||!/^rec[A-Za-z0-9]{14}$/.test(id)))throw new Error('400:Invalid record.');
  const select=projection(s,body.select||{}),fields=req.method==='DELETE'?{}:validateFields(s,req.method,select,body.fields);
  if(fields.Currency!=null&&fields.Currency!=='USD')throw new Error('400:All amounts must be in USD.');
- const existing=id?await store(s.tableId+'/'+id,{},false):undefined;
+ let existing:any;
+ // Deleting a row that is already gone (double click, two tabs) is a success, not an error.
+ if(id){try{existing=await store(s.tableId+'/'+id,{},false);}catch(e:any){if(req.method==='DELETE'&&String(e?.message).startsWith('404:'))return response({id,deleted:true});throw e;}}
  if(key==='expenseViews'){if(existing&&String(existing.fields['User Email']??'').toLowerCase()!==actor.user!.email.toLowerCase())throw new Error('404:That view no longer exists.');if(req.method==='POST')fields['User Email']=actor.user!.email.toLowerCase();}
  if(existing){
   if(!body.expected||typeof body.expected!=='object'||Array.isArray(body.expected)||Object.keys(body.expected).length===0||Object.keys(body.expected).length>50)throw new Error('409:Refresh this record before saving.');
