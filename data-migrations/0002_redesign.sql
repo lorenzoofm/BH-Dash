@@ -60,11 +60,12 @@ SELECT 'rec' || hex(randomblob(7)), strftime('%Y-%m-%dT%H:%M:%SZ', 'now'), strft
   period, CASE WHEN all_paid = 1 THEN 'paid' ELSE 'approved' END, strftime('%Y-%m-%dT%H:%M:%SZ', 'now'), 'migration'
 FROM "_past";
 
--- ponytail: one rate per VA per period (the highest on their rows); a mid-period rate change in old data is paid at the higher rate.
+-- One rate per VA per period: the hours-weighted average of the rates on their rows, so logged hours × rate
+-- equals what the Pay Log recorded even when a rate changed mid-period.
 INSERT INTO "payStaff" (id, created_time, updated_time, "Period", "Staff", "Checked", "Sent", "Held Decision", "Excused", "Rate Snapshot", "Std Hours Snapshot", "Days Off Snapshot")
 SELECT 'rec' || hex(randomblob(7)), strftime('%Y-%m-%dT%H:%M:%SZ', 'now'), strftime('%Y-%m-%dT%H:%M:%SZ', 'now'),
   x.period, json_array(x.staff), 1, MIN(CASE WHEN x.status = 'Paid' THEN 1 ELSE 0 END), 'pay', '[]',
-  MAX(x.rate), COALESCE(s."Standard Daily Hours", 0), '[]'
+  COALESCE(SUM(x.hours * x.rate) / NULLIF(SUM(x.hours), 0), MAX(x.rate)), COALESCE(s."Standard Daily Hours", 0), '[]'
 FROM "_pay" x JOIN "_past" USING (period) LEFT JOIN "staff" s ON s.id = x.staff
 GROUP BY x.period, x.staff;
 
