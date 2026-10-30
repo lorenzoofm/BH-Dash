@@ -1,12 +1,12 @@
 "use client";
 import {useEffect, useMemo, useState} from "react";
-import {ArrowRight, Clock, DollarSign, Plus, Target, UserCheck} from "lucide-react";
+import {ArrowRight, Clock, DollarSign, Plus, Target, Trash2, UserCheck} from "lucide-react";
 import {toast} from "@/components/bh/toast";
 import {Select} from "@/components/bh/menu";
 import {Btn, Drawer, Field, LinkBtn, PageHeader, PageSkeleton, Segmented, TableError, inputClass} from "@/components/bh/ui";
 import {addDays, label, linkIds, money, mondayOf, num, todayIso, weekLabel} from "@/lib/bh";
 import {CHOICES, linkOptions, useTable} from "@/lib/tables";
-import {ROLE_STYLE, ROLES, dayOfWeek, initials, roleOf, targetOf, type Role} from "@/lib/team";
+import {ROLE_STYLE, ROLES, converts, dayOfWeek, initials, roleOf, targetOf, type Role} from "@/lib/team";
 import {DEFAULT_OFF, daysPerWeek, offForDays, parseOff} from "@/lib/pay";
 import {cn} from "@/lib/utils";
 
@@ -42,7 +42,7 @@ export default function Staff() {
   const tables = [staff, models, conv, pay];
   const [period, setPeriod] = useState<Period>("last");
   const [q, setQ] = useState(""), [fStatus, setFStatus] = useState("");
-  const [adding, setAdding] = useState(false);
+  const [adding, setAdding] = useState(false), [confirmDel, setConfirmDel] = useState<string | null>(null);
   // Optimistic overrides per staff record until the write lands (or rolls back).
   const [ov, setOv] = useState<Record<string, Record<string, any>>>({});
   const rows = useMemo<Row[]>(() => staff.rows.map(r => ov[r.id] ? {...r, fields: {...r.fields, ...ov[r.id]}} : r), [staff.rows, ov]);
@@ -51,6 +51,12 @@ export default function Staff() {
     setOv(o => ({...o, [r.id]: {...o[r.id], ...shown}}));
     try { await staff.update(r.id, fields); toast(msg); } catch (e: any) { toast.error(e.message); }
     finally { setOv(o => { const f = {...o[r.id]}; for (const k in shown) delete f[k]; return {...o, [r.id]: f}; }); }
+  }
+
+  // Only rows with no pay or conversion history can go; the server refuses the rest.
+  async function remove(r: Row) {
+    setConfirmDel(null);
+    try { await staff.remove(r.id); toast(`${label(r.fields.name) || "Blank row"} deleted`); } catch (e: any) { toast.error(e.message); }
   }
 
   const sumWeek = useMemo(() => {
@@ -69,7 +75,7 @@ export default function Staff() {
   // KPI 1: active staff by role.
   const roles = ROLES.map(role => ({role, n: act.filter(s => roleOf(s.fields.platform) === role).length})).filter(x => x.n);
   // KPI 2: pace this week.
-  const pv = act.map(s => { const m = targetOf(s), now = sumWeek(s.id, thisWeek); return {s, k: m == null ? "none" : now == null ? "missing" : now >= m ? "met" : now >= m * day / 7 ? "pace" : "behind"}; });
+  const pv = act.filter(s => converts(s.fields.platform)).map(s => { const m = targetOf(s), now = sumWeek(s.id, thisWeek); return {s, k: m == null ? "none" : now == null ? "missing" : now >= m ? "met" : now >= m * day / 7 ? "pace" : "behind"}; });
   const good = pv.filter(x => x.k === "met" || x.k === "pace").length, judged = pv.filter(x => x.k !== "none").length;
   const segs = ([["met", "Hit", "#1f7a45", ""], ["pace", "On pace", "var(--ink)", ""], ["behind", "Behind", "#e3a33b", ""], ["missing", "Not entered", "var(--surface-card)", "inset 0 0 0 1.5px var(--ink-200)"]] as const)
     .map(([k, l, bg, ring]) => { const who = pv.filter(x => x.k === k); return {k, l, bg, ring, n: who.length, title: l + ": " + (who.map(x => name(x.s).split(" ")[0]).join(", ") || "nobody")}; }).filter(g => g.n);
@@ -88,7 +94,7 @@ export default function Staff() {
 
   // Performance: conversions vs weekly minimum over the chosen weeks.
   const weeks = period === "this" ? [thisWeek] : period === "last" ? [addDays(thisWeek, -7)] : [-28, -21, -14, -7].map(n => addDays(thisWeek, n));
-  const perf = live.map(s => {
+  const perf = live.filter(s => converts(s.fields.platform)).map(s => {
     const vals = weeks.map(w => sumWeek(s.id, w)).filter((v): v is number => v != null), min = targetOf(s);
     const actual = vals.length ? vals.reduce((a, b) => a + b, 0) : null, goal = min == null ? null : min * weeks.length;
     return {s, actual, goal, pct: goal ? (actual ?? 0) / goal : null};
@@ -98,8 +104,8 @@ export default function Staff() {
   const ql = q.trim().toLowerCase();
   const team = rows.filter(s => (!fStatus || status(s) === fStatus) && (!ql || `${name(s)} ${label(s.fields.email)} ${label(s.fields.staffId)}`.toLowerCase().includes(ql))).sort((a, b) => name(a).localeCompare(name(b)));
   const modelOpts = [{value: "", label: "—"}, ...linkOptions(models.rows, "model")];
-  const mins = [...live].sort((a, b) => ROLES.indexOf(roleOf(a.fields.platform)) - ROLES.indexOf(roleOf(b.fields.platform)) || name(a).localeCompare(name(b)));
-  const teamCols = "grid-cols-[60px_minmax(160px,1.4fr)_110px_110px_110px_90px_90px_100px_minmax(150px,1fr)]";
+  const mins = live.filter(s => converts(s.fields.platform)).sort((a, b) => ROLES.indexOf(roleOf(a.fields.platform)) - ROLES.indexOf(roleOf(b.fields.platform)) || name(a).localeCompare(name(b)));
+  const teamCols = "grid-cols-[60px_minmax(160px,1.4fr)_110px_110px_110px_90px_90px_100px_minmax(150px,1fr)_76px]";
   const minCols = "grid-cols-[minmax(180px,1fr)_150px_minmax(220px,1.6fr)_120px]";
   const perfCols = "grid-cols-[minmax(0,1.4fr)_110px_90px_minmax(0,1fr)_130px]";
 
@@ -181,8 +187,8 @@ export default function Staff() {
         <Select variant="none" value={fStatus} onChange={setFStatus} ariaLabel="Filter by status" className="h-8 rounded-[8px] border border-[var(--ink-100)] bg-[var(--surface-card)] px-2.5 text-[12.5px]"
           options={[{value: "", label: "Status: All"}, ...CHOICES.staffStatus.map(s => ({value: s, label: "Status: " + s}))]}/>
       </div>
-      <div className="overflow-x-auto"><div className="min-w-[1160px]">
-        <div className={cn("grid h-9 gap-2 px-5", teamCols, head)}><span>ID</span><span>Name</span><span>Status</span><span>Model</span><span>Role</span><span className="text-right">Rate /h</span><span className="text-right">Std hours</span><span className="text-right">Days / week</span><span>Email</span></div>
+      <div className="overflow-x-auto"><div className="min-w-[1240px]">
+        <div className={cn("grid h-9 gap-2 px-5", teamCols, head)}><span>ID</span><span>Name</span><span>Status</span><span>Model</span><span>Role</span><span className="text-right">Rate /h</span><span className="text-right">Std hours</span><span className="text-right">Days / week</span><span>Email</span><span/></div>
         {team.map(s => { const n = name(s), st = status(s) || "Active", days = daysPerWeek(off(s)), rate = s.fields.rate;
           return <div key={s.id} className={cn("grid min-h-11 items-center gap-2 border-b border-[var(--ink-100)] px-5 py-0.5 text-[13px] hover:bg-[#e7e3dc4d]", teamCols)}>
             <span className="num text-[12px] text-[var(--text-faint)]">{label(s.fields.staffId)}</span>
@@ -203,6 +209,9 @@ export default function Staff() {
                 save(s, {daysOff: JSON.stringify(offForDays(v))}, `${n} now works ${v} day${v > 1 ? "s" : ""} a week`); }}/>
             <Cell type="email" value={s.fields.email} placeholder="—" aria-label={`Email for ${n}`} className="px-1.5 text-[var(--text-faint)]"
               onCommit={v => void save(s, {email: v || null}, `${n} · email saved`)}/>
+            <span className="flex justify-end">{confirmDel === s.id
+              ? <button type="button" onClick={() => remove(s)} onBlur={() => setConfirmDel(null)} autoFocus className="h-7 rounded-full bg-[#f4dad7] px-3 text-[12px] font-semibold text-[var(--negative-fg)]">Delete</button>
+              : <button type="button" onClick={() => setConfirmDel(s.id)} aria-label={`Delete ${n || "this blank row"}`} title="Delete" className="grid size-8 place-items-center rounded-[8px] text-[var(--text-faint)] hover:bg-[#f4dad7] hover:text-[var(--negative-fg)]"><Trash2 className="size-4"/></button>}</span>
           </div>; })}
       </div></div>
       <div className="px-5 py-3 text-[12.5px] text-[var(--text-faint)]">{team.length} staff</div>

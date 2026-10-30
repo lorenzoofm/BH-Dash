@@ -60,6 +60,13 @@ async function save(req:Request,{params}:any){try{
    if(!sameValue(current,value))throw new Error('409:This record changed since it was loaded. Refresh and review it before saving.');
   }
  }
+ // Staff with history can't be deleted (it would orphan their pay and conversions); set them Inactive instead.
+ if(req.method==='DELETE'&&key==='staff'){
+  for(const k of ['paylog','conversions','payStaff','payAdjustments','expectations']){
+   const t=source(k),f=t.fields.find((f:any)=>f.name==='Staff');
+   if((await allRows(t,true)).some((r:any)=>(r.fields[f.name]??[]).includes(id)))throw new Error('409:This person has pay or conversion records. Set them to Inactive instead.');
+  }
+ }
  if(req.method!=='DELETE'){
   for(const [name,value] of Object.entries(fields)){
    const f=s.fields.find((f:any)=>f.name===name);if(f.type!=='LINKED_RECORD'||!Array.isArray(value))continue;

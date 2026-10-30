@@ -4,6 +4,9 @@ import {addDays, label, mondayOf} from "./bh";
 
 export const ROLES = ["X", "Discord", "IG", "VPS"] as const;
 export type Role = typeof ROLES[number];
+// VPS staff only watch the servers: they have no conversions, targets or pace.
+export const CONVERTING = ROLES.filter(r => r !== "VPS");
+export const converts = (platform: unknown) => roleOf(platform) !== "VPS";
 // X/Discord/IG are the design's channel colours; VPS uses the 20MG teal account token.
 export const ROLE_STYLE: Record<Role, {c: string; bar: string; track: string; label: string; pillBg: string; pillFg: string}> = {
   X: {c: "#0a0a0a", bar: "linear-gradient(180deg, #2b2925, #0a0a0a)", track: "linear-gradient(180deg, #ffffff, #f7f5f1)", label: "#ffffff", pillBg: "#0a0a0a", pillFg: "#f4f1ea"},

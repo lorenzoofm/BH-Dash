@@ -672,7 +672,8 @@
           "Email",
           "Weekly Minimum",
           "Days Off"
-        ]
+        ],
+        "DELETE": []
       }
     },
     "paylog": {

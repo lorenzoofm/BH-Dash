@@ -3,7 +3,7 @@
 import {addDays, label, linkIds, mondayOf, money, num} from "./bh";
 import {modelPnL} from "./finance";
 import {calcPay, periodOf, vaOf, wagesFor, type PayData, type VA} from "./pay";
-import {ROLES, ROLE_STYLE, roleOf, targetOf} from "./team";
+import {CONVERTING, ROLE_STYLE, converts, roleOf, targetOf} from "./team";
 import type {Page} from "./page-access-constants";
 
 type Rec = {id: string; fields: Record<string, any>};
@@ -36,14 +36,15 @@ export function overview({today, can, staff, conversions, pay, expenses, models,
     for (const sid of linkIds(r.fields.staff)) cell.set(sid + "|" + weeks[i], (cell.get(sid + "|" + weeks[i]) ?? 0) + num(r.fields.conversions));
   }
   const conv = (sid: string, w: string) => cell.get(sid + "|" + w) ?? null;
-  const roleWeeks = ROLES.map(role => ({role, c: ROLE_STYLE[role].c, vals: weeks.map(w => sum(staff.filter(s => roleOf(s.fields.platform) === role).map(s => conv(s.id, w) ?? 0)))}));
+  const roleWeeks = CONVERTING.map(role => ({role, c: ROLE_STYLE[role].c, vals: weeks.map(w => sum(staff.filter(s => roleOf(s.fields.platform) === role).map(s => conv(s.id, w) ?? 0)))}));
   const toneOf = (v: number | null, m: number | null, pace: number): BoardTone => m == null ? "none" : v == null ? "missing" : v >= m ? "met" : v >= m * pace ? "pace" : "behind";
-  const board = active.map(s => {
+  const sellers = active.filter(s => converts(s.fields.platform));
+  const board = sellers.map(s => {
     const m = targetOf(s), vals = weeks.map(w => conv(s.id, w)), now = vals[3], last = vals[2], role = roleOf(s.fields.platform);
     return {id: s.id, name: name(s), first: first(name(s)), role, roleC: ROLE_STYLE[role].c, min: m, vals, now, last,
       tone: toneOf(now, m, day / 7), lastTone: toneOf(last, m, 1), pct: m ? Math.min(1, (now ?? 0) / m) : 0};
   }).sort((a, b) => (b.now ?? -1) - (a.now ?? -1));
-  const lwMissing = active.filter(s => conv(s.id, weeks[2]) === null).map(s => first(name(s)));
+  const lwMissing = sellers.filter(s => conv(s.id, weeks[2]) === null).map(s => first(name(s)));
 
   // Money, through the P&L's modelPnL with the pay run's wagesFor (same numbers as the P&L page).
   const live = models.filter(m => label(m.fields.status) !== "Ended");

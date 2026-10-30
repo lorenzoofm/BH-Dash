@@ -6,7 +6,7 @@ import {Select} from "@/components/bh/menu";
 import {toast} from "@/components/bh/toast";
 import {addDays, label, linkIds, mondayOf, num, shortDate, todayIso, weekLabel} from "@/lib/bh";
 import {useTable} from "@/lib/tables";
-import {dayOfWeek, initials, paceFor, ROLE_STYLE, ROLES, roleOf, targetOf, toneOf, type Role} from "@/lib/team";
+import {CONVERTING, dayOfWeek, initials, paceFor, ROLE_STYLE, ROLES, roleOf, targetOf, toneOf, type Role} from "@/lib/team";
 
 type Row = {id: string; fields: Record<string, any>};
 type Hover = {w: string; x: number; y: number; week: string; value: number; name: string; note: string; c: string};
@@ -74,7 +74,8 @@ export default function Conversions() {
   const status = (s: Row) => label(s.fields.status);
   const modelName = (s: Row) => label(s.fields.model?.[0]) || "No model";
   const valueOf = (s: Row) => { const d = draft[s.id]; return d !== undefined ? (d === "" ? null : Number(d)) : sumFor(s.id, week); };
-  const roles = ROLES.filter(r => staff.rows.some(s => role(s) === r));
+  const counted = staff.rows.filter(s => role(s) !== "VPS");
+  const roles = CONVERTING.filter(r => counted.some(s => role(s) === r));
 
   // Save one VA's count for the selected week: one row per staff per week, empty deletes.
   function commit(s: Row) {
@@ -103,7 +104,7 @@ export default function Conversions() {
   }
 
   // Entry rows, grouped by role.
-  const entryStaff = staff.rows.filter(s => status(s) !== "Inactive" || sumFor(s.id, week) !== null);
+  const entryStaff = counted.filter(s => status(s) !== "Inactive" || sumFor(s.id, week) !== null);
   const order: Row[] = [];
   const groups = roles.map(r => ({r, vs: entryStaff.filter(s => role(s) === r).sort((a, b) => label(a.fields.name).localeCompare(label(b.fields.name)))})).filter(g => g.vs.length);
   groups.forEach(g => order.push(...g.vs));
@@ -111,16 +112,16 @@ export default function Conversions() {
   const missingCount = active.filter(s => valueOf(s) === null).length;
   const nextMiss = order.findIndex(s => status(s) !== "Inactive" && valueOf(s) === null);
   const weekTotal = entryStaff.reduce((t, s) => t + (valueOf(s) ?? 0), 0);
-  const prevTotal = staff.rows.reduce((t, s) => t + (sumFor(s.id, addDays(week, -7)) ?? 0), 0);
+  const prevTotal = counted.reduce((t, s) => t + (sumFor(s.id, addDays(week, -7)) ?? 0), 0);
   const delta = prevTotal ? weekTotal - prevTotal : null;
-  const lwMissing = staff.rows.filter(s => status(s) === "Active" && sumFor(s.id, lw) === null);
+  const lwMissing = counted.filter(s => status(s) === "Active" && sumFor(s.id, lw) === null);
   const liveModels = models.rows.filter(m => label(m.fields.status) !== "Ended");
 
   const goWeek = (w: string, sid?: string) => { setDraft({}); setHover(null); setWeek(w); if (sid) focusSel(`[data-conv-sid="${sid}"]`); };
 
   // Running totals.
   const weeks = weeksFor(range, today);
-  const rowsAll = staff.rows.filter(s => status(s) !== "Inactive" || weeks.some(w => sumFor(s.id, w) !== null)).map(s => {
+  const rowsAll = counted.filter(s => status(s) !== "Inactive" || weeks.some(w => sumFor(s.id, w) !== null)).map(s => {
     const vals = weeks.map(w => sumFor(s.id, w)), t = targetOf(s);
     const total = vals.reduce<number>((a, v) => a + (v ?? 0), 0);
     const tsum = t == null ? 0 : weeks.reduce((a, w) => a + paceFor(t, w, today), 0);
@@ -252,7 +253,7 @@ export default function Conversions() {
         <Segmented size="sm" value={range} options={RANGES} onChange={setRange}/>
       </header>
       <div className="flex flex-wrap gap-x-4 gap-y-1.5 px-6 pb-4 text-[12px] text-[var(--text-faint)]">
-        {ROLES.map(r => <span key={r} className="flex items-center gap-1.5"><span className="h-2.5 w-4 rounded-[4px]" style={{background: ROLE_STYLE[r].bar}}/>{r}</span>)}
+        {CONVERTING.map(r => <span key={r} className="flex items-center gap-1.5"><span className="h-2.5 w-4 rounded-[4px]" style={{background: ROLE_STYLE[r].bar}}/>{r}</span>)}
         <span className="flex items-center gap-1.5"><span className="h-2.5 w-4 rounded-[4px]" style={{background: "#0a0a0a1f", border: "1.5px dashed var(--text-heading)"}}/>This week, in progress</span>
         <span className="flex items-center gap-1.5"><span className="size-2 rounded-full bg-[var(--text-heading)]"/>Combined target</span>
       </div>
