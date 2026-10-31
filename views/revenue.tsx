@@ -15,8 +15,8 @@ const MONTHLY = "https://api.creatorstaq.com/v1/computed/revenue/monthly?months=
 const COLORS = ["var(--text-heading)", "#ff3000", "#6e6a63", "#2166c9", "#0f7b76", "#8a3cb8", "#b8327a", "#c9c4bb"];
 const STATUS_TONE: Record<string, string> = {Active: "bg-positive-soft text-[var(--positive-fg)]", Paused: "bg-warning-soft text-[var(--warning-fg)]", Ended: "bg-negative-soft text-[var(--negative-fg)]"};
 const DEAL_TONE: Record<string, string> = {Managed: "bg-positive-soft text-[var(--positive-fg)]", "Chat-only": "bg-brand-soft text-[var(--signal-tint-fg)]"};
-const GRID = "grid grid-cols-[minmax(110px,1fr)_minmax(400px,2.4fr)_96px_104px_72px_72px_minmax(150px,1.2fr)_128px_44px] items-start gap-2 px-5";
-const ACC = "grid grid-cols-[minmax(130px,1fr)_80px_40px_130px] items-center gap-2";
+const GRID = "grid grid-cols-[minmax(130px,1fr)_minmax(300px,2.2fr)_92px_100px_60px_60px_minmax(120px,1fr)_116px] items-start gap-2 px-5";
+const ACC = "grid grid-cols-[minmax(100px,1fr)_68px_40px_100px] items-center gap-2";
 const HEAD = "h-9 items-center bg-muted text-[11.5px] font-medium text-muted-foreground";
 const ROW = "border-b py-2 text-[13px] hover:bg-muted/30";
 const ghost = "h-8 w-full rounded-[6px] border border-transparent bg-transparent text-[13px] outline-none hover:border-[var(--ink-100)] focus:border-[var(--signal)] focus:bg-card";
@@ -142,19 +142,19 @@ export default function Revenue() {
       </>}
     </Panel>
 
-    <TableCard title="Models & accounts" subtitle="Synced from Creatorstaq. Switch on the accounts that count toward revenue and P&L. Managed: we keep page revenue and pay the model her cut. Chat-only: we earn our cut." minWidth={1280}
+    <TableCard title="Models & accounts" subtitle="Synced from Creatorstaq. Switch on the accounts that count toward revenue and P&L. Managed: we keep page revenue and pay the model her cut. Chat-only: we earn our cut." minWidth={1060}
       actions={isAdmin && <Btn size="sm" onClick={sync} loading={busy} disabled={!dap.isSuccess}><RefreshCw className="!size-3.5"/>Sync from Creatorstaq{fresh ? ` (${fresh} new)` : ""}</Btn>}
       footer={deleted.length > 0 && <details className="border-t px-5 py-3 text-[12.5px]">
         <summary className="cursor-pointer text-muted-foreground">Deleted accounts ({deleted.length})</summary>
         <div className="mt-2 flex flex-wrap gap-2">{deleted.map(({a, r}) => <span key={a.id} className="inline-flex h-8 items-center gap-2 rounded-full border pl-3 pr-1">{a.slug}{a.of_username && <span className="text-muted-foreground">@{a.of_username}</span>}
           {isAdmin && <Btn size="sm" variant="ghost" onClick={() => restore(a, r)} disabled={busy}>Restore</Btn>}</span>)}</div>
       </details>}>
-      <div className={cn(GRID, HEAD)}><span>Model</span><div className={ACC}><span>Account</span><span className="text-right">This month</span><span>Counts</span><span>Model</span></div><span>Status</span><span>Deal</span><span className="text-right">Model %</span><span className="text-right">Our %</span><span>Payout basis</span><span>Started</span><span/></div>
+      <div className={cn(GRID, HEAD)}><span>Model</span><div className={ACC}><span>Account</span><span className="text-right">This month</span><span>Counts</span><span>Model</span></div><span>Status</span><span>Deal</span><span className="text-right">Model %</span><span className="text-right">Our %</span><span>Payout basis</span><span>Started</span></div>
       {[...m.rows].sort((a, b) => label(a.fields.model).localeCompare(label(b.fields.model))).map(r => {
         const status = label(r.fields.status), deal = label(r.fields.dealType);
         const own = linked.filter(x => linkIds(x.fields.model)[0] === r.id);
         return <div key={r.id} className={cn(GRID, ROW)}>
-          <EditInput value={label(r.fields.model)} onCommit={v => v.trim() && edit(r, "model", v.trim())} className={ghost + " px-1.5 font-medium"} aria-label="Model name"/>
+          <span className="flex min-w-0 items-center gap-1"><EditInput value={label(r.fields.model)} onCommit={v => v.trim() && edit(r, "model", v.trim())} className={ghost + " min-w-0 flex-1 px-1.5 font-medium"} aria-label="Model name"/>{del(r)}</span>
           <div className="grid gap-1">{own.map(x => {
             const slug = label(x.fields.slug), on = x.fields.include !== false, net = accountRevenue.data?.[slug]?.net, of = label(x.fields.ofUsername);
             return <div key={x.id} className={ACC}>
@@ -171,7 +171,6 @@ export default function Revenue() {
           <EditInput type="number" min="0" max="100" placeholder="—" value={r.fields.ourCut ?? ""} onCommit={v => cut(v, x => edit(r, "ourCut", x))} className={ghost + " num px-2 text-right"} aria-label="Our cut %"/>
           <Select variant="cell" value={label(r.fields.basis) || null} options={opts(CHOICES.basis)} onChange={v => edit(r, "basis", v)} className="max-w-full px-1 text-[12.5px]" ariaLabel="Payout basis"/>
           <EditInput type="date" value={r.fields.start ?? ""} onCommit={v => edit(r, "start", v || null)} className={ghost + " num px-1 text-[12.5px]"} aria-label="Started"/>
-          <span className="flex justify-end">{del(r)}</span>
         </div>;
       })}
     </TableCard>
