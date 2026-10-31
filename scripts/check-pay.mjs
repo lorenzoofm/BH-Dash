@@ -19,11 +19,23 @@ const data = {hours, status: new Map(), va: new Map([['2026-10-16|ana', {checked
   adjustments: new Map([['2026-10-16|ana', [{type: 'Bonus', value: 10, hours: null}, {type: 'Deduction', value: -5, hours: null}, {type: 'Extra hours', value: null, hours: 2}]]])};
 let c = calcPay(data, p, ana, today);
 assert.equal(c.payable, 8 + 8 + 0 + 6); assert.equal(c.held, 2 + 3);
-assert.deepEqual(c.flags.map(f => [f.d, f.kind, f.excused]), [['2026-10-19', 'missed', false], ['2026-10-20', 'short', true]]);
+assert.deepEqual(c.flags.filter(f => f.kind !== 'gap').map(f => [f.d, f.kind, f.excused]), [['2026-10-19', 'missed', false], ['2026-10-20', 'short', true]]);
+assert.equal(c.flags.filter(f => f.kind === 'gap').length, 7);  // blank past scheduled days need a fix too
 assert.equal(c.adjSum, 10 - 5 + 6); assert.equal(c.total, 22 * 3 + 11);
-assert.equal(c.open, 1 + 1);                                  // the unexcused miss + the undecided held hours
+assert.equal(c.open, 1 + 1 + 7);                              // the unexcused miss + the undecided held hours + 7 gaps
 assert.ok(c.unloggedToday); assert.equal(c.future, 8 + 8 + 8); // today, Fri 30, Sat 31
 assert.deepEqual(c.emptyPast, ['2026-10-21', '2026-10-22', '2026-10-23', '2026-10-24', '2026-10-26', '2026-10-27', '2026-10-28']); // scheduled, past, not logged
+
+// Excusing a gap clears it as a fix and from the fill list; it pays 0.
+data.va.get('2026-10-16|ana').excused.push('2026-10-21');
+c = calcPay(data, p, ana, today);
+assert.equal(c.open, 1 + 1 + 6); assert.ok(!c.emptyPast.includes('2026-10-21'));
+// A tick stays only while Staff still has the values it was given at; no snapshot = legacy tick, kept.
+assert.equal(c.checked, true);
+data.va.get('2026-10-16|ana').snap = {rate: 3, std: 8, off: [0]};
+assert.equal(calcPay(data, p, ana, today).checked, true);
+assert.equal(calcPay(data, p, {...ana, rate: null}, today).checked, false, 'rate cleared after the tick');
+assert.equal(calcPay(data, p, {...ana, std: 6}, today).checked, false);
 
 // Pay as extra: held hours paid; approved snapshot freezes the rate even if the live rate changes.
 data.va.get('2026-10-16|ana').held = 'pay';

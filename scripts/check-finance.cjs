@@ -43,6 +43,11 @@ assert.equal(result.byStaff.length, 1, 'staff on other models excluded');
 assert.equal(result.expenses, 15, 'multi-model expense split amount/N');
 assert.equal(result.profit, 100 - 25 - 50 - 15);
 assert.equal(ctx.modelPnL(model, {...base, staff, paylog, expenses: []}).wages, 999 / 2, 'no wages map falls back to Pay Log');
+// Staff with no live model (none, or only an ended one) split across the live models, so model wages add up to the pay run.
+const loose = [{id: 's3', fields: {name: 'Ivy', model: []}}, {id: 's4', fields: {name: 'Tom', model: [{id: 'm9'}]}}];
+const looseW = new Map([['s3', {hours: 10, pay: 40, unpaid: 0}], ['s4', {hours: 10, pay: 20, unpaid: 0}]]);
+assert.equal(ctx.modelPnL(model, {...base, staff: loose, wages: looseW, expenses: [], sharedAcross: ['m1', 'm2']}).wages, 30);
+assert.equal(ctx.modelPnL(model, {...base, staff: loose, wages: looseW, expenses: []}).wages, 0, 'no sharedAcross: unassigned wages stay out');
 console.log('PASS: pay-run wages and multi-model expense split');
 
 const dapRow = {fields: {model: ['m1'], slug: 'Dap'}};

@@ -34,7 +34,10 @@ function useRecordMutation(o:MutationOptions,method:string){
  const expected:Record<string,any>={};
  if(method!=='POST')for(const [key,data] of client.getQueriesData<any>({queryKey:['records',o.from]})){
   const row=data?.pages?.flatMap((p:any)=>p.items).find((r:any)=>r.id===recordId);const selected=key[2] as Record<string,string>|undefined;
-  if(row&&selected)for(const [alias,name] of Object.entries(selected))if(Object.hasOwn(row.fields,alias))expected[name]=row.fields[alias];
+  // PATCH checks only the fields it changes, so two edits to different fields (quick saves, two tabs) both land.
+  if(row&&selected)for(const [alias,name] of Object.entries(selected))if(Object.hasOwn(row.fields,alias)&&(method!=='PATCH'||Object.hasOwn(fields,alias)))expected[name]=row.fields[alias];
+  // A changed field that was empty isn't in the cached row; fall back to the whole row so the check still runs.
+  if(row&&selected&&method==='PATCH'&&!Object.keys(expected).length)for(const [alias,name] of Object.entries(selected))if(Object.hasOwn(row.fields,alias))expected[name]=row.fields[alias];
  }
  return json('/api/data/'+encodeURIComponent(o.from),{method,headers:{'Content-Type':'application/json'},body:JSON.stringify({recordId,fields,select:o.fields??{},expected:value?.expected??expected})});},retry:false,
  onSuccess:async(result:any)=>{await client.invalidateQueries({queryKey:['records',o.from]});await client.invalidateQueries({queryKey:['library']});await o.onSuccess?.(result);},onError:(e:Error)=>o.onError?.(e)});

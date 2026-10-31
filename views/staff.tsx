@@ -198,8 +198,14 @@ export default function Staff() {
             <span className="num text-[12px] text-[var(--text-faint)]">{label(s.fields.staffId)}</span>
             <span className="flex min-w-0 items-center gap-2"><Face name={n} className="size-6 text-[9.5px]"/>
               <Cell value={n} aria-label="Name" className="min-w-0 flex-1 px-1.5 font-medium" onCommit={v => v ? void save(s, {name: v}, `${v} · saved`) : false}/></span>
-            <Select variant="none" value={st} onChange={v => v !== st && save(s, {status: v}, `${n} set to ${v}`)} ariaLabel={`Status for ${n}`}
-              className={cn("h-[26px] w-max rounded-full px-2 text-[11px] font-semibold", ST[st])} options={CHOICES.staffStatus.map(v => ({value: v, label: v}))}/>
+            <span className="flex flex-col items-start gap-0.5 py-1">
+              {/* Inactive staff stay on pay periods up to their end date (lib/pay inPeriod). */}
+              <Select variant="none" value={st} onChange={v => v !== st && save(s, {status: v, end: v === "Inactive" ? s.fields.end || today : null}, v === "Inactive" ? `${n} set to Inactive · last day ${String(s.fields.end || today).slice(0, 10)}` : `${n} set to ${v}`)} ariaLabel={`Status for ${n}`}
+                className={cn("h-[26px] w-max rounded-full px-2 text-[11px] font-semibold", ST[st])} options={CHOICES.staffStatus.map(v => ({value: v, label: v}))}/>
+              {st === "Inactive" && <input type="date" key={String(s.fields.end ?? "")} defaultValue={String(s.fields.end ?? "").slice(0, 10)} aria-label={`Last day for ${n}`} title="Last day worked"
+                onBlur={e => { const v = e.target.value || null; if (v !== (s.fields.end ? String(s.fields.end).slice(0, 10) : null)) save(s, {end: v}, `${n} · last day ${v ?? "cleared"}`); }}
+                className="num h-6 w-[104px] rounded-[6px] border border-transparent bg-transparent px-1 text-[11px] text-[var(--text-faint)] outline-none hover:border-[var(--ink-100)] focus:border-[var(--signal)]"/>}
+            </span>
             <Select variant="cell" value={linkIds(s.fields.model)[0] ?? ""} options={modelOpts} ariaLabel={`Model for ${n}`} className="px-1"
               onChange={v => save(s, {model: v ? [v] : []}, `${n} · model saved`, {model: v ? [{id: v, label: modelOpts.find(o => o.value === v)?.label}] : []})}/>
             <Select variant="cell" value={roleOf(s.fields.platform)} options={ROLES.map(r => ({value: r, label: r}))} ariaLabel={`Role for ${n}`} className="px-1"

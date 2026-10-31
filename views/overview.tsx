@@ -97,9 +97,9 @@ export default function Overview({pages}: {pages: Page[]}) {
     convOn && {label: `On pace · day ${D.day}/7`, value: `${D.onPace}/${D.judged}`, of: "VAs", href: "/conversions",
       bars: paceBars.map(p => ({h: Math.max(8, p.n / mxP * 100), c: p.c, t: p.k + ": " + p.n})),
       sub: behind.length ? "Behind: " + behind.join(", ") : "Nobody behind", sc: behind.length ? "var(--warning-fg)" : "var(--positive-fg)"},
-    can("pay-hours") && {label: "Pay run · " + D.run.label, value: money(D.run.total), of: "so far", href: "/pay-hours",
+    can("pay-hours") && {label: "Pay run · " + D.run.label, value: money(D.run.total), of: D.run.status === "open" ? "so far" : D.run.status, href: "/pay-hours",
       bars: Array.from({length: D.run.n}, (_, i) => ({h: 100, c: i < D.run.checked ? "var(--text-heading)" : LINE, t: ""})),
-      sub: `${D.run.checked} of ${D.run.n} checked · pays ${D.run.payDate}`, sc: D.run.fix ? "var(--negative-fg)" : MUTED},
+      sub: D.run.status === "paid" ? `Paid ${D.run.payDate} · ${D.run.n} VAs` : D.run.status === "approved" ? `Approved · ${D.run.sent} of ${D.run.n} sent` : `${D.run.checked} of ${D.run.n} checked · pays ${D.run.payDate}`, sc: D.run.status === "open" && D.run.fix ? "var(--negative-fg)" : MUTED},
   ].filter(Boolean) as {label: string; value: string; of: string; href: string; bars: {h: number; c: string; t: string}[]; sub: string; sc: string}[];
 
   const split = ([["Model payout", M.payout, "#6e6a63"], ["Wages", M.wages, "#ff3000"], ["Expenses", M.exp, "#c9c4bb"], ["Profit", Math.max(0, M.profit ?? 0), "#f4f1ea"]] as const)
@@ -113,7 +113,6 @@ export default function Overview({pages}: {pages: Page[]}) {
           {WDL[new Date(D.T + "T00:00:00Z").getUTCDay()]} {shortDate(D.T)} · week of {weekLabel(D.wk)} · day {D.day}/7</div>
         <h1 className="m-0 text-[40px] font-extrabold leading-[.95] tracking-[-0.045em] text-[var(--text-heading)]">Overview</h1>
       </div>
-      {fin && <a href="/detailed/overview" className="text-[12px] font-semibold hover:text-[var(--signal)]" style={{color: MUTED}}>Detailed reports →</a>}
     </div>
 
     {strip.length > 0 && <div className="grid overflow-hidden rounded-[12px] border border-[var(--border-faint)] bg-[var(--surface-card)]" style={{gridTemplateColumns: "repeat(auto-fit,minmax(140px,1fr))"}}>

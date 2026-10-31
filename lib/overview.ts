@@ -70,7 +70,7 @@ export function overview({today, can, staff, conversions, pay, expenses, models,
   const pvas = pay.vas.filter(v => [...(pay.data.hours.get(v.id)?.keys() ?? [])].some(d => d >= P.start && d <= P.end));
   const calcs = pvas.map(v => ({v, c: calcPay(pay.data, P, v, T)}));
   const run = {label: P.label, payDate: P.payLabel, status: pay.data.status.get(P.key) ?? "open", n: pvas.length,
-    checked: pvas.filter(v => vaOf(pay.data, P, v.id).checked).length, fix: calcs.filter(x => x.c.open > 0).length,
+    checked: calcs.filter(x => x.c.checked).length, sent: pvas.filter(v => vaOf(pay.data, P, v.id).sent).length, fix: calcs.filter(x => x.c.open > 0).length,
     total: sum(calcs.map(x => x.c.total)), missingToday: calcs.filter(x => x.c.unloggedToday).map(x => first(x.v.name))};
   const vaById = new Map(pay.vas.map(v => [v.id, v]));
   const hours = Array.from({length: 7}, (_, i) => {

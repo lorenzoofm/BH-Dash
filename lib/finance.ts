@@ -84,7 +84,8 @@ export function dapRevenueFor(modelId: string, rows: Rec[], modelIds: string[], 
   - Managed: 20MG keeps the page revenue and pays the model Model's Cut %.
     Chat-only: 20MG earns Our Cut % of page revenue; no payout.
   - Wages: the pay run's wagesFor (lib/pay.ts) per staff member assigned to the model,
-    split evenly when a staff member covers several models. Without `wages`, falls back to
+    split evenly when a staff member covers several models. Staff with no live model are split evenly
+    across `sharedAcross`, so the models' wages add up to the pay run. Without `wages`, falls back to
     summing Pay Log Total Pay (legacy callers).
   - Expenses: Paid expenses linked to the model (split evenly across linked models).
     Shared expenses (no model) are split evenly across `sharedAcross` (the live models), so the
@@ -115,8 +116,10 @@ export function modelPnL(model: Rec, {staff, paylog, expenses, map, creators, st
   const byStaff = new Map<string, {id: string; name: string; hours: number; pay: number; unpaid: number}>();
   if (payRun) for (const [sid, w] of payRun) {
     const s = staffInfo.get(sid);
-    if (!s || !s.models.includes(modelId)) continue;
-    const share = 1 / s.models.length;
+    if (!s) continue;
+    const own = sharedAcross.length ? s.models.filter(id => sharedAcross.includes(id)) : s.models, ids = own.length ? own : sharedAcross;
+    if (!ids.includes(modelId)) continue;
+    const share = 1 / ids.length;
     byStaff.set(sid, {id: sid, name: s.name, hours: w.hours * share, pay: w.pay * share, unpaid: w.unpaid * share});
   }
   // ponytail: legacy Pay Log path for callers that don't pass `wages` yet; delete once they all do.

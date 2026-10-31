@@ -63,6 +63,7 @@ export function usePayRun() {
     if ("sent" in p) f.sent = p.sent;
     if ("held" in p) f.held = p.held;
     if ("excused" in p) f.excused = JSON.stringify(p.excused ?? []);
+    if (p.snap) { f.rateSnapshot = p.snap.rate; f.stdSnapshot = p.snap.std; f.offSnapshot = JSON.stringify(p.snap.off ?? DEFAULT_OFF); }
     return f;
   };
 
@@ -70,6 +71,8 @@ export function usePayRun() {
     const k = "v|" + p.key + "|" + v.id, t = put(k, patch, true);
     return save(k, t, () => upsertVa(p.key, v.id, toFields(patch)), ok);
   }
+  // A tick records the Staff values it was given at; changing any of them on Staff unticks (lib/pay calcPay).
+  const tick = (p: Period, v: VA, on: boolean) => patchVa(p, v, on ? {checked: true, snap: {rate: v.rate, std: v.std, off: v.off ?? DEFAULT_OFF}} : {checked: false}, v.name + (on ? " checked for pay" : " unticked"));
   // Any edit to a VA's hours, held decision, excuse or adjustment unticks them.
   function edit(p: Period, v: VA, patch: Partial<VAPeriod>, ok: string | null) {
     const was = vaOf(live.current, p, v.id).checked;
@@ -109,12 +112,10 @@ export function usePayRun() {
     ...vas.map(v => () => upsertVa(p.key, v.id, {rateSnapshot: v.rate, stdSnapshot: v.std, offSnapshot: JSON.stringify(v.off ?? DEFAULT_OFF)})),
     () => upsertStatus(p.key, {status: "approved", approvedAt: new Date().toISOString()}),
   ]);
-  async function reopen(p: Period, vas: VA[]) {
+  // Snapshots stay: an open period ignores them for pay, and anyone whose Staff values changed since comes back unticked.
+  async function reopen(p: Period) {
     const t = put("s|" + p.key, "open");
-    const ok = await batch("Reopening", [
-      ...vas.map(v => async () => { const r = vaRow(p.key, v.id); if (r) await vaRows.update(r.id, {rateSnapshot: null, stdSnapshot: null, offSnapshot: null}); }),
-      () => upsertStatus(p.key, {status: "open"}),
-    ]);
+    const ok = await batch("Reopening", [() => upsertStatus(p.key, {status: "open"})]);
     settle("s|" + p.key, t);
     return ok;
   }
@@ -138,7 +139,7 @@ export function usePayRun() {
     if (await batch("Removing", [() => adj.remove(id)])) edit(p, v, {}, ok);
   }
 
-  return {...base, data, pending, progress, busy: pending > 0 || !!progress, setHours, patchVa, edit, approve, reopen, setSent, addAdjustment, removeAdjustment};
+  return {...base, data, pending, progress, busy: pending > 0 || !!progress, setHours, patchVa, tick, edit, approve, reopen, setSent, addAdjustment, removeAdjustment};
 }
 
 const WDL = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];

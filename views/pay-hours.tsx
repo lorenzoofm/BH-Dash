@@ -47,15 +47,16 @@ export default function PayHours() {
   const rows: Row[] = run.vas.flatMap(v => {
     const s = byId.get(v.id);
     if (!s || !inPeriod(data, p, {id: v.id, status: label(s.fields.status), payType: label(s.fields.payType), end: s.fields.end ? String(s.fields.end).slice(0, 10) : null, start: s.fields.start ? String(s.fields.start).slice(0, 10) : null})) return [];
-    return [{v, c: calcPay(data, p, v, today), model: label(s.fields.model?.[0]) || "No model", checked: vaOf(data, p, v.id).checked}];
+    const c = calcPay(data, p, v, today);
+    return [{v, c, model: label(s.fields.model?.[0]) || "No model", checked: c.checked}];
   });
   const N = rows.length, checkedN = rows.filter(r => r.checked).length, fixN = rows.filter(r => r.c.open > 0).length;
   const sum = (f: (r: Row) => number) => rows.reduce((s, r) => s + f(r), 0);
   const total = sum(r => r.c.total), projected = sum(r => r.c.projected), payH = sum(r => r.c.payable + r.c.heldPaid), schedTD = sum(r => r.c.schedToDate);
-  const of = {short: 0, missed: 0, held: 0, rate: 0};
+  const of = {gap: 0, short: 0, missed: 0, held: 0, rate: 0};
   for (const {c} of rows) { c.flags.forEach(f => { if (!f.excused) of[f.kind]++; }); if (c.held > 0 && !c.dec) of.held++; if (c.noRate) of.rate++; }
-  const fixCount = of.short + of.missed + of.held + of.rate;
-  const fixParts = [of.short && of.short + " short", of.missed && of.missed + " missed", of.held && of.held + " held overage", of.rate && of.rate + " pay not set"].filter(Boolean);
+  const fixCount = of.gap + of.short + of.missed + of.held + of.rate;
+  const fixParts = [of.gap && of.gap + " not logged", of.short && of.short + " short", of.missed && of.missed + " missed", of.held && of.held + " held overage", of.rate && of.rate + " pay not set"].filter(Boolean);
   const todayIn = p.start <= today && p.end >= today;
   const todayMissing = todayIn ? rows.filter(r => r.c.unloggedToday) : [];
   const todaySched = todayIn ? rows.filter(r => !r.c.off.includes(dowOf(today))).length : 0;
@@ -68,9 +69,9 @@ export default function PayHours() {
   const stepDone = [todayMissing.length === 0 && !rows.some(r => r.c.emptyPast.length), N > 0 && checkedN === N, status !== "open", status === "paid"];
   const cur = stepDone.findIndex(x => !x);
   const steps: [string, string][] = [
-    ["Log hours", todayIn ? (todayMissing.length ? `Today ${todaySched - todayMissing.length} of ${todaySched} logged` : "Up to date") : "Period complete"],
+    ["Log hours", todayIn ? (todayMissing.length ? `Today ${todaySched - todayMissing.length} of ${todaySched} logged` : "Up to date") : p.start > today ? "Starts " + dayLabel(p.start) : "Period complete"],
     ["Check each VA", `${checkedN} of ${N} checked` + (fixN && status === "open" ? ` · ${fixN} need a fix` : "")],
-    ["Approve & lock", status === "open" ? (checkedN === N ? "Ready to approve" : `Unlocks at ${N}/${N}`) : "Approved " + atTxt],
+    ["Approve & lock", status === "open" ? (checkedN === N ? fixCount ? `${fixCount} to fix first` : "Ready to approve" : `Unlocks at ${N}/${N}`) : "Approved " + atTxt],
     ["Pay out", status === "paid" ? "Paid " + p.payLabel : status === "approved" ? `${sentN} of ${N} sent` : "Pays " + p.payLabel],
   ];
 
@@ -111,7 +112,7 @@ export default function PayHours() {
           <button type="button" onClick={() => go(prevPeriod(p))} disabled={p.key <= first} aria-label="Previous period" className="grid h-full w-8 place-items-center text-[var(--text-faint)] hover:text-[var(--text-heading)] disabled:opacity-30"><ChevronLeft className="size-4"/></button>
           <span className="flex items-center gap-2 whitespace-nowrap px-1 text-[13px] font-semibold text-[var(--text-heading)]">{p.label}
             <span className="inline-flex h-[22px] items-center gap-1.5 rounded-full px-[9px] text-[11px] font-semibold" style={{background: statusPill[1], color: statusPill[2]}}><span className="size-1.5 rounded-full bg-current"/>{statusPill[0]}</span></span>
-          <button type="button" onClick={() => go(nextPeriod(p))} disabled={p.key >= current.key} aria-label="Next period" className="grid h-full w-8 place-items-center text-[var(--text-faint)] hover:text-[var(--text-heading)] disabled:opacity-30"><ChevronRight className="size-4"/></button>
+          <button type="button" onClick={() => go(nextPeriod(p))} disabled={p.key > current.key} aria-label="Next period" className="grid h-full w-8 place-items-center text-[var(--text-faint)] hover:text-[var(--text-heading)] disabled:opacity-30"><ChevronRight className="size-4"/></button>
         </div>
         {!locked && todayMissing.length > 0 && <button type="button" onClick={fillToday} className={inkBtn}><Plus/>Fill today · {todayMissing.length} VA{todayMissing.length > 1 ? "s" : ""}</button>}
       </div>
@@ -169,7 +170,7 @@ export default function PayHours() {
             </div>
             {g.rows.map(r => <GridRow key={r.v.id} r={r} p={p} days={days} today={today} locked={locked} gridCols={gridCols} busy={run.busy}
               onCell={(d, el) => setPop({vid: r.v.id, d, el})} onOpen={() => setSlip(r.v.id)} onFill={() => fillRow(r)}
-              onTick={() => run.patchVa(p, r.v, {checked: !r.checked}, r.checked ? r.v.name + " unticked" : r.v.name + " checked for pay")}/>)}
+              onTick={() => run.tick(p, r.v, !r.checked)}/>)}
           </div>)}
           {!groups.length && <div className="px-6 py-12 text-center text-[13px] text-[var(--text-faint)]">Nothing matches this filter.</div>}
         </div>
@@ -181,13 +182,13 @@ export default function PayHours() {
           <div className="min-w-0">
             <div className="num text-[13px] font-semibold text-[var(--text-heading)]">{status === "open" ? `${checkedN} of ${N} checked · ${m(total)}` : status === "approved" ? `Approved · ${sentN} of ${N} paid out` : `Paid ${p.payLabel} · ${m(total)}`}</div>
             <div className="text-pretty text-[12px] text-[var(--text-faint)]">{run.progress ?? (status === "open"
-              ? (checkedN < N ? "Tick every VA to unlock approval." + (fixN ? ` ${fixN} still need a fix.` : "") : futureDays ? `${futureDays} days still ahead. Approving now locks pay; hours logged later go into the next period as corrections.` : "Everything is checked. Approving freezes every amount.")
+              ? (checkedN < N ? "Tick every VA to unlock approval." + (fixN ? ` ${fixN} still need a fix.` : "") : fixCount ? `Everyone is ticked, but ${fixParts.join(", ")} still need a fix before approving.` : futureDays ? `${futureDays} days still ahead. Approving now locks pay; hours logged later go into the next period as corrections.` : "Everything is checked. Approving freezes every amount.")
               : "Amounts are frozen. Corrections land in the next open period.")}</div>
           </div>
         </div>
         <div className="flex items-center gap-2">
-          {status === "approved" && sentN === 0 && <button type="button" disabled={run.busy} onClick={() => run.reopen(p, vas).then(ok => ok && toast(p.label + " reopened · amounts unlocked"))} className={outlineBtn}>Reopen</button>}
-          {status === "open" && <button type="button" disabled={checkedN < N || !N || run.busy} onClick={() => setConfirm(true)} className={inkBtn}><Lock/>Approve {p.short} · {m0(total)}</button>}
+          {status === "approved" && sentN === 0 && <button type="button" disabled={run.busy} onClick={() => run.reopen(p).then(ok => ok && toast(p.label + " reopened · amounts unlocked"))} className={outlineBtn}>Reopen</button>}
+          {status === "open" && <button type="button" disabled={checkedN < N || !N || fixCount > 0 || run.busy} onClick={e => e.detail < 2 && setConfirm(true)} className={inkBtn}><Lock/>Approve {p.short} · {m0(total)}</button>}
         </div>
       </div>
     </section>
@@ -200,7 +201,7 @@ export default function PayHours() {
         </div>
         <div className="flex gap-2">
           <button type="button" onClick={copyList} className="h-8 rounded-full px-3 text-[12.5px] font-semibold text-[var(--text-heading)] hover:bg-[var(--wash)]">Copy list</button>
-          {status === "approved" && <button type="button" disabled={run.busy} onClick={() => run.setSent(p, vas, rows.filter(r => !vaOf(data, p, r.v.id).sent).map(r => r.v.id), true).then(ok => ok && toast("Everyone paid for " + p.label))}
+          {status === "approved" && <button type="button" disabled={run.busy} onClick={e => e.detail < 2 && run.setSent(p, vas, rows.filter(r => !vaOf(data, p, r.v.id).sent).map(r => r.v.id), true).then(ok => ok && toast("Everyone paid for " + p.label))}
             className="h-8 rounded-full border border-[var(--border-subtle)] bg-[var(--surface-card)] px-3 text-[12.5px] font-semibold text-[var(--text-heading)] hover:border-[var(--text-heading)] disabled:opacity-45">Mark all sent</button>}
         </div>
       </header>
@@ -209,7 +210,7 @@ export default function PayHours() {
           <div className="flex min-w-0 items-center gap-2.5"><Avatar name={r.v.name} className="size-7 text-[10px]"/><span className="truncate text-[13px] font-semibold text-[var(--text-heading)]">{r.v.name}</span></div>
           <span className="num text-[14px] font-bold text-[var(--text-heading)]">{m(r.c.total)}</span>
           <div className="flex justify-end">
-            <button type="button" disabled={run.busy} onClick={() => run.setSent(p, vas, [r.v.id], !s).then(ok => ok && toast(s ? r.v.name + " marked not sent" : m(r.c.total) + " sent to " + r.v.name))}
+            <button type="button" disabled={run.busy} onClick={e => e.detail < 2 && run.setSent(p, vas, [r.v.id], !s).then(ok => ok && toast(s ? r.v.name + " marked not sent" : m(r.c.total) + " sent to " + r.v.name))}
               className="inline-flex h-[30px] items-center gap-1.5 rounded-full border px-3 text-[12px] font-semibold disabled:opacity-60"
               style={{background: s ? C.okBg : C.card, color: s ? C.okFg : C.head, borderColor: s ? "transparent" : C.line}}><Check className="size-[13px]" style={{opacity: s ? 1 : 0}}/>{s ? "Sent" : "Mark sent"}</button>
           </div>
@@ -245,7 +246,7 @@ export default function PayHours() {
     </div>}
 
     {slipRow && <Slip run={run} p={p} v={slipRow.v} c={slipRow.c} model={slipRow.model} status={status} isCk={slipRow.checked} onClose={() => setSlip(null)}
-      target={locked ? nextOpen(data, p) : p} prev={prevOf(data, p, slipRow.v, today)}/>}
+      onGo={np => { setSlip(null); go(np); }} target={locked ? nextOpen(data, p) : p} prev={prevOf(data, p, slipRow.v, today)}/>}
   </div>;
 }
 
@@ -265,7 +266,7 @@ const LEGEND: [string, React.CSSProperties][] = [
   ["Short", {background: C.warnBg, borderColor: C.warnLine}],
   ["Missed", {background: C.badBg, borderColor: C.badLine}],
   ["Excused", {background: C.sand, borderColor: C.hair}],
-  ["Not logged", {background: "transparent", borderColor: C.line}],
+  ["Not logged", {background: "transparent", borderColor: C.warnLine, borderStyle: "dashed"}],
 ];
 
 function GridRow({r, p, days, today, locked, gridCols, busy, onCell, onOpen, onFill, onTick}: {
@@ -307,7 +308,7 @@ function GridRow({r, p, days, today, locked, gridCols, busy, onCell, onOpen, onF
 function Cell({d, h, std, sched, ex, today, locked, onClick}: {d: string; h: number | null; std: number; sched: boolean; ex: boolean; today: string; locked: boolean; onClick: (el: HTMLElement) => void}) {
   let bg = "transparent", fg = C.muted, border = C.hair, bs = "solid", ring = "none", text = "", title = dayLabel(d);
   if (d > today) { text = sched ? "" : "·"; border = sched ? C.hair : "transparent"; title += sched ? ` · ${std}h scheduled` : " · day off"; }
-  else if (h == null) { if (!sched) { text = "·"; border = "transparent"; title += " · day off"; } else if (d === today) { border = C.head; bs = "dashed"; title += " · today, not logged"; } else { border = C.line; bs = "dashed"; title += " · not logged"; } }
+  else if (h == null) { if (!sched) { text = "·"; border = "transparent"; title += " · day off"; } else if (d === today) { border = C.head; bs = "dashed"; title += " · today, not logged"; } else if (ex) { bg = C.sand; text = "–"; title += " · not logged, excused"; } else { border = C.warnLine; bs = "dashed"; title += " · not logged, needs a fix"; } }
   else if (!sched && h === 0) { text = "·"; border = "transparent"; title += " · day off"; }
   else if (h > std) { bg = C.ink; fg = C.onInk; border = C.ink; ring = `0 0 0 2px ${C.card}, 0 0 0 3.5px ${C.signal}`; text = String(h); title += ` · ${h}h logged, ${h - std}h over ${sched ? "standard" : "(day off)"} held`; }
   else if (h === std) { bg = C.ink; fg = C.onInk; border = C.ink; text = String(h); title += ` · ${h}h`; }
@@ -326,11 +327,11 @@ function CellPop({r, d, h, today, excused, onSet, onExcuse}: {r: Row; d: string;
   const {v, c} = r, sched = !c.off.includes(dowOf(d)), std = sched ? c.std : 0, ex = excused.includes(d);
   const [draft, setDraft] = useState(h == null ? "" : String(h));
   const set = (n: number | null) => { const x = n == null ? null : Math.max(0, Math.min(24, n)); setDraft(x == null ? "" : String(x)); onSet(x); };
-  const val = h ?? 0, isShort = d < today && sched && h != null && h < std;
+  const val = h ?? 0, isShort = d < today && sched && (h == null || h < std);
   let note = "", noteBg = C.sand, noteFg = C.muted;
   if (h != null && h > std) { note = `${h - std}h over ${sched ? "the standard day" : "(day off)"} are held. Decide in the payslip.`; noteBg = C.signalTint; noteFg = C.signalFg; }
-  else if (isShort && !ex) { note = h === 0 ? "Missed a scheduled day. Fix the hours or excuse it." : `Short by ${std - h!}h. Fix the hours or excuse it.`; noteBg = h === 0 ? C.badBg : C.warnBg; noteFg = h === 0 ? C.badFg : C.warnFg; }
-  else if (isShort && ex) note = "Excused. Paid as logged.";
+  else if (isShort && !ex) { note = h == null ? "Nothing logged. Log the hours or excuse the day." : h === 0 ? "Missed a scheduled day. Fix the hours or excuse it." : `Short by ${std - h!}h. Fix the hours or excuse it.`; noteBg = h === 0 ? C.badBg : C.warnBg; noteFg = h === 0 ? C.badFg : C.warnFg; }
+  else if (isShort && ex) note = h == null ? "Excused. Nothing to pay." : "Excused. Paid as logged.";
   const round = "grid size-9 place-items-center rounded-full border border-[var(--border-subtle)] bg-[var(--surface-card)] text-[var(--text-heading)]";
   return <div>
     <div className="text-[13px] font-semibold text-[var(--text-heading)]">{v.name} · {dayLabel(d)}</div>

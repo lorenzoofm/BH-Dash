@@ -12,8 +12,8 @@ const TYPES = ["Bonus", "Deduction", "Extra hours", "Correction"] as const;
 type Run = ReturnType<typeof usePayRun>;
 
 // Payslip drawer: flags with fixes, pay lines, total, comparison, adjustment form, print.
-export function Slip({run, p, v, c, model, status, isCk, target, prev, onClose}: {
-  run: Run; p: Period; v: VA; c: PayCalc; model: string; status: PeriodStatus; isCk: boolean; target: Period | null; prev: {label: string; total: number} | null; onClose: () => void;
+export function Slip({run, p, v, c, model, status, isCk, target, prev, onClose, onGo}: {
+  run: Run; p: Period; v: VA; c: PayCalc; model: string; status: PeriodStatus; isCk: boolean; target: Period | null; prev: {label: string; total: number} | null; onClose: () => void; onGo: (p: Period) => void;
 }) {
   const router = useRouter();
   const locked = status !== "open";
@@ -40,8 +40,8 @@ export function Slip({run, p, v, c, model, status, isCk, target, prev, onClose}:
       {label: "Pay as extra", on: c.dec === "pay", onClick: () => run.edit(p, v, {held: "pay"}, `${v.name} · ${hf(c.held)}h paid as extra`)},
       {label: "Don't pay", on: c.dec === "no", onClick: () => run.edit(p, v, {held: "no"}, `${v.name} · ${hf(c.held)}h not paid`)}]});
   const excused = run.data.va.get(p.key + "|" + v.id)?.excused ?? [];
-  for (const f of c.flags) flags.push({title: (f.kind === "missed" ? "Missed" : "Short") + " · " + dayLabel(f.d), sub: f.excused ? `Excused · paid ${f.h}h` : `${f.h} of ${f.std}h logged`,
-    bg: f.excused ? C.sand : f.kind === "missed" ? C.badBg : C.warnBg, fg: f.excused ? C.second : f.kind === "missed" ? C.badFg : C.warnFg,
+  for (const f of c.flags) flags.push({title: {missed: "Missed", short: "Short", gap: "Not logged"}[f.kind] + " · " + dayLabel(f.d), sub: f.excused ? `Excused · paid ${f.h}h` : f.kind === "gap" ? "Nothing logged for a scheduled day" : `${f.h} of ${f.std}h logged`,
+    bg: f.excused ? C.sand : f.kind !== "short" ? C.badBg : C.warnBg, fg: f.excused ? C.second : f.kind !== "short" ? C.badFg : C.warnFg,
     actions: locked ? [] : [
       {label: `Log ${f.std}h`, onClick: () => run.setHours(p, v, f.d, f.std, `${v.name} · ${dayLabel(f.d)} · ${f.std}h saved`)},
       {label: f.excused ? "Unexcuse" : "Excuse", onClick: () => run.edit(p, v, {excused: f.excused ? excused.filter(d => d !== f.d) : [...excused, f.d]}, `${dayLabel(f.d)} ${f.excused ? "unexcused" : "excused"} for ${v.name}`)}]});
@@ -78,7 +78,7 @@ export function Slip({run, p, v, c, model, status, isCk, target, prev, onClose}:
       </div>
       <div className="flex flex-1 flex-col gap-[22px] overflow-y-auto px-8 py-6">
         {flags.length > 0 && <div>
-          <div className="mb-2 text-[13px] font-semibold text-[var(--text-heading)]">Needs a fix before pay</div>
+          <div className="mb-2 text-[13px] font-semibold text-[var(--text-heading)]">{c.open && !locked ? `Needs a fix before pay · ${c.open}` : "Flags · resolved"}</div>
           <div className="flex flex-col gap-1.5">
             {flags.map(fl => <div key={fl.title} className="flex items-center justify-between gap-2.5 rounded-[14px] px-3 py-2.5" style={{background: fl.bg}}>
               <div className="min-w-0">
@@ -114,7 +114,7 @@ export function Slip({run, p, v, c, model, status, isCk, target, prev, onClose}:
 
         <div className="flex flex-col gap-3 rounded-[14px] bg-[var(--surface-sunken)] p-4">
           <div className="text-[13px] font-semibold text-[var(--text-heading)]">Add adjustment</div>
-          {locked && target && <div className="text-pretty text-[12px] text-[var(--text-faint)]">{p.label} is {status}. This lands in {target.label} as a correction for {p.label}.</div>}
+          {locked && target && <div className="text-pretty text-[12px] text-[var(--text-faint)]">{p.label} is {status}. This lands in {target.label} as a correction for {p.label}. <button type="button" onClick={() => onGo(target)} className="font-semibold text-[var(--text-heading)] underline">Open {target.label}</button></div>}
           <div className="inline-flex flex-wrap gap-0.5 self-start rounded-2xl border border-[var(--border-subtle)] bg-[var(--surface-page)] p-1">
             {TYPES.map(t => <button key={t} type="button" onClick={() => setForm(f => ({...f, type: t}))} aria-pressed={form.type === t}
               className="h-7 rounded-full px-3 text-[12px] font-semibold" style={{background: form.type === t ? C.ink : "transparent", color: form.type === t ? C.onInk : C.muted}}>{t}</button>)}
@@ -135,7 +135,7 @@ export function Slip({run, p, v, c, model, status, isCk, target, prev, onClose}:
         <span className="text-[12px] text-[var(--text-faint)]">{run.progress ?? tickHint}</span>
         <div className="flex gap-2">
           <button type="button" onClick={onClose} className="h-10 rounded-full px-5 text-[13px] font-semibold text-[var(--text-heading)] hover:bg-[var(--wash)]">Close</button>
-          {!locked && <button type="button" disabled={c.open > 0} onClick={() => run.patchVa(p, v, {checked: !isCk}, isCk ? v.name + " unticked" : v.name + " checked for pay")}
+          {!locked && <button type="button" disabled={c.open > 0} onClick={() => run.tick(p, v, !isCk)}
             className="inline-flex h-10 items-center gap-1.5 rounded-full border px-5 text-[13px] font-semibold disabled:opacity-45"
             style={{background: isCk ? C.ink : C.card, color: isCk ? C.onInk : C.head, borderColor: isCk ? C.ink : C.line}}><Check className="size-4"/>{isCk ? "Checked for pay" : "Mark checked"}</button>}
         </div>

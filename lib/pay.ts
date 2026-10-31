@@ -37,11 +37,12 @@ export const statusOf = (data: PayData, p: Period): PeriodStatus => data.status.
 export const vaOf = (data: PayData, p: Period, staff: string): VAPeriod => data.va.get(vaKey(p.key, staff)) ?? {checked: false, sent: false, held: null, excused: [], snap: null};
 export const DEFAULT_OFF = [0];
 
-export type Flag = {d: string; kind: "missed" | "short"; h: number; std: number; excused: boolean};
+export type Flag = {d: string; kind: "missed" | "short" | "gap"; h: number; std: number; excused: boolean};
 export type PayCalc = ReturnType<typeof calcPay>;
 
 // One VA's pay for one period. Logged hours are capped at the scheduled day; anything over is held
-// until a manager pays it as extra or not. Short and missed past days need a fix or an excuse.
+// until a manager pays it as extra or not. Short, missed and unlogged past days need a fix or an excuse.
+// A tick only counts while the Staff page still has the rate, standard day and days off it was given at.
 export function calcPay(data: PayData, p: Period, v0: VA, today: string) {
   const f = vaOf(data, p, v0.id), snap = statusOf(data, p) !== "open" ? f.snap : null;
   const rate = (snap ? snap.rate : v0.rate) ?? 0, std0 = (snap ? snap.std : v0.std) ?? 0, off = (snap ? snap.off : v0.off) ?? DEFAULT_OFF;
@@ -53,7 +54,11 @@ export function calcPay(data: PayData, p: Period, v0: VA, today: string) {
     sched += std;
     if (d <= today) schedToDate += std;
     if (d > today) { future += std; continue; }
-    if (h == null) { if (isSched) { if (d === today) { unloggedToday = true; future += std; } else emptyPast.push(d); } continue; }
+    if (h == null) {
+      if (isSched && d === today) { unloggedToday = true; future += std; }
+      else if (isSched) { flags.push({d, kind: "gap", h: 0, std, excused: ex.has(d)}); if (!ex.has(d)) emptyPast.push(d); }
+      continue;
+    }
     const pd = Math.min(h, std);
     payable += pd; held += Math.max(0, h - std);
     days.push({d, payable: pd, logged: h});
@@ -64,9 +69,10 @@ export function calcPay(data: PayData, p: Period, v0: VA, today: string) {
   const adjs = data.adjustments.get(vaKey(p.key, v0.id)) ?? [];
   const adjSum = adjs.reduce((s, a) => s + (a.type === "Extra hours" ? (a.hours ?? 0) * rate : a.value ?? 0), 0);
   const base = payable * rate, extra = heldPaid * rate, total = base + extra + adjSum;
-  const noRate = !rate;
+  const noRate = !rate, now = {rate: v0.rate, std: v0.std, off: v0.off ?? DEFAULT_OFF};
+  const stale = statusOf(data, p) === "open" && !!f.snap && JSON.stringify([f.snap.rate, f.snap.std, f.snap.off ?? DEFAULT_OFF]) !== JSON.stringify([now.rate, now.std, now.off]);
   const open = flags.filter(x => !x.excused).length + (held > 0 && !dec ? 1 : 0) + (noRate ? 1 : 0);
-  return {rate, std: std0, off, payable, held, dec, heldPaid, sched, schedToDate, future, unloggedToday, emptyPast, flags, adjs, adjSum, base, extra, total, open, days, noRate, projected: total + future * rate};
+  return {checked: f.checked && !stale, now, rate, std: std0, off, payable, held, dec, heldPaid, sched, schedToDate, future, unloggedToday, emptyPast, flags, adjs, adjSum, base, extra, total, open, days, noRate, projected: total + future * rate};
 }
 
 // Who belongs on a period's timesheet: anyone with hours, adjustments or a saved row in it; otherwise
