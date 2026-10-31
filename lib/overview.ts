@@ -98,6 +98,8 @@ export function overview({today, can, staff, conversions, pay, expenses, models,
   if (can("expenses") && open.length) alerts.push({sev: "low", text: `${open.length} expenses unpaid or planned · ${money(openTotal)}`, href: "/expenses", cta: "Open"});
   // Kept from the previous Overview: a live model whose DAP revenue can't be read leaves earnings unknown.
   if (can("pnl") && revenue.ready) live.filter(m => revenue.mtd(m.id) === null).forEach(m => alerts.push({sev: "low", text: `${label(m.fields.model)} — DAP account revenue could not be read`, href: "/pnl", cta: "Fix"}));
+  // Revenue with no deal type or cut leaves Earnings and Profit unknown; say which model.
+  if (can("pnl")) mtd.ps.filter(p => p.pageRevenue !== null && (p.income === null || p.payout === null)).forEach(p => alerts.push({sev: "mid", text: `${p.name} has revenue but no deal type or cut, so earnings are unknown`, href: can("revenue") ? "/revenue" : "/pnl", cta: "Set"}));
 
   return {T, wk, day, weeks, weekTotals, roleWeeks, board, lwMissing, mtd, lm, models: modelRows, unpaid, run, hours, open, openTotal, months: revenue.months, alerts,
     onPace: board.filter(b => b.tone === "met" || b.tone === "pace").length, judged: board.filter(b => b.tone !== "none").length,

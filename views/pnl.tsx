@@ -100,7 +100,7 @@ export default function PnL() {
     if (!valid) return null;
     const active = models.rows.filter(m => label(m.fields.status) !== "Ended").map(pnlOf);
     const missing = active.filter(r => r.pageRevenue === null).map(r => r.name);
-    const unresolved = missing.length > 0 || active.some(r => r.dealType !== "Managed" && r.dealType !== "Chat-only");
+    const unresolved = active.some(r => r.income === null || r.payout === null); // modelPnL: $0 revenue is $0 under any deal
     const sum = (rows: typeof active, key: "income" | "payout" | "profit") => rows.some(r => r[key] === null) || unresolved ? null : rows.reduce((n, r) => n + (r[key] ?? 0), 0);
     const section = (deal: string) => {
       const rows = active.filter(r => r.dealType === deal);

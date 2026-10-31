@@ -80,8 +80,10 @@ export function modelPnL(model: Rec, {staff, paylog, expenses, map, creators, st
   const modelCut = model.fields.modelCut == null ? null : num(model.fields.modelCut);
   const ourCut = model.fields.ourCut == null ? null : num(model.fields.ourCut);
   const chatOnly = dealType === "Chat-only";
-  const income = pageRevenue === null ? null : chatOnly ? ourCut === null ? null : pageRevenue * ourCut / 100 : dealType === "Managed" ? pageRevenue : null;
-  const payout = pageRevenue === null ? null : chatOnly ? 0 : dealType === "Managed" && modelCut !== null ? pageRevenue * modelCut / 100 : null;
+  // No revenue (no counted account, or $0) is $0 income and payout under any deal, so an un-configured
+  // synced model or one with every account switched off doesn't blank the company totals.
+  const income = pageRevenue === null ? null : pageRevenue === 0 ? 0 : chatOnly ? ourCut === null ? null : pageRevenue * ourCut / 100 : dealType === "Managed" ? pageRevenue : null;
+  const payout = pageRevenue === null ? null : pageRevenue === 0 || chatOnly ? 0 : dealType === "Managed" && modelCut !== null ? pageRevenue * modelCut / 100 : null;
 
   const staffInfo = new Map(staff.map(s => [s.id, {name: label(s.fields.name), models: linkIds(s.fields.model)}]));
   const byStaff = new Map<string, {id: string; name: string; hours: number; pay: number; unpaid: number}>();

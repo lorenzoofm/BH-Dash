@@ -21,6 +21,12 @@ assert.equal(result.profit, 75);
 result = ctx.modelPnL({...model, fields: {...model.fields, dealType: ''}}, {...base, expenses: []});
 assert.equal(result.income, null, 'unknown deal cannot become Managed revenue');
 assert.equal(result.profit, null);
+// A synced model with no deal and no counted account (dapRevenueFor gives 0) must not blank the totals.
+result = ctx.modelPnL({id: 'm1', fields: {model: 'Synced'}}, {...base, accountRevenue: 0, expenses, sharedAcross: ['m1', 'm2']});
+assert.equal(result.income, 0, 'no revenue is $0 income under any deal');
+assert.equal(result.payout, 0);
+assert.equal(result.profit, -20, 'still carries its share of costs');
+assert.equal(ctx.dapRevenueFor('m1', [], ['m1'], true, {}), 0, 'every account off = $0 revenue');
 result = ctx.modelPnL(model, {...base, expenses, sharedAcross: ['m1', 'm2']});
 assert.equal(result.expenses, 20, 'shared expense split evenly across live models');
 assert.equal(ctx.modelPnL({id: 'm3', fields: model.fields}, {...base, expenses, sharedAcross: ['m1', 'm2']}).expenses, 0, 'ended model gets no share');
