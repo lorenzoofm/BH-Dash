@@ -28,6 +28,12 @@ export function monthRange(month: string) {
   const [y, m] = month.split("-").map(Number), iso = (d: Date) => d.toISOString().slice(0, 10);
   return {start: `${month}-01`, last: iso(new Date(Date.UTC(y, m, 0))), next: iso(new Date(Date.UTC(y, m, 1)))};
 }
+// Every day of a month up to and including today (UTC), oldest first.
+export function monthDays(month: string, today: string) {
+  const {start, last} = monthRange(month), out: string[] = [];
+  for (let d = start; d <= last && d <= today; d = new Date(Date.parse(d) + 864e5).toISOString().slice(0, 10)) out.push(d);
+  return out;
+}
 export const shiftMonth = (month: string, by: number) => { const [y, m] = month.split("-").map(Number); return new Date(Date.UTC(y, m - 1 + by, 1)).toISOString().slice(0, 7); };
 
 // Creatorstaq's first-touch source names, folded onto Cupid's app keys.
@@ -51,3 +57,9 @@ export function cupidIds(value: unknown): CupidIds {
   return out;
 }
 export const formatCupidIds = (ids: CupidIds) => CUPID_APPS.filter(a => ids[a]).map(a => `${a}:${ids[a]}`).join(",");
+
+// Creatorstaq sources folded into the Cupid apps, everything else as "other".
+export const sourceBucket = (source: string): CupidApp | "other" => appOfSource(source) ?? "other";
+// One CSV cell per value; quotes anything with a comma, quote or newline.
+export const toCsv = (rows: (string | number | null | undefined)[][]) =>
+  rows.map(r => r.map(v => { const t = v == null ? "" : String(v); return /[",\n]/.test(t) ? `"${t.replace(/"/g, '""')}"` : t; }).join(",")).join("\n");

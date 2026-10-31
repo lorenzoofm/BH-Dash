@@ -1,6 +1,8 @@
 /* Extracted 20MG global tokens, 2026-10-29. Explicit themes; client palettes excluded. */
 :root {
   --ink: #0a0a0a;
+  /* Convo Tracker series, one per Cupid app in fixed order (validated light + dark). */
+  --app-x: #2a78d6; --app-discord: #eb6834; --app-instagram: #1baf7a; --app-reddit: #eda100; --app-threads: #e87ba4; --app-other: #a39e94;
   --ink-800: #1c1b19;
   --ink-600: #3d3b37;
   --ink-400: #6e6a63;
@@ -175,6 +177,7 @@
   --ease-in: var(--ease-snap);
 }
 [data-theme="dark"] {
+  --app-x: #3987e5; --app-discord: #d95926; --app-instagram: #199e70; --app-reddit: #c98500; --app-threads: #d55181; --app-other: #6f6a62;
   --positive: #3fa86a;
   --warning: #d99a2b;
   --negative: #e5533f;

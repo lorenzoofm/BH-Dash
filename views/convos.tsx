@@ -8,9 +8,12 @@ import {cn} from "@/lib/utils";
 import {label, linkIds} from "@/lib/bh";
 import {useSession} from "@/lib/datasource";
 import {useTable} from "@/lib/tables";
-import {APP_LABEL, appOfSource, CUPID_APPS, type CupidApp, cupidIds, formatCupidIds, type Funnel, monthRange, ratio, shiftMonth} from "@/lib/convos";
+import {APP_LABEL, appOfSource, CUPID_APPS, type CupidApp, cupidIds, formatCupidIds, type Funnel, monthDays, monthRange, ratio, shiftMonth, sourceBucket} from "@/lib/convos";
+import {converts, roleOf, type Role} from "@/lib/team";
+import {type Bucket, type Day, DailyCharts, DailyTable} from "@/views/convos/daily";
+import {type StaffedModel, Staffing} from "@/views/convos/staffing";
 
-type Subs = {newSubs: number | null; counted: number; bySource: Record<string, number>; capped: boolean};
+type Subs = {newSubs: number | null; counted: number; bySource: Record<string, number>; byDay: Record<string, Record<string, number>>; capped: boolean};
 const HEAD = "h-9 bg-muted text-[11.5px] font-medium text-muted-foreground";
 const ROW = "min-h-12 border-b py-1.5 text-[13px] last:border-b-0";
 const PLAT = "grid grid-cols-[minmax(110px,1fr)_repeat(6,minmax(84px,110px))] items-center gap-2 px-6";
@@ -28,10 +31,10 @@ async function get<T>(params: Record<string, string>): Promise<T> {
 
 export default function Convos() {
   const [month, setMonth] = useState<string | null>(null);
-  const [now, setNow] = useState("");
-  useEffect(() => { const m = new Date().toISOString().slice(0, 7); setNow(m); setMonth(m); }, []);
+  const [now, setNow] = useState(""), [today, setToday] = useState("");
+  useEffect(() => { const d = new Date().toISOString().slice(0, 10); setToday(d); setNow(d.slice(0, 7)); setMonth(d.slice(0, 7)); }, []);
   const session = useSession(), admin = !!(session.data as any)?.isAdmin;
-  const models = useTable("models"), map = useTable("map");
+  const models = useTable("models"), map = useTable("map"), staff = useTable("staff");
   const live = models.rows.filter(m => label(m.fields.status) !== "Ended").sort((a, b) => label(a.fields.model).localeCompare(label(b.fields.model)));
   const accountsOf = (id: string) => map.rows.filter(r => linkIds(r.fields.model).includes(id));
   const slugs = [...new Set(live.flatMap(m => accountsOf(m.id).map(r => label(r.fields.slug))).filter(Boolean))];
@@ -43,10 +46,12 @@ export default function Convos() {
   const pairs = live.flatMap(m => { const ids = cupidIds(m.fields.cupidId); return active.filter(app => ids[app]).map(app => ({m, app, id: ids[app]!})); });
   const per = useQueries({queries: pairs.map(({app, id}) => ({queryKey: ["cupid", month, app, id], staleTime: 300000, retry: 1,
     queryFn: () => get<Funnel>({kind: "cupid", month: month!, app, creator: id})}))});
+  const daily = useQueries({queries: active.map(app => ({queryKey: ["cupid-daily", month, app], staleTime: 300000, retry: 1,
+    queryFn: () => get<{days: ({date: string} & Funnel)[]}>({kind: "cupid-daily", month: month!, app})}))});
   const subs = useQueries({queries: slugs.map(account => ({queryKey: ["cs-subs", month, account], enabled: !!month, staleTime: 300000, retry: 1,
     queryFn: () => get<Subs>({kind: "subs", month: month!, account})}))});
 
-  if (!month || models.loading || map.loading) return <PageSkeleton/>;
+  if (!month || models.loading || map.loading || staff.loading) return <PageSkeleton/>;
   const total = (app: CupidApp) => totals[CUPID_APPS.indexOf(app)].data;
   const cupidOf = (m: {id: string}, app: CupidApp) => { const i = pairs.findIndex(p => p.m.id === m.id && p.app === app); return i < 0 ? undefined : per[i]; };
   const subsOf = (slug: string) => subs[slugs.indexOf(slug)];
@@ -68,6 +73,25 @@ export default function Convos() {
   const label_ = new Date(month + "-15").toLocaleString("en-US", {month: "long", year: "numeric", timeZone: "UTC"});
   const {start, last} = monthRange(month);
 
+  // Day by day: Cupid per active app, and real subs summed across every live account and bucketed by first touch.
+  const dayList = monthDays(month, today), subsReady = subs.every(q => q.data);
+  const days: Day[] = dayList.map(date => {
+    const cupid: Day["cupid"] = {};
+    active.forEach((app, i) => { const hit = daily[i]?.data?.days.find(d => d.date === date); if (hit) cupid[app] = hit; });
+    let real: Day["real"];
+    if (subsReady) { real = {}; for (const q of subs) for (const [src, c] of Object.entries(q.data!.byDay?.[date] ?? {})) { const b: Bucket = sourceBucket(src); real[b] = (real[b] ?? 0) + c; } }
+    return {date, cupid, real};
+  });
+  const dailyError = daily.find(q => q.error)?.error as Error | undefined;
+  // Current roster: active staff on converting roles, counted against every model they're linked to.
+  const staffed: StaffedModel[] = live.map((m, index) => {
+    const counts: Partial<Record<Role, number>> = {};
+    for (const s of staff.rows) if (label(s.fields.status) === "Active" && converts(s.fields.platform) && linkIds(s.fields.model).includes(m.id)) { const r = roleOf(s.fields.platform); counts[r] = (counts[r] ?? 0) + 1; }
+    const q = modelSubs(m) as any[];
+    const subsByDay = q.length && q.every(x => x.data) ? q.reduce<Record<string, number>>((acc, x) => { for (const [d, src] of Object.entries(x.data.byDay ?? {})) acc[d] = (acc[d] ?? 0) + Object.values(src as Record<string, number>).reduce((a, c) => a + c, 0); return acc; }, {}) : q.length ? undefined : {};
+    return {id: m.id, name: label(m.fields.model), avatar: accountsOf(m.id).find(r => r.fields.avatar)?.fields.avatar, index, staff: counts, subsByDay};
+  });
+
   // ID boxes for every platform with conversations this month, plus any platform a model already has an ID for.
   const idApps = CUPID_APPS.filter(app => active.includes(app) || live.some(m => cupidIds(m.fields.cupidId)[app]));
   const saveId = async (m: {id: string; fields: Record<string, any>}, app: CupidApp, value: string) => {
@@ -85,7 +109,7 @@ export default function Convos() {
       subtitle="Conversations Cupid used and the conversions it claims, next to the real new subs Creatorstaq counted on OnlyFans."
       actions={<WeekStepper label={label_} onPrev={() => setMonth(shiftMonth(month, -1))} onNext={() => setMonth(shiftMonth(month, 1))} nextDisabled={month >= now}
         badge={month === now && <span className="rounded-full bg-brand-soft px-2 py-0.5 text-[11px] text-[var(--signal-tint-fg)]">So far</span>}/>}/>
-    {(models.error || map.error) && <TableError tables={[models, map]}/>}
+    {(models.error || map.error || staff.error) && <TableError tables={[models, map, staff]}/>}
     {cupidError && <Notice tone="red">{cupidError.message}</Notice>}
     {subsError && <Notice tone="amber">Creatorstaq: {subsError.message}</Notice>}
 
@@ -111,6 +135,10 @@ export default function Convos() {
           </div>; })}
       </div></div>
     </Panel>
+
+    {dailyError && <Notice tone="amber">Daily Cupid numbers: {dailyError.message}</Notice>}
+    <DailyCharts days={days} apps={active} loading={loadingTotals || daily.some(q => q.isPending)} subsLoading={!subsReady && !subsError}/>
+    <DailyTable days={days} apps={active} month={month}/>
 
     <Panel flush title="By model" subtitle={admin ? "Paste each model's Cupid creator ID per platform (Cupid → Presets → pick the platform → hover the ? beside Creator)." : "Models are matched to Cupid by their creator ID."}>
       <div className="overflow-x-auto"><div className="min-w-[900px]">
@@ -142,6 +170,8 @@ export default function Convos() {
         })}
       </div></div>
     </Panel>
+
+    <Staffing models={staffed} days={dayList} subsReady={subsReady}/>
 
     <p className="text-[12px] leading-relaxed text-[var(--text-faint)]">
       Months are UTC on both sides so Cupid and Creatorstaq line up. Cupid detects conversions from the chat, so they are claims; real subs come from OnlyFans.

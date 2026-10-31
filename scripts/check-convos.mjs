@@ -1,6 +1,6 @@
 // node scripts/check-convos.mjs: Cupid display-string parsing, month windows and source mapping.
 import assert from "node:assert/strict";
-import {appOfSource, cupidCount, cupidIds, cupidMetrics, formatCupidIds, monthRange, shiftMonth} from "../lib/convos.ts";
+import {appOfSource, cupidCount, cupidIds, cupidMetrics, formatCupidIds, monthDays, monthRange, sourceBucket, toCsv, shiftMonth} from "../lib/convos.ts";
 
 assert.equal(cupidCount("1,234"), 1234);
 assert.equal(cupidCount("900 (72.93% of 1,234)"), 900);
@@ -25,4 +25,10 @@ assert.deepEqual(cupidIds("2290730"), {x: "2290730"});
 assert.deepEqual(cupidIds("x:2290730, discord:2290729"), {x: "2290730", discord: "2290729"});
 assert.deepEqual(cupidIds("bogus:1,discord:"), {});
 assert.equal(formatCupidIds({discord: "2290729", x: "2290730"}), "x:2290730,discord:2290729");
+assert.deepEqual(monthDays("2026-10", "2026-10-03"), ["2026-10-01", "2026-10-02", "2026-10-03"]);
+assert.equal(monthDays("2026-09", "2026-10-03").length, 30);
+assert.equal(monthDays("2026-11", "2026-10-03").length, 0);
+assert.equal(sourceBucket("twitter"), "x");
+assert.equal(sourceBucket("untracked"), "other");
+assert.equal(toCsv([["a", 1, null], ['say "hi", ok', 2]]), 'a,1,\n"say ""hi"", ok",2');
 console.log("check-convos ok");
