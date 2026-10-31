@@ -8,10 +8,11 @@ import {cn} from "@/lib/utils";
 import {label, linkIds} from "@/lib/bh";
 import {useSession} from "@/lib/datasource";
 import {useModels, useTable} from "@/lib/tables";
-import {APP_LABEL, appOfSource, CUPID_APPS, type CupidApp, cupidIds, type CupidIds, formatCupidIds, type Funnel, monthDays, monthRange, ratio, shiftMonth, sourceBucket} from "@/lib/convos";
+import {APP_LABEL, appOfSource, CUPID_APPS, type CupidApp, cupidIds, type CupidIds, forecast, formatCupidIds, type Funnel, monthDays, monthRange, ratio, shiftMonth, sourceBucket} from "@/lib/convos";
 import {converts, roleOf, type Role} from "@/lib/team";
 import {type Bucket, type Day, DailyCharts, DailyTable} from "@/views/convos/daily";
 import {type StaffedModel, Staffing} from "@/views/convos/staffing";
+import {ForecastTable, get, PlatformModels} from "@/views/convos/breakdown";
 
 // Cupid creator IDs collected on 2026-10-31. Saved once into any of these models whose field is still missing them;
 // IDs already on a model win. New IDs go in through the page.
@@ -29,12 +30,6 @@ const n = (v: number | null | undefined) => v == null ? "—" : v.toLocaleString
 const pct = (v: number | null) => v == null ? "—" : `${(v * 100).toFixed(1)}%`;
 const sumOf = (xs: (number | null | undefined)[]) => xs.some(x => x != null) ? xs.reduce<number>((a, x) => a + (x ?? 0), 0) : null;
 
-async function get<T>(params: Record<string, string>): Promise<T> {
-  const res = await fetch("/api/convos?" + new URLSearchParams(params));
-  const body: any = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(body.error || `Request failed (${res.status})`);
-  return body;
-}
 
 export default function Convos() {
   const [month, setMonth] = useState<string | null>(null);
@@ -64,7 +59,7 @@ export default function Convos() {
   const pairs = live.flatMap(m => { const ids = cupidIds(m.fields.cupidId); return active.filter(app => ids[app]).map(app => ({m, app, id: ids[app]!})); });
   const per = useQueries({queries: pairs.map(({app, id}) => ({queryKey: ["cupid", month, app, id], staleTime: 300000, retry: 1,
     queryFn: () => get<Funnel>({kind: "cupid", month: month!, app, creator: id})}))});
-  const daily = useQueries({queries: active.map(app => ({queryKey: ["cupid-daily", month, app], staleTime: 300000, retry: 1,
+  const daily = useQueries({queries: active.map(app => ({queryKey: ["cupid-daily", month, app, ""], staleTime: 300000, retry: 1,
     queryFn: () => get<{days: ({date: string} & Funnel)[]}>({kind: "cupid-daily", month: month!, app})}))});
   const subs = useQueries({queries: slugs.map(account => ({queryKey: ["cs-subs", month, account], enabled: !!month, staleTime: 300000, retry: 1,
     queryFn: () => get<Subs>({kind: "subs", month: month!, account})}))});
@@ -139,6 +134,10 @@ export default function Convos() {
         sub={`Cupid claims ${pct(ratio(conversions, realCupid))} of these`}/>
     </div>
 
+    {month === now && active.length > 0 && <ForecastTable title="Forecast, all models" month={month} rows={[
+      ...active.map((app, i) => ({key: app, label: APP_LABEL[app], error: !!daily[i]?.error, parts: [{app, fc: daily[i]?.data && forecast(daily[i].data!.days.map(d => ({date: d.date, v: d.charged})), month, today)}]})),
+      ...(active.length > 1 ? [{key: "all", label: "All platforms", strong: true, error: !!dailyError, parts: active.map((app, i) => ({app, fc: daily[i]?.data && forecast(daily[i].data!.days.map(d => ({date: d.date, v: d.charged})), month, today)}))}] : [])]}/>}
+
     <Panel flush title="By platform" subtitle="Whole Cupid account. Real subs are fans whose first touch was a tracking link for that platform.">
       <div className="overflow-x-auto"><div className="min-w-[780px]">
         <div className={cn(PLAT, HEAD)}><span>Platform</span>{["Conversations", "Charged", "Shared CTA", "Cupid conv.", "Conv. rate", "Real subs"].map(h => <span key={h} className="text-right">{h}</span>)}</div>
@@ -158,6 +157,9 @@ export default function Convos() {
     <DailyCharts days={days} apps={active} loading={loadingTotals || daily.some(q => q.isPending)} subsLoading={!subsReady && !subsError}/>
     <DailyTable days={days} apps={active} month={month}/>
 
+    <PlatformModels apps={active} month={month} today={today} now={now}
+      models={live.map((m, index) => ({id: m.id, name: label(m.fields.model), avatar: accountsOf(m.id).find(r => r.fields.avatar)?.fields.avatar, index, ids: cupidIds(m.fields.cupidId)}))}/>
+
     <Panel flush title="By model" subtitle={admin ? "Each model's Cupid creator IDs. Click the pencil to change them (Cupid → Presets → pick the platform → hover the ? beside Creator)." : "Models are matched to Cupid by their creator ID."}>
       <div className="overflow-x-auto"><div className="min-w-[900px]">
         <div className={cn(MODEL, HEAD)}><span>Model</span><span>Cupid creator IDs</span>{["Convos used", "Cupid conv.", "Conv. rate", "Real new subs", "From Cupid platforms"].map(h => <span key={h} className="text-right">{h}</span>)}</div>
@@ -169,7 +171,7 @@ export default function Convos() {
           return <div key={m.id} className={cn(MODEL, ROW)}>
             <span className="flex min-w-0 items-center gap-2.5">
               <ModelAvatar name={label(m.fields.model)} src={acc.find(r => r.fields.avatar)?.fields.avatar} index={i}/>
-              <span className="min-w-0"><span className="block truncate font-semibold">{label(m.fields.model)}
+              <span className="min-w-0"><span className="block truncate font-semibold"><a href={`/convos/model/${encodeURIComponent(m.id)}`} className="hover:underline">{label(m.fields.model)}</a>
                 {acc.length > 0 && <span className="ml-1.5 text-[11.5px] font-normal text-muted-foreground">{acc.map(r => "@" + (label(r.fields.ofUsername) || label(r.fields.slug))).join(" · ")}</span>}</span>
                 {ready && <span className="block truncate text-[11.5px] text-muted-foreground">{apps.map((app, k) => `${APP_LABEL[app]} ${n(qs[k]!.data!.charged)}·${n(qs[k]!.data!.conversions)}`).join("  ")}</span>}
                 {!acc.length && <span className="block text-[11.5px] text-[var(--text-faint)]">No OnlyFans account linked</span>}</span>

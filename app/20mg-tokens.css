@@ -3,6 +3,8 @@
   --ink: #0a0a0a;
   /* Convo Tracker series, one per Cupid app in fixed order (validated light + dark). */
   --app-x: #2a78d6; --app-discord: #eb6834; --app-instagram: #1baf7a; --app-reddit: #eda100; --app-threads: #e87ba4; --app-other: #a39e94;
+  /* Per-model series, fixed order by rank; past seven fold into --app-other (validated light + dark). */
+  --model-1: #2a78d6; --model-2: #eb6834; --model-3: #1baf7a; --model-4: #eda100; --model-5: #e87ba4; --model-6: #008300; --model-7: #6250d6;
   --ink-800: #1c1b19;
   --ink-600: #3d3b37;
   --ink-400: #6e6a63;
@@ -178,6 +180,7 @@
 }
 [data-theme="dark"] {
   --app-x: #3987e5; --app-discord: #d95926; --app-instagram: #199e70; --app-reddit: #c98500; --app-threads: #d55181; --app-other: #6f6a62;
+  --model-1: #3987e5; --model-2: #d95926; --model-3: #199e70; --model-4: #c98500; --model-5: #d55181; --model-6: #008300; --model-7: #9085e9;
   --positive: #3fa86a;
   --warning: #d99a2b;
   --negative: #e5533f;

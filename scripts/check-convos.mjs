@@ -1,6 +1,6 @@
 // node scripts/check-convos.mjs: Cupid display-string parsing, month windows and source mapping.
 import assert from "node:assert/strict";
-import {appOfSource, cupidCount, cupidIds, cupidMetrics, formatCupidIds, monthDays, monthRange, sourceBucket, toCsv, shiftMonth} from "../lib/convos.ts";
+import {appOfSource, cupidCount, cupidIds, cupidMetrics, formatCupidIds, monthDays, monthRange, sourceBucket, toCsv, shiftMonth, forecast, convoCost, CONVO_PRICE} from "../lib/convos.ts";
 
 assert.equal(cupidCount("1,234"), 1234);
 assert.equal(cupidCount("900 (72.93% of 1,234)"), 900);
@@ -31,4 +31,19 @@ assert.equal(monthDays("2026-11", "2026-10-03").length, 0);
 assert.equal(sourceBucket("twitter"), "x");
 assert.equal(sourceBucket("untracked"), "other");
 assert.equal(toCsv([["a", 1, null], ['say "hi", ok', 2]]), 'a,1,\n"say ""hi"", ok",2');
+// Forecast: Oct 10 today, 9 complete days of 10 (last 7 → rate 10, low 10, high 10) + a partial 3 today.
+const oct = monthDays("2026-10", "2026-10-10").map((date, i) => ({date, v: i === 9 ? 3 : i < 2 ? 100 : 10}));
+const fc = forecast(oct, "2026-10", "2026-10-10");
+assert.equal(fc.actual, 273); assert.equal(fc.rate, 10); assert.equal(fc.basis, 7);
+assert.equal(fc.month, 270 + 10 * 22); assert.equal(fc.next, 300); assert.equal(fc.nextLow, 300);
+// Two complete days: falls back to their mean; band from min/max.
+const early = forecast([{date: "2026-11-01", v: 4}, {date: "2026-11-02", v: 8}, {date: "2026-11-03", v: 1}], "2026-11", "2026-11-03");
+assert.equal(early.rate, 6); assert.equal(early.month, 12 + 6 * 28); assert.equal(early.monthLow, 12 + 4 * 28); assert.equal(early.monthHigh, 12 + 8 * 28); assert.equal(early.next, 6 * 31);
+// Day one: nothing complete, no forecast. A finished month projects to its actual.
+assert.equal(forecast([{date: "2026-11-01", v: 5}], "2026-11", "2026-11-01").month, null);
+assert.equal(forecast(oct, "2026-10", "2026-11-05").month, 273);
+assert.equal(convoCost(100, "x"), null);
+CONVO_PRICE.all = 0.5; CONVO_PRICE.x = 0.2;
+assert.equal(convoCost(100, "x"), 20); assert.equal(convoCost(100, "discord"), 50); assert.equal(convoCost(null, "x"), null);
+delete CONVO_PRICE.all; delete CONVO_PRICE.x;
 console.log("check-convos ok");
