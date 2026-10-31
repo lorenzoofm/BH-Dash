@@ -27,8 +27,20 @@ const inRange = (d: any, start: string, end: string) => {
   return s !== "" && s >= start && s <= end;
 };
 
-export function completeDapMonth(ids: string[], accounts: {account_id: number}[] | undefined): boolean {
-  return !!accounts && ids.every(id => accounts.some(account => String(account.account_id) === id));
+export type Account = {id: number; slug: string; of_username: string};
+// A Model Accounts row belongs to a Creatorstaq account by numeric id or by slug.
+export const isLinked = (r: Rec, a: Account) => Number(r.fields.accountId) === a.id || label(r.fields.slug).toLowerCase() === a.slug.toLowerCase();
+
+// Accounts the Sync button adds: no Model Accounts row at all. A row with no model is a deleted account, never synced back.
+export const newAccounts = (accounts: Account[], rows: Rec[]) => accounts.filter(a => !rows.some(r => isLinked(r, a)));
+
+// Each Creatorstaq account with its model-linked row, carrying Creatorstaq's own id and slug so revenue
+// lookups (by slug) and monthly history (by id) never disagree with a hand-typed value.
+export function accountRows(accounts: Account[], rows: Rec[]): Rec[] {
+  return accounts.flatMap(a => {
+    const r = rows.find(r => linkIds(r.fields.model).length > 0 && isLinked(r, a));
+    return r ? [{...r, fields: {...r.fields, accountId: a.id, slug: a.slug.toLowerCase(), ofUsername: a.of_username || r.fields.ofUsername}}] : [];
+  });
 }
 
 // No included DAP accounts means zero; unavailable or shared account revenue is unknown.

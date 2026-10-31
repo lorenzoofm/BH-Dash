@@ -9,7 +9,7 @@ import {useAccountRevenues, useCreators, useDapAccounts, useModels, useTable} fr
 import {useSession} from "@/lib/datasource";
 import {usePayData} from "@/lib/pay-data";
 import {wagesFor} from "@/lib/pay";
-import {dapRevenueFor, modelPnL} from "@/lib/finance";
+import {accountRows as syncedRows, dapRevenueFor, isLinked, modelPnL} from "@/lib/finance";
 import {cn} from "@/lib/utils";
 import {ModelPicker, type PickerModel} from "@/views/pnl/model-picker";
 
@@ -82,8 +82,7 @@ export default function PnL() {
 
   const wages = useMemo(() => valid ? wagesFor(payData.data, payData.vas, start, end, today!) : new Map(), [valid, payData.data, payData.vas, start, end, today]);
   const model = models.rows.find(m => m.id === modelId);
-  const inKey = new Set((dap.data ?? []).map(a => a.slug.toLowerCase()));
-  const dapRows = map.rows.filter(r => r.fields.include !== false && inKey.has(label(r.fields.slug).toLowerCase()));
+  const dapRows = syncedRows(dap.data ?? [], map.rows).filter(r => r.fields.include !== false);
   const mappedCount = models.rows.filter(m => dapRows.some(r => linkIds(r.fields.model).includes(m.id))).length;
   const accountRows = dapRows.filter(r => linkIds(r.fields.model).includes(modelId));
   const accountSlugs = accountRows.map(r => label(r.fields.slug).toLowerCase());
@@ -114,7 +113,7 @@ export default function PnL() {
 
   // The picker mirrors the accounts Creatorstaq returns right now (/v1/me): one entry per model that has a
   // current Creatorstaq account, named by that account. Models without one (or Ended) drop out unless already
-  // selected; Creatorstaq accounts not linked to a model show disabled so they can be linked on Revenue.
+  // selected. Accounts not linked to a model (new or deleted) are managed on Revenue.
   const csAccounts = dap.data ?? [];
   const pickerModels: PickerModel[] = [];
   models.rows.forEach((m, index) => {
@@ -128,9 +127,6 @@ export default function PnL() {
     pickerModels.push({id: m.id, name, index, handle: handle ? "@" + handle : name, sub: name + (acc ? " · " + acc.slug : row ? " · " + label(row.fields.slug) : " · no Creatorstaq account"),
       avatar: photoOf(acc) || row?.fields.avatar || null, ended, deal: label(m.fields.dealType)});
   });
-  const linkedIds = new Set(map.rows.filter(r => linkIds(r.fields.model).length).map(r => Number(r.fields.accountId)));
-  for (const acc of csAccounts) if (!linkedIds.has(acc.id))
-    pickerModels.push({id: "cs:" + acc.id, name: acc.of_username || acc.slug, index: pickerModels.length, handle: "@" + (acc.of_username || acc.slug), sub: acc.slug + " · not linked to a model · link it on Revenue", avatar: photoOf(acc), ended: false, deal: "", disabled: true});
   const activeIds = pickerModels.filter(p => !p.disabled && !p.ended).map(p => p.id);
   const pick = (ids: string[]) => { setSelectedIds(ids); if (!ids.includes(modelId)) setModelId(ids[ids.length - 1]); };
 
@@ -306,7 +302,7 @@ export default function PnL() {
       <div className="grid gap-2 border-t border-[var(--ink-100)] pt-4">
         <span className="text-[13px] font-medium text-muted-foreground">Available Creatorstaq account</span>
         <Select value={newAccount || null} onChange={setNewAccount} disabled={!dap.data} placeholder="Choose the DAP account" ariaLabel="Available Creatorstaq account" searchable
-          options={(dap.data ?? []).map(a => { const owner = map.rows.find(r => Number(r.fields.accountId) === a.id || label(r.fields.slug).toLowerCase() === a.slug.toLowerCase()); const other = owner && linkIds(owner.fields.model).some(id => id !== modelId);
+          options={(dap.data ?? []).filter(a => !map.rows.some(r => isLinked(r, a) && !linkIds(r.fields.model).length)).map(a => { const owner = map.rows.find(r => Number(r.fields.accountId) === a.id || label(r.fields.slug).toLowerCase() === a.slug.toLowerCase()); const other = owner && linkIds(owner.fields.model).some(id => id !== modelId);
             return {value: String(a.id), text: `${a.slug} @${a.of_username}`, label: `${a.slug} · @${a.of_username}${other ? " · assigned elsewhere" : owner && owner.fields.include !== false && linkIds(owner.fields.model).includes(modelId) ? " · connected" : ""}`, disabled: !!other}; })}/>
         {dap.isPending && <p className="text-[12px] text-muted-foreground">Loading available accounts…</p>}{dap.isError && <Notice tone="red" icon={AlertTriangle}>{(dap.error as Error).message}</Notice>}
         <Btn className="justify-self-start" onClick={connectAccount} disabled={!newAccount || !modelId || saving}><Link2/>Connect DAP account</Btn>

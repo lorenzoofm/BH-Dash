@@ -6,7 +6,7 @@ import {NavLink} from "@/components/bh/nav-link";
 import {addDays, label, linkIds, money, num, shortDate, todayIso, weekLabel} from "@/lib/bh";
 import {useAccountRevenues, useDapAccounts, useModels, useTable} from "@/lib/tables";
 import {useProxyFetch} from "@/lib/datasource";
-import {dapRevenueFor} from "@/lib/finance";
+import {accountRows, dapRevenueFor} from "@/lib/finance";
 import {usePayData} from "@/lib/pay-data";
 import {initials} from "@/lib/team";
 import {overview, type BoardTone} from "@/lib/overview";
@@ -41,8 +41,7 @@ export default function Overview({pages}: {pages: Page[]}) {
   // Earnings are DAP revenue only: Model Accounts rows with "Include in P&L" on that the Creatorstaq key can read.
   const dap = useDapAccounts(fin);
   const liveIds = models.rows.filter(m => label(m.fields.status) !== "Ended").map(m => m.id);
-  const inKey = new Set((dap.data ?? []).map(a => a.slug.toLowerCase()));
-  const dapRows = map.rows.filter(r => r.fields.include !== false && inKey.has(label(r.fields.slug).toLowerCase()) && linkIds(r.fields.model).some(id => liveIds.includes(id)));
+  const dapRows = accountRows(dap.data ?? [], map.rows).filter(r => r.fields.include !== false && linkIds(r.fields.model).some(id => liveIds.includes(id)));
   const slugs = fin ? dapRows.map(r => label(r.fields.slug).toLowerCase()) : [];
   const mStart = today ? today.slice(0, 8) + "01" : null;
   const lmStart = mStart ? addDays(mStart, -1).slice(0, 8) + "01" : null;

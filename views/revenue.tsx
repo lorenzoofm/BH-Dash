@@ -1,24 +1,24 @@
 "use client";
 import {useEffect, useState} from "react";
 import {useQuery} from "@tanstack/react-query";
-import {AlertTriangle, Banknote, CalendarDays, Link2, Plus, Trash2, TrendingUp, Trophy} from "lucide-react";
-import {TableError, Btn, Drawer, Field, Notice, PageHeader, PageSkeleton, Panel, Stat, inputClass} from "@/components/bh/ui";
+import {AlertTriangle, Banknote, CalendarDays, Link2, RefreshCw, Trash2, TrendingUp, Trophy} from "lucide-react";
+import {TableError, Btn, Notice, PageHeader, PageSkeleton, Panel, Stat} from "@/components/bh/ui";
 import {Select} from "@/components/bh/menu";
 import {toast} from "@/components/bh/toast";
 import {cn} from "@/lib/utils";
 import {label, linkIds, money, num, todayIso} from "@/lib/bh";
-import {completeDapMonth} from "@/lib/finance";
-import {useProxyFetch} from "@/lib/datasource";
-import {CHOICES, linkOptions, opts, useAccountRevenues, useCreators, useDapAccounts, useModels, useTable} from "@/lib/tables";
+import {accountRows, isLinked, newAccounts} from "@/lib/finance";
+import {useProxyFetch, useSession} from "@/lib/datasource";
+import {CHOICES, linkOptions, opts, syncAccounts, useAccountRevenues, useDapAccounts, useModels, useTable} from "@/lib/tables";
 
 const MONTHLY = "https://api.creatorstaq.com/v1/computed/revenue/monthly?months=12";
 const COLORS = ["var(--text-heading)", "#ff3000", "#6e6a63", "#2166c9", "#0f7b76", "#8a3cb8", "#b8327a", "#c9c4bb"];
 const STATUS_TONE: Record<string, string> = {Active: "bg-positive-soft text-[var(--positive-fg)]", Paused: "bg-warning-soft text-[var(--warning-fg)]", Ended: "bg-negative-soft text-[var(--negative-fg)]"};
 const DEAL_TONE: Record<string, string> = {Managed: "bg-positive-soft text-[var(--positive-fg)]", "Chat-only": "bg-brand-soft text-[var(--signal-tint-fg)]"};
-const DEALS = "grid grid-cols-[minmax(120px,1fr)_110px_120px_120px_110px_minmax(200px,1.4fr)_140px_76px] items-center gap-2 px-5";
-const PAGES = "grid grid-cols-[minmax(140px,1fr)_110px_minmax(130px,1fr)_150px_130px_120px] items-center gap-2 px-5";
-const HEAD = "h-9 bg-muted text-[11.5px] font-medium text-muted-foreground";
-const ROW = "min-h-11 border-b py-0.5 text-[13px] hover:bg-muted/30";
+const GRID = "grid grid-cols-[minmax(110px,1fr)_minmax(400px,2.4fr)_96px_104px_72px_72px_minmax(150px,1.2fr)_128px_44px] items-start gap-2 px-5";
+const ACC = "grid grid-cols-[minmax(130px,1fr)_80px_40px_130px] items-center gap-2";
+const HEAD = "h-9 items-center bg-muted text-[11.5px] font-medium text-muted-foreground";
+const ROW = "border-b py-2 text-[13px] hover:bg-muted/30";
 const ghost = "h-8 w-full rounded-[6px] border border-transparent bg-transparent text-[13px] outline-none hover:border-[var(--ink-100)] focus:border-[var(--signal)] focus:bg-card";
 type Row = {id: string; fields: Record<string, any>};
 
@@ -37,7 +37,7 @@ function useOptimistic(table: {rows: Row[]; update: (id: string, f: Record<strin
 export default function Revenue() {
   const [today, setToday] = useState<string | null>(null);
   useEffect(() => setToday(todayIso()), []);
-  const models = useModels(), map = useTable("map");
+  const models = useModels(), map = useTable("map"), session = useSession();
   const m = useOptimistic(models), p = useOptimistic(map);
   const proxyFetch = useProxyFetch("live");
   const monthly = useQuery({queryKey: ["bh-monthly"], staleTime: 300000, retry: 1, queryFn: async () => {
@@ -46,25 +46,27 @@ export default function Revenue() {
     if (!res.ok) throw new Error(body.error || `Creator Staq returned ${res.status}`);
     return (body.monthly_by_account ?? []) as {month: string; accounts: {account_id: number; name: string; net: number | string}[]}[];
   }});
-  const mtd = useCreators(today ? today.slice(0, 8) + "01" : null, today);
   const dap = useDapAccounts();
-  const inKey = new Set((dap.data ?? []).map(a => a.slug.toLowerCase()));
+  const accounts = dap.data ?? [];
+  // One row per Creatorstaq account linked to a model (Creatorstaq's id and slug); counted = switched on and model not Ended.
+  const linked = accountRows(accounts, p.rows);
   const liveIds = new Set(m.rows.filter(r => label(r.fields.status) !== "Ended").map(r => r.id));
-  const dapRows = p.rows.filter(r => r.fields.include !== false && inKey.has(label(r.fields.slug).toLowerCase()) && linkIds(r.fields.model).some(id => liveIds.has(id)));
-  const dapSlugs = [...new Set(dapRows.map(r => label(r.fields.slug).toLowerCase()))];
-  // Every readable page, so the pages table can show this month for excluded pages too.
-  const readable = [...new Set(p.rows.map(r => label(r.fields.slug).toLowerCase()).filter(s => inKey.has(s)))];
-  const accountRevenue = useAccountRevenues(readable, today ? today.slice(0, 8) + "01" : null, today);
-  const revenue = !dap.isSuccess || (dapSlugs.length > 0 && !accountRevenue.isSuccess) || dapSlugs.some(slug => accountRevenue.data?.[slug]?.net == null) ? null : dapSlugs.reduce((sum, slug) => sum + accountRevenue.data![slug].net!, 0);
-  const [addingAccount, setAddingAccount] = useState(false);
+  const dapRows = linked.filter(r => r.fields.include !== false && linkIds(r.fields.model).some(id => liveIds.has(id)));
+  const dapSlugs = dapRows.map(r => label(r.fields.slug));
+  const accountRevenue = useAccountRevenues(linked.map(r => label(r.fields.slug)), today ? today.slice(0, 8) + "01" : null, today);
+  const failed = accountRevenue.isSuccess ? dapSlugs.filter(slug => accountRevenue.data[slug]?.net == null) : [];
+  const none = dap.isSuccess && dapRows.length === 0;
+  const revenue = none ? 0 : !dap.isSuccess || !accountRevenue.isSuccess || failed.length ? null : dapSlugs.reduce((sum, slug) => sum + accountRevenue.data![slug].net!, 0);
   const [confirmDel, setConfirmDel] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
 
   if ([models, map].some(t => t.error)) return <TableError tables={[models, map]}/>;
   if (!today || models.loading || map.loading) return <PageSkeleton/>;
 
   const pageModel = new Map(dapRows.map(r => [String(r.fields.accountId), linkIds(r.fields.model)[0]]));
-  const modelName = new Map(m.rows.map(r => [r.id, label(r.fields.model)]));
+  const modelName = new Map(models.all.map(r => [r.id, label(r.fields.model)]));
   const shown = [...new Set([...pageModel.values()].filter(Boolean))] as string[];
+  // The agency monthly endpoint lists finished months only, in one response; an account missing from a month earned nothing in it.
   const chart = (monthly.data ?? []).map(mo => {
     const row = {month: mo.month.slice(0, 7), total: 0, by: {} as Record<string, number>};
     for (const a of mo.accounts) {
@@ -78,42 +80,56 @@ export default function Revenue() {
   const thisMonth = today.slice(0, 7);
   const full = chart.filter(r => r.month !== thisMonth);
   const last = full.at(-1), prev = full.at(-2);
-  const dapIds = dapRows.map(r => String(r.fields.accountId));
-  const completeMonth = (month: string | undefined) => !!month && completeDapMonth(dapIds, monthly.data?.find(mo => mo.month.slice(0, 7) === month)?.accounts);
-  const fullComplete = full.length > 0 && full.every(r => completeMonth(r.month));
+  const history = dap.isSuccess && monthly.isSuccess;
   const best = [...full].sort((a, b) => b.total - a.total)[0];
-  const activeNames = m.rows.filter(r => label(r.fields.status) !== "Ended").map(r => label(r.fields.model).toLowerCase());
-  const unlinked = (mtd.data ?? []).filter(c => !activeNames.includes(c.name.trim().toLowerCase()));
-  const lastOk = dap.isSuccess && completeMonth(last?.month);
-  const delta = lastOk && completeMonth(prev?.month) ? Math.round(last!.total - prev!.total) : null;
+  const delta = history && last && prev ? Math.round(last.total - prev.total) : null;
   const nice = Math.ceil(Math.max(1, ...chart.map(r => r.total)) / 5000) * 5000;
   const ticks = [4, 3, 2, 1, 0].map(k => { const v = nice * k / 4; return v >= 1000 ? `$${Math.round(v / 1000)}k` : `$${v}`; });
   const fmtMonth = (mo: string) => new Date(mo + "-01T00:00:00Z").toLocaleDateString("en-GB", {month: "short", year: "2-digit", timeZone: "UTC"});
-  const modelOptions = linkOptions(m.rows, "model");
   const edit = (r: Row, key: string, value: any) => m.save(r.id, {[key]: value}, `${label(r.fields.model)} · saved`);
+  const isAdmin = !!(session.data as any)?.isAdmin;
+  // Deleted accounts keep their Model Accounts row with no model, so Sync never brings them back.
+  const deleted = accounts.flatMap(a => { const r = p.rows.find(r => isLinked(r, a)); return r && !linkIds(r.fields.model).length ? [{a, r}] : []; });
+  const moveOptions = linkOptions(models.all, "model");
+  const fresh = newAccounts(accounts, p.rows).length;
+
+  const run = async (job: () => Promise<string>) => { setBusy(true); try { toast(await job()); } catch (e: any) { toast.error(e.message); } finally { setBusy(false); } };
+  const sync = () => run(async () => { const n = await syncAccounts(accounts, map.rows, models.create, map.create); return n ? `${n} new account${n === 1 ? "" : "s"} added` : "Already up to date"; });
+  const restore = (a: {slug: string; of_username: string}, r: Row) => run(async () => {
+    const model = await models.create({model: a.of_username || a.slug});
+    await map.update(r.id, {model: [model.id], include: true});
+    return `${a.slug} restored`;
+  });
+  // Deleting a model unlinks its accounts (they stay deleted) and removes its links on staff, expenses and conversions.
+  const remove = async (r: Row) => { setConfirmDel(null); try { await models.remove(r.id); toast(`${label(r.fields.model) || "Model"} deleted`); } catch (e: any) { toast.error(e.message); } };
+  const del = (r: Row) => confirmDel === r.id
+    ? <button type="button" onClick={() => remove(r)} onBlur={() => setConfirmDel(null)} autoFocus title="Deletes the model; its accounts stay out of revenue and Sync won't add them back" className="h-7 rounded-full bg-[#f4dad7] px-3 text-[12px] font-semibold text-[var(--negative-fg)]">Delete</button>
+    : <button type="button" onClick={() => setConfirmDel(r.id)} aria-label={`Delete ${label(r.fields.model)}`} title="Delete model" className="grid size-8 place-items-center rounded-[8px] text-[var(--text-faint)] hover:bg-[#f4dad7] hover:text-[var(--negative-fg)]"><Trash2 className="size-4"/></button>;
+  const gone = models.all.filter(r => !m.rows.some(x => x.id === r.id));
 
   return <div className="space-y-6">
-    <PageHeader eyebrow="Finance" title="Revenue" subtitle="DAP account assignments, model deals and available account-level history."
-/>
+    <PageHeader eyebrow="Finance" title="Revenue" subtitle="Creatorstaq accounts, model deals and which accounts count toward revenue and P&L."/>
 
-    {(monthly.isError || mtd.isError) && <Notice tone="red" icon={AlertTriangle}>Creator Staq is unavailable: {((monthly.error ?? mtd.error) as Error).message}</Notice>}
-    {(dap.isError || accountRevenue.isError || (accountRevenue.isSuccess && dapSlugs.some(slug => accountRevenue.data?.[slug]?.net == null))) && <Notice tone="red" icon={AlertTriangle}>DAP account revenue could not be verified. Current revenue remains unavailable.</Notice>}
+    {monthly.isError && <Notice tone="red" icon={AlertTriangle}>Creator Staq monthly history is unavailable: {(monthly.error as Error).message}</Notice>}
+    {dap.isError && <Notice tone="red" icon={AlertTriangle}>The Creatorstaq account list could not be loaded: {(dap.error as Error).message}</Notice>}
+    {failed.length > 0 && <Notice tone="red" icon={AlertTriangle}>This month couldn’t be read for {failed.join(", ")}. Try again later, or switch those accounts off below.</Notice>}
+    {none && <Notice icon={AlertTriangle}>No accounts are switched on, so revenue counts as $0 here and on P&L and Overview. Switch on the accounts that should count in the table below.</Notice>}
 
     <div className="grid grid-cols-[repeat(auto-fit,minmax(220px,1fr))] gap-4">
-      <Stat accent label="This month so far" icon={Banknote} value={money(revenue)} sub="Included DAP accounts"/>
-      <Stat label="Last full month" icon={CalendarDays} value={lastOk ? money(last!.total) : "—"}
-        sub={<>{delta != null && <span className={cn("inline-flex rounded-full px-2 py-0.5 text-[11px] font-semibold", delta > 0 ? "bg-positive-soft text-[var(--positive-fg)]" : "bg-negative-soft text-[var(--negative-fg)]")}>{delta > 0 ? "↗ " : "↘ "}{money(Math.abs(delta))} vs prior</span>}{last ? fmtMonth(last.month) : ""}</>}/>
-      <Stat label="Last 6 months" icon={TrendingUp} value={dap.isSuccess && monthly.isSuccess && fullComplete && chart.length > 0 ? money(full.slice(-6).reduce((s, r) => s + r.total, 0)) : "—"} sub="Full months only"/>
-      <Stat label="Best month" icon={Trophy} value={dap.isSuccess && fullComplete && best ? money(best.total) : "—"} sub={best ? fmtMonth(best.month) : undefined}/>
+      <Stat accent label="This month so far" icon={Banknote} value={money(revenue)} sub={none ? "No accounts counted" : `${dapRows.length} counted account${dapRows.length === 1 ? "" : "s"}`}/>
+      <Stat label="Last full month" icon={CalendarDays} value={history && last ? money(last.total) : "—"}
+        sub={<>{!!delta && <span className={cn("inline-flex rounded-full px-2 py-0.5 text-[11px] font-semibold", delta > 0 ? "bg-positive-soft text-[var(--positive-fg)]" : "bg-negative-soft text-[var(--negative-fg)]")}>{delta > 0 ? "↗ " : "↘ "}{money(Math.abs(delta))} vs prior</span>}{last ? fmtMonth(last.month) : ""}</>}/>
+      <Stat label="Last 6 months" icon={TrendingUp} value={history && full.length ? money(full.slice(-6).reduce((s, r) => s + r.total, 0)) : "—"} sub="Full months only"/>
+      <Stat label="Best month" icon={Trophy} value={history && best ? money(best.total) : "—"} sub={best ? fmtMonth(best.month) : undefined}/>
     </div>
 
-    <Panel title="Monthly net revenue" subtitle="Last 12 months, account-level history for included DAP accounts. This month is month to date.">
-      {monthly.isPending ? <div className="h-[280px] animate-pulse rounded-lg bg-muted"/> : !chart.some(r => r.total) ? <Notice icon={Link2}>Creator Staq returned no account-level monthly revenue history for the selected key.</Notice> : <>
+    <Panel title="Monthly net revenue" subtitle="Finished months, counted accounts only.">
+      {monthly.isPending ? <div className="h-[280px] animate-pulse rounded-lg bg-muted"/> : !chart.some(r => r.total) ? <Notice icon={Link2}>{none ? "No accounts are switched on." : "Creator Staq has no monthly revenue for the counted accounts yet."}</Notice> : <>
         <div className="grid h-[280px] grid-cols-[52px_1fr]">
           <div className="flex flex-col justify-between pb-7 font-mono text-[11px] text-muted-foreground">{ticks.map(t => <span key={t} className="num">{t}</span>)}</div>
           <div className="grid gap-2.5" style={{gridTemplateColumns: `repeat(${chart.length},1fr)`}}>
             {chart.map(r => <div key={r.month} className="flex min-w-0 flex-col justify-end">
-              <div title={`${fmtMonth(r.month)} · ${money(r.total)}${r.month === thisMonth ? " (month to date)" : ""}`} className="flex flex-col-reverse overflow-hidden rounded-t-[5px]" style={{height: `${r.total / nice * 100}%`, opacity: r.month === thisMonth ? .55 : 1}}>
+              <div title={`${fmtMonth(r.month)} · ${money(r.total)}`} className="flex flex-col-reverse overflow-hidden rounded-t-[5px]" style={{height: `${r.total / nice * 100}%`}}>
                 {shown.map((id, i) => <div key={id} title={`${modelName.get(id) ?? "Model"}: ${money(r.by[id] ?? 0)}`} style={{height: `${r.total ? (r.by[id] ?? 0) / r.total * 100 : 0}%`, background: COLORS[i % COLORS.length]}}/>)}
               </div>
               <div className="h-7 overflow-hidden whitespace-nowrap pt-2.5 text-center font-mono text-[10.5px] text-muted-foreground">{fmtMonth(r.month)}</div>
@@ -126,20 +142,29 @@ export default function Revenue() {
       </>}
     </Panel>
 
-    {(() => {
-      // Deleting removes the model, its Creatorstaq page links and its links on staff, expenses and conversions.
-      const remove = async (r: Row) => { setConfirmDel(null); try { await models.remove(r.id); toast(`${label(r.fields.model) || "Model"} deleted`); } catch (e: any) { toast.error(e.message); } };
-      const del = (r: Row) => confirmDel === r.id
-        ? <button type="button" onClick={() => remove(r)} onBlur={() => setConfirmDel(null)} autoFocus className="h-7 rounded-full bg-[#f4dad7] px-3 text-[12px] font-semibold text-[var(--negative-fg)]">Delete</button>
-        : <button type="button" onClick={() => setConfirmDel(r.id)} aria-label={`Delete ${label(r.fields.model)}`} title="Delete model" className="grid size-8 place-items-center rounded-[8px] text-[var(--text-faint)] hover:bg-[#f4dad7] hover:text-[var(--negative-fg)]"><Trash2 className="size-4"/></button>;
-      const gone = models.all.filter(r => !m.rows.some(x => x.id === r.id));
-      return <>
-    <TableCard title="Model deals" subtitle="Managed: we keep page revenue and pay the model her cut. Chat-only: we earn our cut of page revenue." minWidth={1040}>
-      <div className={cn(DEALS, HEAD)}><span>Model</span><span>Status</span><span>Deal</span><span className="text-right">Model’s cut %</span><span className="text-right">Our cut %</span><span>Payout basis</span><span>Started</span><span/></div>
+    <TableCard title="Models & accounts" subtitle="Synced from Creatorstaq. Switch on the accounts that count toward revenue and P&L. Managed: we keep page revenue and pay the model her cut. Chat-only: we earn our cut." minWidth={1280}
+      actions={isAdmin && <Btn size="sm" onClick={sync} loading={busy} disabled={!dap.isSuccess}><RefreshCw className="!size-3.5"/>Sync from Creatorstaq{fresh ? ` (${fresh} new)` : ""}</Btn>}
+      footer={deleted.length > 0 && <details className="border-t px-5 py-3 text-[12.5px]">
+        <summary className="cursor-pointer text-muted-foreground">Deleted accounts ({deleted.length})</summary>
+        <div className="mt-2 flex flex-wrap gap-2">{deleted.map(({a, r}) => <span key={a.id} className="inline-flex h-8 items-center gap-2 rounded-full border pl-3 pr-1">{a.slug}{a.of_username && <span className="text-muted-foreground">@{a.of_username}</span>}
+          {isAdmin && <Btn size="sm" variant="ghost" onClick={() => restore(a, r)} disabled={busy}>Restore</Btn>}</span>)}</div>
+      </details>}>
+      <div className={cn(GRID, HEAD)}><span>Model</span><div className={ACC}><span>Account</span><span className="text-right">This month</span><span>Counts</span><span>Model</span></div><span>Status</span><span>Deal</span><span className="text-right">Model %</span><span className="text-right">Our %</span><span>Payout basis</span><span>Started</span><span/></div>
       {[...m.rows].sort((a, b) => label(a.fields.model).localeCompare(label(b.fields.model))).map(r => {
         const status = label(r.fields.status), deal = label(r.fields.dealType);
-        return <div key={r.id} className={cn(DEALS, ROW)}>
+        const own = linked.filter(x => linkIds(x.fields.model)[0] === r.id);
+        return <div key={r.id} className={cn(GRID, ROW)}>
           <EditInput value={label(r.fields.model)} onCommit={v => v.trim() && edit(r, "model", v.trim())} className={ghost + " px-1.5 font-medium"} aria-label="Model name"/>
+          <div className="grid gap-1">{own.map(x => {
+            const slug = label(x.fields.slug), on = x.fields.include !== false, net = accountRevenue.data?.[slug]?.net, of = label(x.fields.ofUsername);
+            return <div key={x.id} className={ACC}>
+              <span className="min-w-0 truncate"><span className="font-medium">{slug}</span> <span className="text-muted-foreground">{of ? "@" + of : ""}</span></span>
+              <span className={cn("num text-right", on ? "text-foreground" : "text-muted-foreground")}>{money(net ?? null)}</span>
+              <Toggle on={on} label={`${slug} counts toward revenue`} onClick={() => p.save(x.id, {include: !on}, `${slug} ${on ? "no longer counts" : "now counts"} toward revenue`)}/>
+              <Select variant="cell" value={r.id} options={moveOptions} className="px-1 text-[12.5px]" ariaLabel={`Model for ${slug}`} searchable
+                onChange={v => { if (v === r.id) return; const name = modelName.get(v) ?? "model"; p.save(x.id, {model: [v]}, `${slug} moved to ${name}`, {model: [{id: v, label: name}]}); }}/>
+            </div>;
+          })}</div>
           <Select variant="pill" value={status} options={opts(CHOICES.modelStatus)} onChange={v => edit(r, "status", v)} className={cn("h-[26px] w-max px-2 text-[11px]", STATUS_TONE[status] ?? "bg-muted text-muted-foreground")} ariaLabel="Status"/>
           <Select variant="pill" value={deal} options={[{value: "", label: "—"}, ...opts(CHOICES.dealType)]} onChange={v => edit(r, "dealType", v || null)} className={cn("h-[26px] w-max px-2 text-[11px]", DEAL_TONE[deal] ?? "bg-muted text-muted-foreground")} ariaLabel="Deal"/>
           <EditInput type="number" min="0" max="100" placeholder="—" value={r.fields.modelCut ?? ""} onCommit={v => cut(v, x => edit(r, "modelCut", x))} className={ghost + " num px-2 text-right"} aria-label="Model’s cut %"/>
@@ -150,31 +175,10 @@ export default function Revenue() {
         </div>;
       })}
     </TableCard>
-    {gone.length > 0 && <Panel title="Not in Creatorstaq" subtitle="These models aren't linked to any account Creatorstaq lists, so they're hidden everywhere. Delete them to remove them for good.">
+
+    {gone.length > 0 && <Panel title="Not in Creatorstaq" subtitle="These models have no Creatorstaq account linked (for example after you moved their accounts), so they're hidden everywhere. Delete them to remove them for good.">
       <div className="flex flex-wrap gap-2">{gone.map(r => <span key={r.id} className="inline-flex h-9 items-center gap-2 rounded-full border pl-3.5 pr-1 text-[13px] font-medium">{label(r.fields.model) || "Untitled"}{del(r)}</span>)}</div>
     </Panel>}
-      </>;
-    })()}
-
-    <TableCard title="Creator Staq pages" subtitle="Assign only each model’s DAP account here. Turn off DAP account for her other accounts." minWidth={880}
-      actions={<Btn size="sm" onClick={() => setAddingAccount(true)}><Plus className="!size-3.5"/>Add account</Btn>}
-      footer={unlinked.length > 0 && <div className="border-t px-5 py-3 text-[12.5px] text-muted-foreground">Creator Staq names not matched to a model this month: {unlinked.map(c => `${c.name} (${money(c.net)})`).join(" · ")}</div>}>
-      <div className={cn(PAGES, HEAD)}><span>Page</span><span>Account ID</span><span>OF username</span><span>Model</span><span className="text-right">This month</span><span className="text-center">DAP account</span></div>
-      {p.rows.filter(r => !dap.data || inKey.has(label(r.fields.slug).toLowerCase())).sort((a, b) => label(a.fields.slug).localeCompare(label(b.fields.slug))).map(r => {
-        const slug = label(r.fields.slug), on = r.fields.include !== false, net = accountRevenue.data?.[slug.toLowerCase()]?.net, of = label(r.fields.ofUsername);
-        return <div key={r.id} className={cn(PAGES, ROW)}>
-          <span className="font-medium">{slug}</span>
-          <span className="num text-muted-foreground">{String(r.fields.accountId ?? "")}</span>
-          <span className="text-muted-foreground">{of ? "@" + of : "—"}</span>
-          <Select variant="cell" value={linkIds(r.fields.model)[0] ?? null} options={modelOptions} placeholder="Choose model" className="px-1" ariaLabel={`Model for ${slug}`}
-            onChange={v => { const name = modelName.get(v) ?? "model"; p.save(r.id, {model: [v]}, `${slug} assigned to ${name}`, {model: [{id: v, label: name}]}); }}/>
-          <span className={cn("num text-right", on ? "text-foreground" : "text-muted-foreground")}>{money(net ?? null)}</span>
-          <div className="flex justify-center"><Toggle on={on} label={`${slug} DAP account`} onClick={() => p.save(r.id, {include: !on}, `${slug} ${on ? "excluded from" : "included in"} DAP revenue`)}/></div>
-        </div>;
-      })}
-    </TableCard>
-
-    <AddAccount open={addingAccount} onClose={() => setAddingAccount(false)} create={map.create} models={m.rows} existing={p.rows}/>
   </div>;
 }
 
@@ -209,30 +213,3 @@ function TableCard({title, subtitle, actions, minWidth, children, footer}: {titl
     {footer}
   </section>;
 }
-
-function AddAccount({open, onClose, create, models, existing}: {open: boolean; onClose: () => void; create: (f: any) => Promise<any>; models: Row[]; existing: Row[]}) {
-  const [slug, setSlug] = useState("");
-  const [accountId, setAccountId] = useState("");
-  const [of, setOf] = useState("");
-  const [modelId, setModelId] = useState("");
-  const [busy, setBusy] = useState(false);
-  useEffect(() => { if (open) { setSlug(""); setAccountId(""); setOf(""); setModelId(""); } }, [open]);
-  async function submit() {
-    const id = Number(accountId);
-    if (!/^[a-z0-9_-]+$/i.test(slug.trim()) || !Number.isSafeInteger(id) || id <= 0 || !modelId) return toast.error("Enter an account slug, numeric ID and model");
-    if (existing.some(r => label(r.fields.slug).toLowerCase() === slug.trim().toLowerCase() || Number(r.fields.accountId) === id)) return toast.error("This account is already mapped");
-    setBusy(true);
-    try { await create({slug: slug.trim(), accountId: id, ofUsername: of.trim().replace(/^@/, "") || slug.trim(), model: [modelId], include: true}); toast("Account added"); onClose(); }
-    catch (e: any) { toast.error(e.message); } finally { setBusy(false); }
-  }
-  return <Drawer open={open} onClose={onClose} title="Add DAP account" subtitle="Use the exact account slug and ID from Creatorstaq. Only selected DAP accounts count in account-level reports."
-    footer={<><Btn variant="ghost" onClick={onClose}>Cancel</Btn><Btn variant="primary" onClick={submit} loading={busy}>Add account</Btn></>}>
-    <div className="flex flex-col gap-4">
-      <Field label="Creatorstaq account slug"><input className={inputClass} value={slug} onChange={e => setSlug(e.target.value)} placeholder="irlapril"/></Field>
-      <Field label="Account ID"><input className={inputClass} type="number" min="1" step="1" value={accountId} onChange={e => setAccountId(e.target.value)} placeholder="329"/></Field>
-      <Field label="OF username"><input className={inputClass} value={of} onChange={e => setOf(e.target.value)} placeholder="username"/></Field>
-      <Field label="Model"><Select value={modelId || null} options={linkOptions(models, "model")} onChange={setModelId} placeholder="Choose model" ariaLabel="Model"/></Field>
-    </div>
-  </Drawer>;
-}
-

@@ -5,7 +5,7 @@ const {stripTypeScriptTypes} = require('node:module');
 
 const source = fs.readFileSync(__dirname + '/../lib/finance.ts', 'utf8');
 const code = source.slice(source.indexOf('const inRange'))
-  .replaceAll('export function ', 'function ');
+  .replaceAll('export function ', 'function ').replaceAll('export const ', 'var ');
 const ctx = vm.createContext({
   label: v => typeof v === 'object' ? v?.label ?? '' : String(v ?? ''),
   linkIds: v => (Array.isArray(v) ? v : v ? [v] : []).map(x => String(x?.id ?? x)),
@@ -46,6 +46,10 @@ assert.equal(ctx.dapRevenueFor('m1', [dapRow], ['m1'], true, {dap: {net: 42}}), 
 assert.equal(ctx.dapRevenueFor('m1', [dapRow], ['m1'], false, {}), null, 'unavailable directory remains unknown');
 assert.equal(ctx.dapRevenueFor('m1', [{fields:{model:['m1','m2'], slug:'dap'}}], ['m1','m2'], true, {dap:{net:42}}), null, 'shared account is not double counted');
 
-assert.equal(ctx.completeDapMonth(['1', '2'], [{account_id:1},{account_id:2}]), true);
-assert.equal(ctx.completeDapMonth(['1', '2'], [{account_id:1}]), false, 'partial historical totals must stay unknown');
-assert.equal(ctx.completeDapMonth([], undefined), false, 'missing month is not zero');
+// Sync adds only accounts with no row; an unlinked row (deleted) keeps its account out for good.
+const accounts = [{id: 1, slug: 'aria_dap', of_username: 'aria'}, {id: 2, slug: 'bella_dap', of_username: 'bella'}, {id: 3, slug: 'gone', of_username: 'gone'}, {id: 4, slug: 'fresh', of_username: 'fresh'}];
+const rows = [{id: 'r1', fields: {accountId: 1, slug: 'aria_dap', model: ['m1']}}, {id: 'r2', fields: {accountId: 99, slug: 'BELLA_DAP', model: ['m2']}}, {id: 'r3', fields: {accountId: 3, slug: 'gone', model: [], include: false}}];
+assert.deepEqual(ctx.newAccounts(accounts, rows).map(a => a.slug), ['fresh'], 'deleted and slug-matched accounts are not new');
+const linked = ctx.accountRows(accounts, rows);
+assert.deepEqual(linked.map(r => r.id), ['r1', 'r2'], 'deleted rows and unsynced accounts are not listed');
+assert.equal(linked[1].fields.accountId, 2, 'Creatorstaq id wins over a hand-typed one');
