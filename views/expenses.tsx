@@ -8,7 +8,7 @@ import {addDays, label, linkIds, money, num, todayIso} from "@/lib/bh";
 import {CHOICES, useTable} from "@/lib/tables";
 import {cn} from "@/lib/utils";
 
-type Range = "month" | "last-month" | "90d" | "all";
+type Range = "month" | "next-month" | "last-month" | "90d" | "all";
 type Key = "category" | "status" | "model" | "billing";
 type Filters = Record<Key, string[]>;
 type Cfg = {filters: Filters; sort: string; group: string};
@@ -86,8 +86,13 @@ export default function Expenses() {
   if (tables.some(t => t.error)) return <TableError tables={tables}/>;
   if (!today || exp.loading || models.loading || viewsT.loading) return <PageSkeleton/>;
 
+  // Calendar months, so costs booked ahead (later this month or next month) still land in their month's tally.
+  const nextStart = new Date(Date.UTC(+today.slice(0, 4), +today.slice(5, 7), 1)).toISOString().slice(0, 10);
+  const nextEnd = new Date(Date.UTC(+today.slice(0, 4), +today.slice(5, 7) + 1, 0)).toISOString().slice(0, 10);
+  const nextRows = rows.filter(r => r.date >= nextStart && r.date <= nextEnd);
   let a = "0000-00-00", b = "9999-99-99";
-  if (range === "month") { a = today.slice(0, 8) + "01"; b = today; }
+  if (range === "month") { a = today.slice(0, 8) + "01"; b = addDays(nextStart, -1); }
+  if (range === "next-month") { a = nextStart; b = nextEnd; }
   if (range === "last-month") { b = addDays(today.slice(0, 8) + "01", -1); a = b.slice(0, 8) + "01"; }
   if (range === "90d") { a = addDays(today, -89); b = today; }
   const inRange = rows.filter(r => r.date >= a && r.date <= b);
@@ -174,7 +179,11 @@ export default function Expenses() {
     <PageHeader eyebrow="Finance" title="Expenses" subtitle="Every operational cost. Paid expenses are deducted in the P&L; planned and unpaid ones are tracked here."
       actions={<Btn variant="primary" onClick={() => setAdding(true)}><Plus/>Add expense</Btn>}/>
 
-    <div className="flex justify-end"><Segmented size="sm" value={range} onChange={setRange} options={[["month", "This month"], ["last-month", "Last month"], ["90d", "90 days"], ["all", "All time"]] as const}/></div>
+    <div className="flex flex-wrap items-center justify-between gap-2">
+      <button type="button" onClick={() => setRange("next-month")} className="text-[12.5px] text-muted-foreground hover:text-foreground">
+        Booked for {new Date(nextStart + "T00:00:00Z").toLocaleString("en-US", {month: "long", timeZone: "UTC"})}: <span className="num font-semibold text-foreground">{money(sum(nextRows))}</span> across {nextRows.length} cost{nextRows.length === 1 ? "" : "s"}</button>
+      <Segmented size="sm" value={range} onChange={setRange} options={[["last-month", "Last month"], ["month", "This month"], ["next-month", "Next month"], ["90d", "90 days"], ["all", "All time"]] as const}/>
+    </div>
 
     <div className="grid gap-4" style={{gridTemplateColumns: "repeat(auto-fit,minmax(220px,1fr))"}}>
       <Stat label="Total recorded" icon={Receipt} value={money(sum(inRange))} sub={`${inRange.length} expenses`}/>
@@ -271,7 +280,7 @@ export default function Expenses() {
       <ViewMenu key={view.id} view={view} onRename={renameView} onDuplicate={() => newView(view.name + " copy", cfg)} onDelete={() => { setMenu(null); deleteView(); }}/>
     </Popover>
 
-    {adding && <AddExpense onClose={() => setAdding(false)} create={exp.create} today={today} catChoices={catChoices} modelList={modelList}
+    {adding && <AddExpense onClose={() => setAdding(false)} create={exp.create} today={range === "next-month" ? nextStart : today} catChoices={catChoices} modelList={modelList}
       initial={{category: cfg.filters.category.length === 1 ? cfg.filters.category[0] : "Other", model: cfg.filters.model.filter(x => x !== "shared")}}/>}
   </div>;
 }
