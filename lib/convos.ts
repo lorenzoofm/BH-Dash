@@ -38,3 +38,16 @@ export function appOfSource(source: string): CupidApp | null {
   return (CUPID_APPS as readonly string[]).includes(s) ? s as CupidApp : null;
 }
 export const ratio = (a: number | null | undefined, b: number | null | undefined) => a != null && b ? a / b : null;
+
+// Cupid gives a model a separate creator ID per platform. Stored in one field as "x:2290730,discord:2290729";
+// a bare ID (saved before per-platform IDs) counts as the model's X creator.
+export type CupidIds = Partial<Record<CupidApp, string>>;
+export function cupidIds(value: unknown): CupidIds {
+  const out: CupidIds = {};
+  for (const part of String(value ?? "").split(/[,\s]+/).filter(Boolean)) {
+    const [app, id] = part.includes(":") ? part.split(":", 2) : ["x", part];
+    if ((CUPID_APPS as readonly string[]).includes(app) && id) out[app as CupidApp] = id;
+  }
+  return out;
+}
+export const formatCupidIds = (ids: CupidIds) => CUPID_APPS.filter(a => ids[a]).map(a => `${a}:${ids[a]}`).join(",");

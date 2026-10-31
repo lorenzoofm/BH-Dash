@@ -8,13 +8,13 @@ import {cn} from "@/lib/utils";
 import {label, linkIds} from "@/lib/bh";
 import {useSession} from "@/lib/datasource";
 import {useTable} from "@/lib/tables";
-import {APP_LABEL, appOfSource, CUPID_APPS, type CupidApp, type Funnel, monthRange, ratio, shiftMonth} from "@/lib/convos";
+import {APP_LABEL, appOfSource, CUPID_APPS, type CupidApp, cupidIds, formatCupidIds, type Funnel, monthRange, ratio, shiftMonth} from "@/lib/convos";
 
 type Subs = {newSubs: number | null; counted: number; bySource: Record<string, number>; capped: boolean};
 const HEAD = "h-9 bg-muted text-[11.5px] font-medium text-muted-foreground";
 const ROW = "min-h-12 border-b py-1.5 text-[13px] last:border-b-0";
 const PLAT = "grid grid-cols-[minmax(110px,1fr)_repeat(6,minmax(84px,110px))] items-center gap-2 px-6";
-const MODEL = "grid grid-cols-[minmax(170px,1.4fr)_150px_repeat(5,minmax(84px,110px))] items-center gap-2 px-6";
+const MODEL = "grid grid-cols-[minmax(170px,1.4fr)_190px_repeat(5,minmax(84px,110px))] items-center gap-2 px-6";
 const n = (v: number | null | undefined) => v == null ? "—" : v.toLocaleString("en-US");
 const pct = (v: number | null) => v == null ? "—" : `${(v * 100).toFixed(1)}%`;
 const sumOf = (xs: (number | null | undefined)[]) => xs.some(x => x != null) ? xs.reduce<number>((a, x) => a + (x ?? 0), 0) : null;
@@ -40,10 +40,9 @@ export default function Convos() {
   const totals = useQueries({queries: CUPID_APPS.map(app => ({queryKey: ["cupid", month, app, ""], enabled: !!month, staleTime: 300000, retry: 1,
     queryFn: () => get<Funnel>({kind: "cupid", month: month!, app})}))});
   const active = CUPID_APPS.filter((_, i) => (totals[i].data?.raw ?? 0) > 0 || (totals[i].data?.charged ?? 0) > 0);
-  const withId = live.filter(m => String(m.fields.cupidId ?? "").trim());
-  const pairs = withId.flatMap(m => active.map(app => ({m, app})));
-  const per = useQueries({queries: pairs.map(({m, app}) => ({queryKey: ["cupid", month, app, String(m.fields.cupidId).trim()], staleTime: 300000, retry: 1,
-    queryFn: () => get<Funnel>({kind: "cupid", month: month!, app, creator: String(m.fields.cupidId).trim()})}))});
+  const pairs = live.flatMap(m => { const ids = cupidIds(m.fields.cupidId); return active.filter(app => ids[app]).map(app => ({m, app, id: ids[app]!})); });
+  const per = useQueries({queries: pairs.map(({app, id}) => ({queryKey: ["cupid", month, app, id], staleTime: 300000, retry: 1,
+    queryFn: () => get<Funnel>({kind: "cupid", month: month!, app, creator: id})}))});
   const subs = useQueries({queries: slugs.map(account => ({queryKey: ["cs-subs", month, account], enabled: !!month, staleTime: 300000, retry: 1,
     queryFn: () => get<Subs>({kind: "subs", month: month!, account})}))});
 
@@ -69,11 +68,13 @@ export default function Convos() {
   const label_ = new Date(month + "-15").toLocaleString("en-US", {month: "long", year: "numeric", timeZone: "UTC"});
   const {start, last} = monthRange(month);
 
-  const saveId = async (m: {id: string; fields: Record<string, any>}, value: string) => {
-    const v = value.trim();
-    if (v === String(m.fields.cupidId ?? "").trim()) return;
+  // ID boxes for every platform with conversations this month, plus any platform a model already has an ID for.
+  const idApps = CUPID_APPS.filter(app => active.includes(app) || live.some(m => cupidIds(m.fields.cupidId)[app]));
+  const saveId = async (m: {id: string; fields: Record<string, any>}, app: CupidApp, value: string) => {
+    const v = value.trim(), ids = cupidIds(m.fields.cupidId);
+    if (v === (ids[app] ?? "")) return;
     if (v && !/^[A-Za-z0-9_-]{1,64}$/.test(v)) { toast.error("Cupid creator IDs are letters, numbers, - and _ only."); return; }
-    try { await models.update(m.id, {cupidId: v || null}); toast(v ? `${label(m.fields.model)} linked to Cupid` : `${label(m.fields.model)} unlinked from Cupid`); }
+    try { await models.update(m.id, {cupidId: formatCupidIds({...ids, [app]: v || undefined}) || null}); toast(`${label(m.fields.model)} ${APP_LABEL[app]} ${v ? "linked to" : "unlinked from"} Cupid`); }
     catch (e: any) { toast.error(e.message); }
   };
   const cell = (q: {data?: any; isPending: boolean; error: unknown} | undefined, pick: (d: any) => React.ReactNode) =>
@@ -111,11 +112,11 @@ export default function Convos() {
       </div></div>
     </Panel>
 
-    <Panel flush title="By model" subtitle={admin ? "Paste each model's Cupid creator ID (Cupid → Presets → hover the ? beside Creator)." : "Models are matched to Cupid by their creator ID."}>
+    <Panel flush title="By model" subtitle={admin ? "Paste each model's Cupid creator ID per platform (Cupid → Presets → pick the platform → hover the ? beside Creator)." : "Models are matched to Cupid by their creator ID."}>
       <div className="overflow-x-auto"><div className="min-w-[900px]">
-        <div className={cn(MODEL, HEAD)}><span>Model</span><span>Cupid creator ID</span>{["Convos used", "Cupid conv.", "Conv. rate", "Real new subs", "From Cupid platforms"].map(h => <span key={h} className="text-right">{h}</span>)}</div>
+        <div className={cn(MODEL, HEAD)}><span>Model</span><span>Cupid creator IDs</span>{["Convos used", "Cupid conv.", "Conv. rate", "Real new subs", "From Cupid platforms"].map(h => <span key={h} className="text-right">{h}</span>)}</div>
         {live.map((m, i) => {
-          const id = String(m.fields.cupidId ?? "").trim(), qs = active.map(app => cupidOf(m, app)), ready = !!id && qs.every(q => q?.data);
+          const ids = cupidIds(m.fields.cupidId), apps = active.filter(app => ids[app]), qs = apps.map(app => cupidOf(m, app)), id = apps.length > 0, ready = id && qs.every(q => q?.data);
           const used = ready ? sumOf(qs.map(q => q!.data!.charged)) : null, conv = ready ? sumOf(qs.map(q => q!.data!.conversions)) : null;
           const real = realFor(m), fromCupid = realFromCupid(m), acc = accountsOf(m.id);
           const agg = !id ? undefined : {data: ready ? true : undefined, isPending: qs.some(q => q?.isPending), error: qs.find(q => q?.error)?.error};
@@ -123,13 +124,15 @@ export default function Convos() {
             <span className="flex min-w-0 items-center gap-2.5">
               <ModelAvatar name={label(m.fields.model)} src={acc.find(r => r.fields.avatar)?.fields.avatar} index={i}/>
               <span className="min-w-0"><span className="block truncate font-semibold">{label(m.fields.model)}</span>
-                {ready && <span className="block truncate text-[11.5px] text-muted-foreground">{active.map((app, k) => `${APP_LABEL[app]} ${n(qs[k]!.data!.charged)}·${n(qs[k]!.data!.conversions)}`).join("  ")}</span>}
+                {ready && <span className="block truncate text-[11.5px] text-muted-foreground">{apps.map((app, k) => `${APP_LABEL[app]} ${n(qs[k]!.data!.charged)}·${n(qs[k]!.data!.conversions)}`).join("  ")}</span>}
                 {!acc.length && <span className="block text-[11.5px] text-[var(--text-faint)]">No OnlyFans account linked</span>}</span>
             </span>
-            {admin ? <input key={id} defaultValue={id} placeholder="Add ID" aria-label={`Cupid creator ID for ${label(m.fields.model)}`}
-                className="num h-8 rounded-[6px] border border-[var(--edge-control)] bg-card px-2 text-[12.5px] outline-none focus:border-[var(--signal)]"
-                onBlur={e => void saveId(m, e.target.value)} onKeyDown={e => { if (e.key === "Enter") (e.target as HTMLInputElement).blur(); }}/>
-              : <span className="num truncate text-[12.5px] text-muted-foreground">{id || "—"}</span>}
+            <span className="flex flex-col gap-1">{idApps.map(app => admin
+              ? <label key={app} className="flex items-center gap-1.5 text-[11px] text-muted-foreground"><span className="w-[60px] shrink-0">{APP_LABEL[app]}</span>
+                <input key={ids[app] ?? ""} defaultValue={ids[app] ?? ""} placeholder="Add ID" aria-label={`${APP_LABEL[app]} Cupid creator ID for ${label(m.fields.model)}`}
+                  className="num h-7 w-full min-w-0 rounded-[6px] border border-[var(--edge-control)] bg-card px-2 text-[12.5px] text-foreground outline-none focus:border-[var(--signal)]"
+                  onBlur={e => void saveId(m, app, e.target.value)} onKeyDown={e => { if (e.key === "Enter") (e.target as HTMLInputElement).blur(); }}/></label>
+              : <span key={app} className="num truncate text-[12px] text-muted-foreground">{APP_LABEL[app]} {ids[app] || "—"}</span>)}</span>
             <span className="num text-right font-semibold">{cell(agg, () => n(used))}</span>
             <span className="num text-right font-semibold">{cell(agg, () => n(conv))}</span>
             <span className="num text-right">{cell(agg, () => pct(ratio(conv, used)))}</span>

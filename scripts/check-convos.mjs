@@ -1,6 +1,6 @@
 // node scripts/check-convos.mjs: Cupid display-string parsing, month windows and source mapping.
 import assert from "node:assert/strict";
-import {appOfSource, cupidCount, cupidMetrics, monthRange, shiftMonth} from "../lib/convos.ts";
+import {appOfSource, cupidCount, cupidIds, cupidMetrics, formatCupidIds, monthRange, shiftMonth} from "../lib/convos.ts";
 
 assert.equal(cupidCount("1,234"), 1234);
 assert.equal(cupidCount("900 (72.93% of 1,234)"), 900);
@@ -21,4 +21,8 @@ assert.equal(appOfSource("Twitter"), "x");
 assert.equal(appOfSource("IG"), "instagram");
 assert.equal(appOfSource("Discord"), "discord");
 assert.equal(appOfSource("untracked"), null);
+assert.deepEqual(cupidIds("2290730"), {x: "2290730"});
+assert.deepEqual(cupidIds("x:2290730, discord:2290729"), {x: "2290730", discord: "2290729"});
+assert.deepEqual(cupidIds("bogus:1,discord:"), {});
+assert.equal(formatCupidIds({discord: "2290729", x: "2290730"}), "x:2290730,discord:2290729");
 console.log("check-convos ok");
