@@ -10,7 +10,7 @@ export const SELECT = {
   staff: {name: "Full Name", staffId: "Staff ID", status: "Status", model: "Model", platform: "Platform", payType: "Pay Type", rate: "Current Hourly Rate", currency: "Currency", hours: "Standard Daily Hours", start: "Start Date", end: "End Date", email: "Email", weeklyMin: "Weekly Minimum", daysOff: "Days Off"},
   paylog: {workDate: "Work Date", staff: "Staff", hours: "Hours Worked", rate: "Hourly Rate Snapshot", bonus: "Bonus", deductions: "Deductions", status: "Payment Status", paidDate: "Payment Date", notes: "Notes", submittedBy: "Submitted By", totalPay: "Total Pay"},
   expenses: {expenseId: "Expense ID", date: "Expense Date", description: "Description", amount: "Amount", currency: "Currency", category: "Category", channel: "Channel", model: "Model", vendor: "Vendor", billing: "Billing Type", status: "Status", paidDate: "Paid Date", notes: "Notes", createdBy: "Created By", sourceRef: "Source Ref"},
-  models: {model: "Model", status: "Status", dealType: "Deal Type", modelCut: "Model's Cut %", ourCut: "Our Cut %", basis: "Payout Basis", start: "Start Date", notes: "Notes"},
+  models: {model: "Model", status: "Status", dealType: "Deal Type", modelCut: "Model's Cut %", ourCut: "Our Cut %", basis: "Payout Basis", start: "Start Date", notes: "Notes", cupidId: "Cupid Creator ID"},
   map: {slug: "Account Slug", accountId: "Account ID", ofUsername: "OF Username", model: "Model", include: "Include in P&L", notes: "Notes", avatar: "Avatar URL"},
   conversions: {week: "Week Starting", staff: "Staff", model: "Model", conversions: "Conversions", notes: "Notes", source: "Source"},
   expectations: {name: "Name", week: "Effective Week", staff: "Staff", daily: "Daily Target", weekly: "Weekly Minimum", monthly: "Monthly Target"},

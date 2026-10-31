@@ -2,12 +2,12 @@
 import {useEffect, useState} from "react";
 import {usePathname} from "next/navigation";
 import {NavLink} from "@/components/bh/nav-link";
-import {BarChart3, CircleUserRound, Clock, LayoutDashboard, LogOut, Menu, Moon, Receipt, Sun, TrendingUp, UserCog, Users, Wallet, X} from "lucide-react";
+import {BarChart3, CircleUserRound, Clock, LayoutDashboard, LogOut, Menu, MessagesSquare, Moon, Receipt, Sun, TrendingUp, UserCog, Users, Wallet, X} from "lucide-react";
 import type {Page} from '@/lib/page-access-constants';
 
 const groups = [
   {title: "", items: [["/", "Overview", LayoutDashboard]]},
-  {title: "Operations", items: [["/conversions", "Conversions", BarChart3], ["/staff", "Staff", Users], ["/pay-hours", "Pay & Hours", Clock]]},
+  {title: "Operations", items: [["/conversions", "Conversions", BarChart3], ["/staff", "Staff", Users], ["/pay-hours", "Pay & Hours", Clock], ["/convos", "Convo Tracker", MessagesSquare]]},
   {title: "Finance", items: [["/pnl", "Profit & Loss", Wallet], ["/expenses", "Expenses", Receipt], ["/revenue", "Revenue", TrendingUp]]},
 ] as const;
 

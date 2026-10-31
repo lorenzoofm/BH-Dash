@@ -6,7 +6,7 @@ import {toast} from "@/components/bh/toast";
 import {initials} from "@/lib/team";
 import {PAGES, DEFAULT_MANAGER_PAGES, type Page} from "@/lib/page-access-constants";
 
-const names: Record<Page, string> = {overview: "Overview", conversions: "Conversions", staff: "Staff", "pay-hours": "Pay & Hours", expenses: "Expenses", pnl: "Profit & Loss", revenue: "Revenue"};
+const names: Record<Page, string> = {overview: "Overview", conversions: "Conversions", staff: "Staff", "pay-hours": "Pay & Hours", expenses: "Expenses", pnl: "Profit & Loss", revenue: "Revenue", convos: "Convo Tracker"};
 type Users = {emails: string[]; admins: string[]; permissions: Record<string, Page[]>; editable: boolean};
 
 export default function UsersPage() {

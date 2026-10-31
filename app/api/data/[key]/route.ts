@@ -3,9 +3,9 @@ import {uniqueFields,sameValue} from '@/lib/data-rules';
 import {pagesFor,type Page} from '@/lib/page-access';
 export const dynamic='force-dynamic';
 const response=(body:any)=>Response.json(body,{headers:{'Cache-Control':'private, no-store'}});
-const tablePages:Record<string,Page[]>={staff:['overview','staff','conversions','pay-hours','pnl'],models:['overview','staff','pnl','revenue'],conversions:['overview','conversions','staff','pnl'],expectations:['overview','staff','conversions'],paylog:['overview','staff','pay-hours','pnl'],expenses:['expenses','pnl'],map:['pnl','revenue'],paidSubs:['conversions'],payPeriods:['overview','pay-hours','pnl'],payStaff:['overview','pay-hours','pnl'],payAdjustments:['overview','pay-hours','pnl'],expenseViews:['expenses']};
+const tablePages:Record<string,Page[]>={staff:['overview','staff','conversions','pay-hours','pnl'],models:['overview','staff','pnl','revenue','convos'],conversions:['overview','conversions','staff','pnl'],expectations:['overview','staff','conversions'],paylog:['overview','staff','pay-hours','pnl'],expenses:['expenses','pnl'],map:['pnl','revenue','convos'],paidSubs:['conversions'],payPeriods:['overview','pay-hours','pnl'],payStaff:['overview','pay-hours','pnl'],payAdjustments:['overview','pay-hours','pnl'],expenseViews:['expenses']};
 // Writes need the page that edits the table, not just one that reads it.
-const writePages:Record<string,Page[]>={staff:['staff'],expectations:['staff'],conversions:['conversions'],paidSubs:['conversions'],paylog:['pay-hours'],expenses:['expenses'],models:['pnl','revenue'],map:['pnl','revenue'],payPeriods:['pay-hours'],payStaff:['pay-hours'],payAdjustments:['pay-hours'],expenseViews:['expenses']};
+const writePages:Record<string,Page[]>={staff:['staff'],expectations:['staff'],conversions:['conversions'],paidSubs:['conversions'],paylog:['pay-hours'],expenses:['expenses'],models:['pnl','revenue','convos'],map:['pnl','revenue'],payPeriods:['pay-hours'],payStaff:['pay-hours'],payAdjustments:['pay-hours'],expenseViews:['expenses']};
 // Fields hidden unless the user has one of the listed pages.
 const privateFields:Record<string,{fields:Set<string>;pages:Page[]}>={
  models:{fields:new Set(["Deal Type","Model's Cut %","Our Cut %","Payout Basis"]),pages:['pnl']},
