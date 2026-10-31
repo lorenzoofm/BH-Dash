@@ -1,7 +1,7 @@
 "use client";
-import {useMemo} from "react";
+import {useEffect, useMemo} from "react";
 import {useQuery} from "@tanstack/react-query";
-import {useProxyFetch, useRecordCreate, useRecordDelete, useRecordUpdate, useRecords} from "@/lib/datasource";
+import {useProxyFetch, useRecordCreate, useRecordDelete, useRecordUpdate, useRecords, useSession} from "@/lib/datasource";
 import {fetchCreators, label, linkIds, revenueRanges, rowsOf, useAllPages} from "@/lib/bh";
 
 // One field selection per Airtable table. Every page reads through these, so the
@@ -42,6 +42,32 @@ export function useTable(name: TableName, enabled = true) {
     update: (id: string, fields: Record<string, any>) => update.mutateAsync({recordId: id, fields}),
     remove: (id: string) => remove.mutateAsync(id),
   };
+}
+
+// The dashboard's models come from Creatorstaq. A model is listed only while one of its Model Accounts rows
+// points at an account Creatorstaq returns now; leftovers drop out everywhere. `all` keeps every row so old
+// expenses and logs can still name a model that has gone. If Creatorstaq can't be reached, nothing is hidden.
+// For admins, a Creatorstaq account with no Model Accounts row becomes a new model (named by its OF username).
+let syncStarted = false;
+export function useModels(enabled = true) {
+  const models = useTable("models", enabled), map = useTable("map", enabled), dap = useDapAccounts(enabled), session = useSession();
+  const isLinked = (r: {fields: Record<string, any>}, a: {id: number; slug: string}) => Number(r.fields.accountId) === a.id || label(r.fields.slug).toLowerCase() === a.slug.toLowerCase();
+  const rows = useMemo(() => {
+    if (!dap.data || map.loading || map.error) return models.rows;
+    const linked = new Set(map.rows.filter(r => dap.data!.some(a => isLinked(r, a))).flatMap(r => linkIds(r.fields.model)));
+    return models.rows.filter(m => linked.has(m.id));
+  }, [models.rows, map.rows, map.loading, map.error, dap.data]);
+  useEffect(() => {
+    if (syncStarted || !(session.data as any)?.isAdmin || !dap.data || models.loading || map.loading || models.error || map.error) return;
+    const missing = dap.data.filter(a => !map.rows.some(r => isLinked(r, a)));
+    syncStarted = true;
+    // ponytail: one sync per browser tab; two admins opening it at the same moment could both add the account.
+    (async () => { for (const a of missing) {
+      const row = await models.create({model: a.of_username || a.slug});
+      if (row?.id) await map.create({slug: a.slug, accountId: a.id, ofUsername: a.of_username, model: [row.id], include: true});
+    } })().catch(() => { syncStarted = false; });
+  }, [session.data, dap.data, models.loading, map.loading, models.error, map.error]);
+  return {...models, rows, all: models.rows, loading: models.loading || map.loading || (enabled && dap.isLoading)};
 }
 
 // Option lists for the grids.

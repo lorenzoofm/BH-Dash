@@ -9,7 +9,7 @@ import {cn} from "@/lib/utils";
 import {label, linkIds, money, num, todayIso} from "@/lib/bh";
 import {completeDapMonth} from "@/lib/finance";
 import {useProxyFetch} from "@/lib/datasource";
-import {CHOICES, linkOptions, opts, useAccountRevenues, useCreators, useDapAccounts, useTable} from "@/lib/tables";
+import {CHOICES, linkOptions, opts, useAccountRevenues, useCreators, useDapAccounts, useModels, useTable} from "@/lib/tables";
 
 const MONTHLY = "https://api.creatorstaq.com/v1/computed/revenue/monthly?months=12";
 const COLORS = ["var(--text-heading)", "#ff3000", "#6e6a63", "#2166c9", "#0f7b76", "#8a3cb8", "#b8327a", "#c9c4bb"];
@@ -37,7 +37,7 @@ function useOptimistic(table: {rows: Row[]; update: (id: string, f: Record<strin
 export default function Revenue() {
   const [today, setToday] = useState<string | null>(null);
   useEffect(() => setToday(todayIso()), []);
-  const models = useTable("models"), map = useTable("map");
+  const models = useModels(), map = useTable("map");
   const m = useOptimistic(models), p = useOptimistic(map);
   const proxyFetch = useProxyFetch("live");
   const monthly = useQuery({queryKey: ["bh-monthly"], staleTime: 300000, retry: 1, queryFn: async () => {
@@ -56,7 +56,6 @@ export default function Revenue() {
   const readable = [...new Set(p.rows.map(r => label(r.fields.slug).toLowerCase()).filter(s => inKey.has(s)))];
   const accountRevenue = useAccountRevenues(readable, today ? today.slice(0, 8) + "01" : null, today);
   const revenue = !dap.isSuccess || (dapSlugs.length > 0 && !accountRevenue.isSuccess) || dapSlugs.some(slug => accountRevenue.data?.[slug]?.net == null) ? null : dapSlugs.reduce((sum, slug) => sum + accountRevenue.data![slug].net!, 0);
-  const [adding, setAdding] = useState(false);
   const [addingAccount, setAddingAccount] = useState(false);
 
   if ([models, map].some(t => t.error)) return <TableError tables={[models, map]}/>;
@@ -94,7 +93,7 @@ export default function Revenue() {
 
   return <div className="space-y-6">
     <PageHeader eyebrow="Finance" title="Revenue" subtitle="DAP account assignments, model deals and available account-level history."
-      actions={<Btn variant="primary" onClick={() => setAdding(true)}><Plus/>Add model</Btn>}/>
+/>
 
     {(monthly.isError || mtd.isError) && <Notice tone="red" icon={AlertTriangle}>Creator Staq is unavailable: {((monthly.error ?? mtd.error) as Error).message}</Notice>}
     {(dap.isError || accountRevenue.isError || (accountRevenue.isSuccess && dapSlugs.some(slug => accountRevenue.data?.[slug]?.net == null))) && <Notice tone="red" icon={AlertTriangle}>DAP account revenue could not be verified. Current revenue remains unavailable.</Notice>}
@@ -160,7 +159,6 @@ export default function Revenue() {
       })}
     </TableCard>
 
-    <AddModel open={adding} onClose={() => setAdding(false)} create={models.create} existing={m.rows}/>
     <AddAccount open={addingAccount} onClose={() => setAddingAccount(false)} create={map.create} models={m.rows} existing={p.rows}/>
   </div>;
 }
@@ -223,19 +221,3 @@ function AddAccount({open, onClose, create, models, existing}: {open: boolean; o
   </Drawer>;
 }
 
-function AddModel({open, onClose, create, existing}: {open: boolean; onClose: () => void; create: (f: any) => Promise<any>; existing: Row[]}) {
-  const [name, setName] = useState("");
-  const [busy, setBusy] = useState(false);
-  useEffect(() => { if (open) setName(""); }, [open]);
-  async function submit() {
-    const n = name.trim();
-    if (existing.some(r => label(r.fields.model).toLowerCase() === n.toLowerCase())) return toast.error("That model already exists");
-    setBusy(true);
-    try { await create({model: n}); toast(`${n} added — set her deal in the table`); onClose(); }
-    catch (e: any) { toast.error(e.message); } finally { setBusy(false); }
-  }
-  return <Drawer open={open} onClose={onClose} title="Add model" subtitle="Then set her deal type and cut in Model deals, and map her pages in the accounts table."
-    footer={<><Btn variant="ghost" onClick={onClose}>Cancel</Btn><Btn variant="primary" onClick={submit} loading={busy} disabled={!name.trim()}>Add model</Btn></>}>
-    <Field label="Model name"><input className={inputClass} value={name} onChange={e => setName(e.target.value)} onKeyDown={e => e.key === "Enter" && name.trim() && submit()} autoFocus/></Field>
-  </Drawer>;
-}

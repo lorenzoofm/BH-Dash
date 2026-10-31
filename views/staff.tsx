@@ -5,7 +5,7 @@ import {toast} from "@/components/bh/toast";
 import {Select} from "@/components/bh/menu";
 import {Btn, Drawer, Field, LinkBtn, PageHeader, PageSkeleton, Segmented, TableError, inputClass} from "@/components/bh/ui";
 import {addDays, label, linkIds, money, mondayOf, num, todayIso, weekLabel} from "@/lib/bh";
-import {CHOICES, linkOptions, useTable} from "@/lib/tables";
+import {CHOICES, linkOptions, useModels, useTable} from "@/lib/tables";
 import {ROLE_STYLE, ROLES, converts, hasTarget, dayOfWeek, initials, roleOf, targetOf, type Role} from "@/lib/team";
 import {DEFAULT_OFF, daysPerWeek, offForDays, parseOff} from "@/lib/pay";
 import {cn} from "@/lib/utils";
@@ -38,7 +38,7 @@ function Face({name, className}: {name: string; className?: string}) {
 export default function Staff() {
   const [today, setToday] = useState<string | null>(null);
   useEffect(() => setToday(todayIso()), []);
-  const staff = useTable("staff"), models = useTable("models"), conv = useTable("conversions"), pay = useTable("paylog");
+  const staff = useTable("staff"), models = useModels(), conv = useTable("conversions"), pay = useTable("paylog");
   const tables = [staff, models, conv, pay];
   const [period, setPeriod] = useState<Period>("last");
   const [q, setQ] = useState(""), [fStatus, setFStatus] = useState("");

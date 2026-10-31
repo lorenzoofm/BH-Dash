@@ -1,18 +1,25 @@
 "use client";
-import {useEffect, useState} from "react";
+import {useEffect, useRef, useState} from "react";
 import {useQueries} from "@tanstack/react-query";
-import {MessagesSquare} from "lucide-react";
+import {MessagesSquare, Pencil} from "lucide-react";
 import {ModelAvatar, Notice, PageHeader, PageSkeleton, Panel, Skeleton, Stat, TableError, WeekStepper} from "@/components/bh/ui";
 import {toast} from "@/components/bh/toast";
 import {cn} from "@/lib/utils";
 import {label, linkIds} from "@/lib/bh";
 import {useSession} from "@/lib/datasource";
-import {useTable} from "@/lib/tables";
-import {APP_LABEL, appOfSource, CUPID_APPS, type CupidApp, cupidIds, formatCupidIds, type Funnel, monthDays, monthRange, ratio, shiftMonth, sourceBucket} from "@/lib/convos";
+import {useModels, useTable} from "@/lib/tables";
+import {APP_LABEL, appOfSource, CUPID_APPS, type CupidApp, cupidIds, type CupidIds, formatCupidIds, type Funnel, monthDays, monthRange, ratio, shiftMonth, sourceBucket} from "@/lib/convos";
 import {converts, roleOf, type Role} from "@/lib/team";
 import {type Bucket, type Day, DailyCharts, DailyTable} from "@/views/convos/daily";
 import {type StaffedModel, Staffing} from "@/views/convos/staffing";
 
+// Cupid creator IDs collected on 2026-10-31. Saved once into any of these models whose field is still missing them;
+// IDs already on a model win. New IDs go in through the page.
+const KNOWN_IDS: Record<string, CupidIds> = {
+  april: {x: "2290730", discord: "2290729"},
+  ally: {x: "2978839", discord: "2978840"},
+  rae: {x: "2978837", discord: "2978838"},
+};
 type Subs = {newSubs: number | null; counted: number; bySource: Record<string, number>; byDay: Record<string, Record<string, number>>; capped: boolean};
 const HEAD = "h-9 bg-muted text-[11.5px] font-medium text-muted-foreground";
 const ROW = "min-h-12 border-b py-1.5 text-[13px] last:border-b-0";
@@ -34,8 +41,19 @@ export default function Convos() {
   const [now, setNow] = useState(""), [today, setToday] = useState("");
   useEffect(() => { const d = new Date().toISOString().slice(0, 10); setToday(d); setNow(d.slice(0, 7)); setMonth(d.slice(0, 7)); }, []);
   const session = useSession(), admin = !!(session.data as any)?.isAdmin;
-  const models = useTable("models"), map = useTable("map"), staff = useTable("staff");
+  const models = useModels(), map = useTable("map"), staff = useTable("staff");
   const live = models.rows.filter(m => label(m.fields.status) !== "Ended").sort((a, b) => label(a.fields.model).localeCompare(label(b.fields.model)));
+  const backfilled = useRef(false);
+  useEffect(() => {
+    if (backfilled.current || !admin || models.loading || models.error) return;
+    backfilled.current = true;
+    for (const m of models.rows) {
+      const known = KNOWN_IDS[label(m.fields.model).trim().toLowerCase()], have = cupidIds(m.fields.cupidId);
+      if (known && Object.keys(known).some(app => !have[app as CupidApp]))
+        models.update(m.id, {cupidId: formatCupidIds({...known, ...have})}).catch((e: any) => toast.error(e.message));
+    }
+  }, [admin, models.loading, models.error, models.rows]);
+  const [editing, setEditing] = useState<string[]>([]);
   const accountsOf = (id: string) => map.rows.filter(r => linkIds(r.fields.model).includes(id));
   const slugs = [...new Set(live.flatMap(m => accountsOf(m.id).map(r => label(r.fields.slug))).filter(Boolean))];
 
@@ -140,7 +158,7 @@ export default function Convos() {
     <DailyCharts days={days} apps={active} loading={loadingTotals || daily.some(q => q.isPending)} subsLoading={!subsReady && !subsError}/>
     <DailyTable days={days} apps={active} month={month}/>
 
-    <Panel flush title="By model" subtitle={admin ? "Paste each model's Cupid creator ID per platform (Cupid → Presets → pick the platform → hover the ? beside Creator)." : "Models are matched to Cupid by their creator ID."}>
+    <Panel flush title="By model" subtitle={admin ? "Each model's Cupid creator IDs. Click the pencil to change them (Cupid → Presets → pick the platform → hover the ? beside Creator)." : "Models are matched to Cupid by their creator ID."}>
       <div className="overflow-x-auto"><div className="min-w-[900px]">
         <div className={cn(MODEL, HEAD)}><span>Model</span><span>Cupid creator IDs</span>{["Convos used", "Cupid conv.", "Conv. rate", "Real new subs", "From Cupid platforms"].map(h => <span key={h} className="text-right">{h}</span>)}</div>
         {live.map((m, i) => {
@@ -151,16 +169,21 @@ export default function Convos() {
           return <div key={m.id} className={cn(MODEL, ROW)}>
             <span className="flex min-w-0 items-center gap-2.5">
               <ModelAvatar name={label(m.fields.model)} src={acc.find(r => r.fields.avatar)?.fields.avatar} index={i}/>
-              <span className="min-w-0"><span className="block truncate font-semibold">{label(m.fields.model)}</span>
+              <span className="min-w-0"><span className="block truncate font-semibold">{label(m.fields.model)}
+                {acc.length > 0 && <span className="ml-1.5 text-[11.5px] font-normal text-muted-foreground">{acc.map(r => "@" + (label(r.fields.ofUsername) || label(r.fields.slug))).join(" · ")}</span>}</span>
                 {ready && <span className="block truncate text-[11.5px] text-muted-foreground">{apps.map((app, k) => `${APP_LABEL[app]} ${n(qs[k]!.data!.charged)}·${n(qs[k]!.data!.conversions)}`).join("  ")}</span>}
                 {!acc.length && <span className="block text-[11.5px] text-[var(--text-faint)]">No OnlyFans account linked</span>}</span>
             </span>
-            <span className="flex flex-col gap-1">{idApps.map(app => admin
-              ? <label key={app} className="flex items-center gap-1.5 text-[11px] text-muted-foreground"><span className="w-[60px] shrink-0">{APP_LABEL[app]}</span>
+            {admin && editing.includes(m.id) ? <span className="flex flex-col gap-1">{idApps.map(app => <label key={app} className="flex items-center gap-1.5 text-[11px] text-muted-foreground"><span className="w-[60px] shrink-0">{APP_LABEL[app]}</span>
                 <input key={ids[app] ?? ""} defaultValue={ids[app] ?? ""} placeholder="Add ID" aria-label={`${APP_LABEL[app]} Cupid creator ID for ${label(m.fields.model)}`}
                   className="num h-7 w-full min-w-0 rounded-[6px] border border-[var(--edge-control)] bg-card px-2 text-[12.5px] text-foreground outline-none focus:border-[var(--signal)]"
-                  onBlur={e => void saveId(m, app, e.target.value)} onKeyDown={e => { if (e.key === "Enter") (e.target as HTMLInputElement).blur(); }}/></label>
-              : <span key={app} className="num truncate text-[12px] text-muted-foreground">{APP_LABEL[app]} {ids[app] || "—"}</span>)}</span>
+                  onBlur={e => void saveId(m, app, e.target.value)} onKeyDown={e => { if (e.key === "Enter") (e.target as HTMLInputElement).blur(); }}/></label>)}
+                <button type="button" onClick={() => setEditing(editing.filter(x => x !== m.id))} className="self-start text-[11.5px] font-semibold text-muted-foreground hover:text-foreground">Done</button></span>
+              : <span className="flex min-w-0 items-start gap-1.5"><span className="flex min-w-0 flex-col">
+                  {CUPID_APPS.filter(app => ids[app]).map(app => <span key={app} className="num truncate text-[12px] text-muted-foreground">{APP_LABEL[app]} <span className="text-foreground">{ids[app]}</span></span>)}
+                  {!Object.keys(ids).length && <span className="text-[12px] text-[var(--text-faint)]">No IDs</span>}</span>
+                {admin && <button type="button" onClick={() => setEditing([...editing, m.id])} aria-label={`Edit Cupid IDs for ${label(m.fields.model)}`} title="Edit Cupid IDs"
+                  className="grid size-6 shrink-0 place-items-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground"><Pencil className="size-3.5"/></button>}</span>}
             <span className="num text-right font-semibold">{cell(agg, () => n(used))}</span>
             <span className="num text-right font-semibold">{cell(agg, () => n(conv))}</span>
             <span className="num text-right">{cell(agg, () => pct(ratio(conv, used)))}</span>

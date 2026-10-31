@@ -4,7 +4,7 @@ import {useQuery} from "@tanstack/react-query";
 import {PageSkeleton, TableError, ModelAvatar} from "@/components/bh/ui";
 import {NavLink} from "@/components/bh/nav-link";
 import {addDays, label, linkIds, money, num, shortDate, todayIso, weekLabel} from "@/lib/bh";
-import {useAccountRevenues, useDapAccounts, useTable} from "@/lib/tables";
+import {useAccountRevenues, useDapAccounts, useModels, useTable} from "@/lib/tables";
 import {useProxyFetch} from "@/lib/datasource";
 import {dapRevenueFor} from "@/lib/finance";
 import {usePayData} from "@/lib/pay-data";
@@ -37,7 +37,7 @@ export default function Overview({pages}: {pages: Page[]}) {
   const [all, setAll] = useState(false);
 
   const staff = useTable("staff"), conv = useTable("conversions", convOn), pay = usePayData(payOn), expenses = useTable("expenses", expOn);
-  const models = useTable("models", fin), map = useTable("map", fin);
+  const models = useModels(fin), map = useTable("map", fin);
   // Earnings are DAP revenue only: Model Accounts rows with "Include in P&L" on that the Creatorstaq key can read.
   const dap = useDapAccounts(fin);
   const liveIds = models.rows.filter(m => label(m.fields.status) !== "Ended").map(m => m.id);

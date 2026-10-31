@@ -5,7 +5,7 @@ import {PageHeader, PageSkeleton, Segmented, TableError} from "@/components/bh/u
 import {Select} from "@/components/bh/menu";
 import {toast} from "@/components/bh/toast";
 import {addDays, label, linkIds, mondayOf, num, shortDate, todayIso, weekLabel} from "@/lib/bh";
-import {useTable} from "@/lib/tables";
+import {useModels, useTable} from "@/lib/tables";
 import {CONVERTING, dayOfWeek, initials, paceFor, ROLE_STYLE, ROLES, roleOf, targetOf, toneOf, type Role} from "@/lib/team";
 
 type Row = {id: string; fields: Record<string, any>};
@@ -40,7 +40,7 @@ function focusSel(sel: string) {
 export default function Conversions() {
   const [week, setWeek] = useState<string | null>(null);
   useEffect(() => setWeek(mondayOf(todayIso())), []);
-  const staff = useTable("staff"), conv = useTable("conversions"), models = useTable("models"), subs = useTable("paidSubs");
+  const staff = useTable("staff"), conv = useTable("conversions"), models = useModels(), subs = useTable("paidSubs");
   // Unsaved input text. The ref mirrors it synchronously so blur/Esc handlers never read a stale draft.
   const [draft, setDraftState] = useState<Record<string, string>>({});
   const draftRef = useRef(draft);

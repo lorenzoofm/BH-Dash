@@ -5,7 +5,7 @@ import {Btn, Drawer, Field, Notice, PageHeader, PageSkeleton, Segmented, inputCl
 import {Select} from "@/components/bh/menu";
 import {toast} from "@/components/bh/toast";
 import {addDays, label, linkIds, money, todayIso, validDay} from "@/lib/bh";
-import {useAccountRevenues, useCreators, useDapAccounts, useTable} from "@/lib/tables";
+import {useAccountRevenues, useCreators, useDapAccounts, useModels, useTable} from "@/lib/tables";
 import {useSession} from "@/lib/datasource";
 import {usePayData} from "@/lib/pay-data";
 import {wagesFor} from "@/lib/pay";
@@ -46,11 +46,10 @@ export default function PnL() {
   const [modelId, setModelId] = useState("");
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [managing, setManaging] = useState(false);
-  const [newModel, setNewModel] = useState("");
   const [newAccount, setNewAccount] = useState("");
   const [saving, setSaving] = useState(false);
 
-  const models = useTable("models"), map = useTable("map"), expenses = useTable("expenses");
+  const models = useModels(), map = useTable("map"), expenses = useTable("expenses");
   const payData = usePayData(), {staff} = payData, pay = payData.paylog;
   const tables = [models, map, expenses, ...payData.tables];
   const [start, end] = range ?? ["", ""];
@@ -148,14 +147,7 @@ export default function PnL() {
   // Picking a model in the drawer also adds it to the report, so it never vanishes behind "Choose a model".
   const chooseModel = (id: string) => { setModelId(id); if (!selectedIds.includes(id)) setSelectedIds([...selectedIds, id]); };
 
-  async function addModel() {
-    const name = newModel.trim();
-    if (!name) return;
-    if (models.rows.some(r => label(r.fields.model).toLowerCase() === name.toLowerCase())) return toast.error("That model already exists");
-    setSaving(true);
-    try { const row = await models.create({model: name}); setNewModel(""); if (row?.id) { setModelId(row.id); setSelectedIds([row.id]); } toast(`${name} added. Set her deal and connect her DAP account.`); }
-    catch (e: any) { toast.error(e.message); } finally { setSaving(false); }
-  }
+
 
   async function connectAccount() {
     const account = dap.data?.find(a => String(a.id) === newAccount);
@@ -305,8 +297,7 @@ export default function PnL() {
       </>}
     </div>
 
-    <Drawer open={managing} onClose={() => setManaging(false)} title="Manage P&L models" subtitle="Add a model, then explicitly connect only her DAP account.">
-      <Field label="New model name"><div className="flex gap-2"><input className={inputClass + " flex-1"} value={newModel} onChange={e => setNewModel(e.target.value)} onKeyDown={e => e.key === "Enter" && addModel()} placeholder="Model name"/><Btn onClick={addModel} disabled={!newModel.trim() || saving}>Add</Btn></div></Field>
+    <Drawer open={managing} onClose={() => setManaging(false)} title="Manage P&L models" subtitle="Models come from Creatorstaq. Connect each account to the model it belongs to.">
       <div className="grid gap-2 border-t border-[var(--ink-100)] pt-4">
         <span className="text-[13px] font-medium text-muted-foreground">Choose model</span>
         <Select value={modelId} onChange={chooseModel} ariaLabel="Choose model" options={models.rows.map(m => ({value: m.id, label: label(m.fields.model)}))}/>

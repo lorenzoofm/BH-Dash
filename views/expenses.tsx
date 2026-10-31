@@ -5,7 +5,7 @@ import {toast} from "@/components/bh/toast";
 import {Menu, Popover, Select, type MenuItem} from "@/components/bh/menu";
 import {Btn, Drawer, Field, PageHeader, PageSkeleton, Panel, Segmented, Stat, TableError, inputClass} from "@/components/bh/ui";
 import {addDays, label, linkIds, money, num, todayIso} from "@/lib/bh";
-import {CHOICES, useTable} from "@/lib/tables";
+import {CHOICES, useModels, useTable} from "@/lib/tables";
 import {cn} from "@/lib/utils";
 
 type Range = "month" | "next-month" | "last-month" | "90d" | "all";
@@ -57,7 +57,7 @@ function useLive(t: ReturnType<typeof useTable>) {
 export default function Expenses() {
   const [today, setToday] = useState<string | null>(null);
   useEffect(() => setToday(todayIso()), []);
-  const exp = useTable("expenses"), models = useTable("models"), viewsT = useTable("expenseViews");
+  const exp = useTable("expenses"), models = useModels(), viewsT = useTable("expenseViews");
   const E = useLive(exp), V = useLive(viewsT);
   const [range, setRange] = useState<Range>("month");
   const [viewId, setViewId] = useState("");
@@ -102,7 +102,7 @@ export default function Expenses() {
   const catMap = new Map<string, number>(); inRange.forEach(r => catMap.set(r.category || "Uncategorised", (catMap.get(r.category || "Uncategorised") ?? 0) + r.amount));
   const cats = [...catMap].sort((x, y) => y[1] - x[1]), top = cats[0]?.[1] || 1;
   const catChoices = [...new Set([...CHOICES.category, ...rows.map(r => r.category).filter(Boolean)])].sort((x, y) => x.localeCompare(y));
-  const mName = (id: string) => modelList.find(m => m.id === id)?.name ?? "Unknown";
+  const mName = (id: string) => modelList.find(m => m.id === id)?.name ?? (label(models.all.find(m => m.id === id)?.fields.model) || "Unknown");
   const mLabel = (ids: string[]) => ids.length ? ids.map(mName).join(" + ") : "Shared";
 
   const view = views.find(v => v.id === viewId) ?? views[0];

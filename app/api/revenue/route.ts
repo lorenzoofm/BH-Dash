@@ -23,7 +23,9 @@ function load(url:URL){
 }
 function store(key:string,entry:Entry){cache.set(key,entry);if(cache.size>200)cache.delete(cache.keys().next().value!);}
 export async function GET(req:Request){try{
- const actor=await guard();const pages=await pagesFor(actor.user!.email,actor.isAdmin);if(!pages.includes('revenue')&&!pages.includes('pnl'))throw new Error('403:Revenue access is not enabled for your account.');const url=revenueURL(new URL(req.url).searchParams.get('url'));
+ const actor=await guard();const pages=await pagesFor(actor.user!.email,actor.isAdmin);const url=revenueURL(new URL(req.url).searchParams.get('url'));
+ // The account list (slugs and usernames) drives every page's model list; revenue itself needs Revenue or P&L.
+ if(url.pathname!=='/v1/me'&&!pages.includes('revenue')&&!pages.includes('pnl'))throw new Error('403:Revenue access is not enabled for your account.');
  if(!process.env.CREATORSTAQ_AUTH)throw new Error('503:Creatorstaq is not connected yet.');
  const key=url.href;let entry=cache.get(key),state='HIT';const age=entry?Date.now()-entry.at:Infinity;
  if(!entry||age>=STALE){
