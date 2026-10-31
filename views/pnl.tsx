@@ -14,7 +14,7 @@ import {cn} from "@/lib/utils";
 import {ModelPicker, type PickerModel} from "@/views/pnl/model-picker";
 
 type Preset = "month" | "last-month" | "7d" | "30d" | "custom";
-const MODEL_KEY = "bh-pnl-model";
+const MODEL_KEY = "bh-pnl-model", MODELS_KEY = "bh-pnl-models";
 const CARD = "rounded-[var(--radius-card)] border border-[var(--edge-card)] bg-card shadow-[var(--shadow-card)]";
 // ponytail: Creatorstaq's /v1/me photo field name is unverified; these are the likely keys.
 const photoOf = (a: any): string | null => a?.avatar_url || a?.avatar || a?.profile_picture || a?.photo_url || null;
@@ -61,12 +61,15 @@ export default function PnL() {
 
   useEffect(() => {
     if (modelId || !models.rows.length) return;
-    let saved = "";
-    try { saved = localStorage.getItem(MODEL_KEY) || ""; } catch {}
+    let saved = "", savedIds: string[] = [];
+    try { saved = localStorage.getItem(MODEL_KEY) || ""; savedIds = JSON.parse(localStorage.getItem(MODELS_KEY) || "[]"); } catch {}
     const live = models.rows.filter(m => label(m.fields.status) !== "Ended");
-    setModelId(models.rows.some(m => m.id === saved) ? saved : (live[0] ?? models.rows[0]).id);
+    const ids = Array.isArray(savedIds) ? savedIds.filter(id => models.rows.some(m => m.id === id)) : [];
+    const focus = ids.includes(saved) ? saved : ids[0] ?? (models.rows.some(m => m.id === saved) ? saved : (live[0] ?? models.rows[0]).id);
+    setSelectedIds(ids.length ? ids : [focus]); setModelId(focus);
   }, [models.rows]);
   useEffect(() => { if (modelId) try { localStorage.setItem(MODEL_KEY, modelId); } catch {} }, [modelId]);
+  useEffect(() => { if (selectedIds.length) try { localStorage.setItem(MODELS_KEY, JSON.stringify(selectedIds)); } catch {} }, [selectedIds]);
   useEffect(() => { if (modelId && !selectedIds.length) setSelectedIds([modelId]); }, [modelId, selectedIds.length]);
 
   // Keep Model Accounts' Avatar URL in step with the Creatorstaq profile photo (admins only; map PATCH needs admin).
