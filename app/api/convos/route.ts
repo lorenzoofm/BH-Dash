@@ -5,9 +5,9 @@ export const dynamic='force-dynamic';
 // One upstream source per request, so each call stays well inside the Worker subrequest limit:
 //   ?kind=cupid&month=2026-10&app=x[&creator=ID]   Cupid funnel for a month (all creators when omitted)
 //   ?kind=cupid-daily&month=2026-10&app=x[&creator=ID]   the same funnel day by day (Cupid only totals a range, so one call per day, at most 31)
-//   ?kind=cupid-months&month=2026-10&app=x[&creator=ID][&n=6]   one funnel per month for the n months ending at month (n <= 12)
+//   ?kind=cupid-months&month=2026-10&app=x[&creator=ID]   one funnel per month for the six months ending at month
 //   ?kind=subs&month=2026-10&account=slug           Creatorstaq new subs for one OF account, split by first-touch source and day
-//   ?kind=subs-months&month=2026-10&account=slug[&n=6]   Creatorstaq's new-sub total per month for the n months ending at month
+//   ?kind=subs-months&month=2026-10&account=slug   Creatorstaq's new-sub total per month for the six months ending at month
 // Months are UTC calendar months on both sides so the two line up. Each upstream call is cached per isolate:
 // 10 min, or 6 h once its range ended 3+ days ago (conversions settle a day or two late).
 const TTL=10*60000,CLOSED=6*3600000,cache=new Map<string,{at:number;ttl:number;data:Promise<any>}>();
@@ -57,19 +57,19 @@ async function newSubsIn(month:string,account:string){
 async function subs(month:string,account:string){
  const {start,next}=monthRange(month),a=encodeURIComponent(account),newSubs=await newSubsIn(month,account);
  // Newest first, so the walk stops at the first fan who subscribed before the month.
- const bySource:Record<string,number>={},byDay:Record<string,Record<string,number>>={};let counted=0,capped=true;
+ const bySource:Record<string,number>={},byDay:Record<string,Record<string,number>>={};let capped=true;
  for(let page=1;page<=MAX_PAGES;page++){
   const body=await creatorstaq(`/computed/${a}/subscribers?sort=subscribe_at&order=desc&pageSize=100&page=${page}`);
   const rows:any[]=body?.data??body?.items??body?.rows??[];
   for(const r of rows){
    const day=String(r.subscribe_at??'').slice(0,10);if(!day||day>=next)continue;
    if(day<start){capped=false;break;}
-   const src=String(r.source??'untracked').toLowerCase();bySource[src]=(bySource[src]??0)+1;counted++;
+   const src=String(r.source??'untracked').toLowerCase();bySource[src]=(bySource[src]??0)+1;
    const d=byDay[day]??={};d[src]=(d[src]??0)+1;
   }
   if(!capped||rows.length<100){capped=false;break;}
  }
- return {newSubs,counted,bySource,byDay,capped};
+ return {newSubs,bySource,byDay,capped};
 }
 
 export async function GET(req:Request){try{
@@ -77,8 +77,7 @@ export async function GET(req:Request){try{
  if(!pages.includes('convos'))throw new Error('403:Convo Tracker access is not enabled for your account.');
  const p=new URL(req.url).searchParams,kind=p.get('kind'),month=p.get('month')||'';
  if(!/^\d{4}-(0[1-9]|1[0-2])$/.test(month))throw new Error('400:Choose a month.');
- const n=Number(p.get('n')??6);if(!Number.isInteger(n)||n<1||n>12)throw new Error('400:Ask for 1 to 12 months.');
- const months=Array.from({length:n},(_,i)=>shiftMonth(month,i-n+1));
+ const months=Array.from({length:6},(_,i)=>shiftMonth(month,i-5));
  let data:Promise<any>;
  if(kind==='cupid'||kind==='cupid-daily'||kind==='cupid-months'){
   const app=p.get('app')||'',creator=p.get('creator');

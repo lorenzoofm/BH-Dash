@@ -1,5 +1,5 @@
 // Convo Tracker: Cupid's conversation funnel next to Creatorstaq's real subs. Pure helpers, shared by
-// app/api/convos and views/convos.tsx.
+// app/api/convos and views/convos.
 
 // Cupid platforms the tracker reports on, in display order. Add any app from Cupid's list here.
 export const CUPID_APPS = ["x", "discord", "instagram", "reddit", "threads"] as const;
@@ -66,19 +66,16 @@ export const toCsv = (rows: (string | number | null | undefined)[][]) =>
 
 // Forecast from one daily series of convos used. Run rate = mean of the last 7 complete days (today is still
 // filling in; fewer days early in the month, so it falls back to the month-to-date mean). This month = complete
-// days + rate × days left (today included); next month = rate × its days. Low/high swap the rate for the slowest
-// and busiest of those days.
-export type Forecast = {actual: number; rate: number | null; basis: number; month: number | null; monthLow: number | null; monthHigh: number | null; next: number | null; nextLow: number | null; nextHigh: number | null};
+// days + rate × days left (today included); next month = rate × its days.
+export type Forecast = {actual: number; rate: number | null; basis: number; month: number | null; next: number | null};
 export function forecast(days: {date: string; v: number | null | undefined}[], month: string, today: string): Forecast {
   const {last, next} = monthRange(month), dayCount = (a: string, b: string) => Math.round((Date.parse(b) - Date.parse(a)) / 864e5) + 1;
   const actual = days.reduce((a, d) => a + (d.v ?? 0), 0), done = days.filter(d => d.date < today && d.v != null);
   const window = done.slice(-7).map(d => d.v!), basis = window.length;
-  const rate = basis ? window.reduce((a, x) => a + x, 0) / basis : null, lo = basis ? Math.min(...window) : null, hi = basis ? Math.max(...window) : null;
+  const rate = basis ? window.reduce((a, x) => a + x, 0) / basis : null;
   const doneSum = done.reduce((a, d) => a + d.v!, 0), left = today > last ? 0 : dayCount(today < `${month}-01` ? `${month}-01` : today, last);
   const nextDays = dayCount(next, monthRange(next.slice(0, 7)).last);
-  const proj = (r: number | null) => r == null ? null : Math.max(actual, doneSum + r * left);
-  return {actual, rate, basis, month: proj(rate), monthLow: proj(lo), monthHigh: proj(hi),
-    next: rate == null ? null : rate * nextDays, nextLow: lo == null ? null : lo * nextDays, nextHigh: hi == null ? null : hi * nextDays};
+  return {actual, rate, basis, month: rate == null ? null : Math.max(actual, doneSum + rate * left), next: rate == null ? null : rate * nextDays};
 }
 
 // Price per charged convo, by platform, or "all" for one flat price. Empty until pricing is agreed: every cost then
