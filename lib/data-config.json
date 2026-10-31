@@ -1846,7 +1846,8 @@
           "Start Date",
           "Notes",
           "Cupid Creator ID"
-        ]
+        ],
+        "DELETE": []
       }
     },
     "map": {
@@ -1949,7 +1950,8 @@
           "Model",
           "Include in P&L",
           "Avatar URL"
-        ]
+        ],
+        "DELETE": []
       }
     },
     "conversions": {

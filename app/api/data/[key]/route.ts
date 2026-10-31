@@ -69,6 +69,16 @@ async function save(req:Request,{params}:any){try{
    if((await allRows(t,true)).some((r:any)=>(r.fields[f.name]??[]).includes(id)))throw new Error('409:This person has pay or conversion records. Set them to Inactive instead.');
   }
  }
+ // Deleting a model removes it everywhere: its Model Accounts rows go, and every other table drops the link.
+ if(req.method==='DELETE'&&key==='models'){
+  for(const t of Object.values(config.sources) as any[]){
+   const f=t.fields.find((f:any)=>f.type==='LINKED_RECORD'&&f.rawOptions?.linkedTableId===s.tableId);if(!f)continue;
+   for(const r of await allRows(t,true)){
+    const ids:string[]=r.fields[f.name]??[];if(!ids.includes(id))continue;
+    await store(t.tableId+'/'+r.id,t.table==='Model Accounts'?{method:'DELETE'}:{method:'PATCH',body:JSON.stringify({fields:{[f.name]:ids.filter(x=>x!==id)}})},false);
+   }
+  }
+ }
  if(req.method!=='DELETE'){
   for(const [name,value] of Object.entries(fields)){
    const f=s.fields.find((f:any)=>f.name===name);if(f.type!=='LINKED_RECORD'||!Array.isArray(value))continue;
