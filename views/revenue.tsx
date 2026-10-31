@@ -6,8 +6,8 @@ import {TableError, Btn, Notice, PageHeader, PageSkeleton, Panel, Stat} from "@/
 import {Select} from "@/components/bh/menu";
 import {toast} from "@/components/bh/toast";
 import {cn} from "@/lib/utils";
-import {label, linkIds, money, num, todayIso} from "@/lib/bh";
-import {accountRows, isLinked, newAccounts} from "@/lib/finance";
+import {label, linkIds, money, todayIso} from "@/lib/bh";
+import {accountRows, isLinked, monthlyHistory, newAccounts} from "@/lib/finance";
 import {useProxyFetch, useSession} from "@/lib/datasource";
 import {CHOICES, linkOptions, opts, syncAccounts, useAccountRevenues, useDapAccounts, useModels, useTable} from "@/lib/tables";
 
@@ -44,7 +44,7 @@ export default function Revenue() {
     const res = await proxyFetch(MONTHLY);
     const body: any = await res.json().catch(() => ({}));
     if (!res.ok) throw new Error(body.error || `Creator Staq returned ${res.status}`);
-    return (body.monthly_by_account ?? []) as {month: string; accounts: {account_id: number; name: string; net: number | string}[]}[];
+    return body.monthly_by_account as {month?: string; accounts?: Record<string, any>[] | null}[];
   }});
   const dap = useDapAccounts();
   const accounts = dap.data ?? [];
@@ -63,26 +63,17 @@ export default function Revenue() {
   if ([models, map].some(t => t.error)) return <TableError tables={[models, map]}/>;
   if (!today || models.loading || map.loading) return <PageSkeleton/>;
 
-  const pageModel = new Map(dapRows.map(r => [String(r.fields.accountId), linkIds(r.fields.model)[0]]));
   const modelName = new Map(models.all.map(r => [r.id, label(r.fields.model)]));
-  const shown = [...new Set([...pageModel.values()].filter(Boolean))] as string[];
-  // The agency monthly endpoint lists finished months only, in one response; an account missing from a month earned nothing in it.
-  const chart = (monthly.data ?? []).map(mo => {
-    const row = {month: mo.month.slice(0, 7), total: 0, by: {} as Record<string, number>};
-    for (const a of mo.accounts) {
-      const mid = pageModel.get(String(a.account_id));
-      if (!mid) continue;
-      row.by[mid] = (row.by[mid] ?? 0) + num(a.net);
-      row.total += num(a.net);
-    }
-    return row;
-  }).sort((a, b) => a.month.localeCompare(b.month));
-  const thisMonth = today.slice(0, 7);
-  const full = chart.filter(r => r.month !== thisMonth);
+  const shown = [...new Set(dapRows.map(r => linkIds(r.fields.model)[0]).filter(Boolean))];
+  // The agency monthly endpoint lists finished months only; the chart and stats use those months.
+  const {chart, missing, why} = monthlyHistory(monthly.data ?? [], dapRows, today.slice(0, 7));
+  // Why the history stats are blank, shown in place of a bare dash.
+  const blank = monthly.isError ? `Creatorstaq error: ${(monthly.error as Error).message}` : dap.isError ? `Creatorstaq account list error: ${(dap.error as Error).message}`
+    : monthly.isPending || dap.isPending ? "Loading…" : why;
+  const full = blank ? [] : chart;
   const last = full.at(-1), prev = full.at(-2);
-  const history = dap.isSuccess && monthly.isSuccess;
   const best = [...full].sort((a, b) => b.total - a.total)[0];
-  const delta = history && last && prev ? Math.round(last.total - prev.total) : null;
+  const delta = last && prev ? Math.round(last.total - prev.total) : null;
   const nice = Math.ceil(Math.max(1, ...chart.map(r => r.total)) / 5000) * 5000;
   const ticks = [4, 3, 2, 1, 0].map(k => { const v = nice * k / 4; return v >= 1000 ? `$${Math.round(v / 1000)}k` : `$${v}`; });
   const fmtMonth = (mo: string) => new Date(mo + "-01T00:00:00Z").toLocaleDateString("en-GB", {month: "short", year: "2-digit", timeZone: "UTC"});
@@ -117,14 +108,15 @@ export default function Revenue() {
 
     <div className="grid grid-cols-[repeat(auto-fit,minmax(220px,1fr))] gap-4">
       <Stat accent label="This month so far" icon={Banknote} value={money(revenue)} sub={none ? "No accounts counted" : `${dapRows.length} counted account${dapRows.length === 1 ? "" : "s"}`}/>
-      <Stat label="Last full month" icon={CalendarDays} value={history && last ? money(last.total) : "—"}
-        sub={<>{!!delta && <span className={cn("inline-flex rounded-full px-2 py-0.5 text-[11px] font-semibold", delta > 0 ? "bg-positive-soft text-[var(--positive-fg)]" : "bg-negative-soft text-[var(--negative-fg)]")}>{delta > 0 ? "↗ " : "↘ "}{money(Math.abs(delta))} vs prior</span>}{last ? fmtMonth(last.month) : ""}</>}/>
-      <Stat label="Last 6 months" icon={TrendingUp} value={history && full.length ? money(full.slice(-6).reduce((s, r) => s + r.total, 0)) : "—"} sub="Full months only"/>
-      <Stat label="Best month" icon={Trophy} value={history && best ? money(best.total) : "—"} sub={best ? fmtMonth(best.month) : undefined}/>
+      <Stat label="Last full month" icon={CalendarDays} value={last ? money(last.total) : "—"}
+        sub={blank ?? <>{!!delta && <span className={cn("inline-flex rounded-full px-2 py-0.5 text-[11px] font-semibold", delta > 0 ? "bg-positive-soft text-[var(--positive-fg)]" : "bg-negative-soft text-[var(--negative-fg)]")}>{delta > 0 ? "↗ " : "↘ "}{money(Math.abs(delta))} vs prior</span>}{last ? fmtMonth(last.month) : ""}</>}/>
+      <Stat label="Last 6 months" icon={TrendingUp} value={full.length ? money(full.slice(-6).reduce((s, r) => s + r.total, 0)) : "—"} sub={blank ?? "Full months only"}/>
+      <Stat label="Best month" icon={Trophy} value={best ? money(best.total) : "—"} sub={blank ?? (best && fmtMonth(best.month))}/>
     </div>
 
     <Panel title="Monthly net revenue" subtitle="Finished months, counted accounts only.">
-      {monthly.isPending ? <div className="h-[280px] animate-pulse rounded-lg bg-muted"/> : !chart.some(r => r.total) ? <Notice icon={Link2}>{none ? "No accounts are switched on." : "Creator Staq has no monthly revenue for the counted accounts yet."}</Notice> : <>
+      {blank === "Loading…" ? <div className="h-[280px] animate-pulse rounded-lg bg-muted"/> : blank ? <Notice icon={Link2}>{blank}.</Notice> : <>
+        {missing.length > 0 && <p className="mb-3 text-[12.5px] text-muted-foreground">No finished-month history yet for {missing.join(", ")}; counted as $0 until Creatorstaq lists them.</p>}
         <div className="grid h-[280px] grid-cols-[52px_1fr]">
           <div className="flex flex-col justify-between pb-7 font-mono text-[11px] text-muted-foreground">{ticks.map(t => <span key={t} className="num">{t}</span>)}</div>
           <div className="grid gap-2.5" style={{gridTemplateColumns: `repeat(${chart.length},1fr)`}}>

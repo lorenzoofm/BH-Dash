@@ -59,3 +59,24 @@ assert.deepEqual(ctx.newAccounts(accounts, rows).map(a => a.slug), ['fresh'], 'd
 const linked = ctx.accountRows(accounts, rows);
 assert.deepEqual(linked.map(r => r.id), ['r1', 'r2'], 'deleted rows and unsynced accounts are not listed');
 assert.equal(linked[1].fields.accountId, 2, 'Creatorstaq id wins over a hand-typed one');
+
+// Monthly history: counted rows carry Creatorstaq's numeric id; entries match by id (number or string) or slug,
+// net as `net` or `net_amount` decimal strings; current/partial and malformed months are dropped.
+const counted = [{id: 'r1', fields: {accountId: 329, slug: 'aria_dap', model: ['m1']}}, {id: 'r2', fields: {accountId: 341, slug: 'bella_dap', model: ['m2']}}];
+const buckets = [
+  {month: '2026-09', accounts: [{account_id: 329, net: '1000.50'}, {account_id: '341', net_amount: '200.25'}, {account_id: 288, net: '999.00'}]},
+  {month: '2026-08-01', accounts: [{slug: 'ARIA_DAP', net: '900.00'}]},
+  {month: '2026-10', accounts: [{account_id: 329, net: '50.00'}]},
+  {month: '2026-07', accounts: null},
+];
+let h = ctx.monthlyHistory(buckets, counted, '2026-10');
+assert.deepEqual(h.chart.map(r => [r.month, r.total]), [['2026-07', 0], ['2026-08', 900], ['2026-09', 1200.75]], 'finished months only, sorted, uncounted accounts ignored');
+assert.equal(h.chart[2].by.m2, 200.25);
+assert.equal(h.why, null);
+assert.deepEqual(h.missing, []);
+assert.equal(ctx.monthlyHistory([], counted, '2026-10').why, 'Creatorstaq returned no finished months');
+assert.equal(ctx.monthlyHistory(buckets, [], '2026-10').why, 'No counted accounts');
+h = ctx.monthlyHistory([{month: '2026-09', accounts: [{account_id: 288, net: '5.00'}]}], counted, '2026-10');
+assert.equal(h.why, 'No history for counted accounts (aria_dap, bella_dap)', 'new accounts with no history say so');
+assert.deepEqual(ctx.monthlyHistory(buckets.slice(1, 2), counted, '2026-10').missing, ['bella_dap'], 'partly new accounts listed, history still shown');
+console.log('PASS: monthly history matches counted accounts and explains blanks');

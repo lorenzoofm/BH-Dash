@@ -43,6 +43,32 @@ export function accountRows(accounts: Account[], rows: Rec[]): Rec[] {
   });
 }
 
+// Finished-month net per model for the counted accounts, from the agency monthly endpoint's monthly_by_account.
+// Its account shape is undocumented, so an entry matches by account_id (or id) or by slug, and net may come as
+// `net` or `net_amount` (decimal strings). A counted account missing from a month earned nothing in it.
+// `why` says why there is no history to show; `missing` lists counted accounts absent from every month.
+export function monthlyHistory(buckets: {month?: string; accounts?: Record<string, any>[] | null}[], counted: Rec[], thisMonth: string) {
+  const byId = new Map(counted.map(r => [String(r.fields.accountId), r]));
+  const bySlug = new Map(counted.map(r => [label(r.fields.slug).toLowerCase(), r]));
+  const seen = new Set<Rec>();
+  const chart = buckets.map(mo => {
+    const row = {month: String(mo.month ?? "").slice(0, 7), total: 0, by: {} as Record<string, number>};
+    for (const a of mo.accounts ?? []) {
+      const r = byId.get(String(a.account_id ?? a.id)) ?? bySlug.get(String(a.slug ?? "").toLowerCase());
+      if (!r) continue;
+      seen.add(r);
+      const mid = linkIds(r.fields.model)[0], net = num(a.net ?? a.net_amount);
+      row.by[mid] = (row.by[mid] ?? 0) + net;
+      row.total += net;
+    }
+    return row;
+  }).filter(r => /^\d{4}-\d{2}$/.test(r.month) && r.month < thisMonth).sort((a, b) => a.month.localeCompare(b.month));
+  const missing = counted.filter(r => !seen.has(r)).map(r => label(r.fields.slug));
+  const why = !counted.length ? "No counted accounts" : !chart.length ? "Creatorstaq returned no finished months"
+    : missing.length === counted.length ? `No history for counted accounts (${missing.join(", ")})` : null;
+  return {chart, missing, why};
+}
+
 // No included DAP accounts means zero; unavailable or shared account revenue is unknown.
 export function dapRevenueFor(modelId: string, rows: Rec[], modelIds: string[], ready: boolean, amounts: Record<string, {net: number | null}> | undefined): number | null {
   if (!ready) return null;
