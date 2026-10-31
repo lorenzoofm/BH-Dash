@@ -6,7 +6,7 @@ import {NavLink} from "@/components/bh/nav-link";
 import {addDays, label, linkIds, money, num, shortDate, todayIso, weekLabel} from "@/lib/bh";
 import {useAccountRevenues, useDapAccounts, useModels, useTable} from "@/lib/tables";
 import {useProxyFetch} from "@/lib/datasource";
-import {accountRows, dapRevenueFor} from "@/lib/finance";
+import {accountRows, dapRevenueFor, monthlyHistory} from "@/lib/finance";
 import {usePayData} from "@/lib/pay-data";
 import {initials} from "@/lib/team";
 import {overview, type BoardTone} from "@/lib/overview";
@@ -61,9 +61,7 @@ export default function Overview({pages}: {pages: Page[]}) {
   const D = useMemo(() => {
     if (!today || loading) return null;
     const ready = (q: {isSuccess: boolean}) => dap.isSuccess && (dapRows.length === 0 || q.isSuccess);
-    const ids = new Set(dapRows.map(r => String(r.fields.accountId)));
-    const months = [...(monthly.data ?? [])].sort((a, b) => a.month.localeCompare(b.month)).slice(-6)
-      .map(m => m.accounts.filter(a => ids.has(String(a.account_id))).reduce((s, a) => s + num(a.net), 0));
+    const months = monthlyHistory(monthly.data ?? [], dapRows, today.slice(0, 7)).chart.slice(-6).map(m => m.total);
     return overview({today, can, staff: staff.rows, conversions: conv.rows, pay, expenses: expenses.rows, models: models.rows, map: map.rows, revenue: {
       mtd: id => dapRevenueFor(id, dapRows, liveIds, ready(mtdRev), mtdRev.data), lm: id => dapRevenueFor(id, dapRows, liveIds, ready(lmRev), lmRev.data),
       ready: ready(mtdRev) && !mtdRev.isFetching, months}});
